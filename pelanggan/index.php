@@ -60,7 +60,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <?= htmlspecialchars($antri['layanan']) ?>
                 </div>
                 <div class="queue-time" style="margin-top: 4px; font-weight: 600;">
-                    ⏱️ Estimasii: <?= htmlspecialchars($antri['estimasi']) ?>
+                    ⏱️ Estimasi: <?= htmlspecialchars($antri['estimasi']) ?>
                 </div>
             </div>
         </div>
