@@ -1,16 +1,15 @@
 <?php
 
-require_once "backend/config/config.php";
+require_once __DIR__ . '/backend/config/database.php';
 
-$query = "SELECT * FROM layanan ORDER BY id_layanan";
-$result = pg_query($conn, $query);
+$result = pg_query($conn, 'SELECT * FROM layanan ORDER BY id_layanan');
 
 if (!$result) {
-    die("Query gagal.");
+    die('Query gagal: ' . pg_last_error($conn));
 }
+
+echo 'Database berhasil terhubung.<br>';
 
 while ($row = pg_fetch_assoc($result)) {
-    echo $row['nama_layanan'] . " - Rp " . $row['harga'] . "<br>";
+    echo htmlspecialchars($row['nama_layanan']) . ' - Rp ' . $row['harga'] . '<br>';
 }
-
-?>

@@ -1,66 +1,40 @@
-```php
 <?php
 
-class Pelanggan
+declare(strict_types=1);
+
+require_once __DIR__ . '/BaseModel.php';
+
+class Pelanggan extends BaseModel
 {
-    private $conn;
-
-    public function __construct($conn)
+    public function getAll(): array
     {
-        $this->conn = $conn;
+        return $this->fetchAll('SELECT * FROM pelanggan ORDER BY id_pelanggan');
     }
 
-    // Menampilkan semua pelanggan
-    public function getAll()
+    public function getById(int $id): ?array
     {
-        $query = "SELECT * FROM pelanggan ORDER BY id_pelanggan";
-        $result = pg_query($this->conn, $query);
-
-        return pg_fetch_all($result) ?: [];
+        return $this->fetchOne('SELECT * FROM pelanggan WHERE id_pelanggan = $1', [$id]);
     }
 
-    // Menampilkan satu pelanggan berdasarkan ID
-    public function getById($id)
+    public function create(string $nama_pelanggan, string $no_hp): ?array
     {
-        $query = "SELECT * FROM pelanggan WHERE id_pelanggan = $1";
-        $result = pg_query_params($this->conn, $query, [$id]);
-
-        return pg_fetch_assoc($result);
-    }
-
-    // Menambahkan pelanggan
-    public function create($nama_pelanggan, $no_hp)
-    {
-        $query = "INSERT INTO pelanggan (nama_pelanggan, no_hp)
-                  VALUES ($1, $2)";
-
-        return pg_query_params(
-            $this->conn,
-            $query,
+        return $this->fetchOne(
+            'INSERT INTO pelanggan (nama_pelanggan, no_hp)
+             VALUES ($1, $2) RETURNING id_pelanggan',
             [$nama_pelanggan, $no_hp]
         );
     }
 
-    // Mengubah pelanggan
-    public function update($id, $nama_pelanggan, $no_hp)
+    public function update(int $id, string $nama_pelanggan, string $no_hp): bool
     {
-        $query = "UPDATE pelanggan
-                  SET nama_pelanggan = $1,
-                      no_hp = $2
-                  WHERE id_pelanggan = $3";
-
-        return pg_query_params(
-            $this->conn,
-            $query,
+        return $this->execute(
+            'UPDATE pelanggan SET nama_pelanggan = $1, no_hp = $2 WHERE id_pelanggan = $3',
             [$nama_pelanggan, $no_hp, $id]
-        );
+        ) > 0;
     }
 
-    // Menghapus pelanggan
-    public function delete($id)
+    public function delete(int $id): bool
     {
-        $query = "DELETE FROM pelanggan WHERE id_pelanggan = $1";
-
-        return pg_query_params($this->conn, $query, [$id]);
+        return $this->execute('DELETE FROM pelanggan WHERE id_pelanggan = $1', [$id]) > 0;
     }
 }

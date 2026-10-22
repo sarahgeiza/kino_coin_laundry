@@ -1,68 +1,69 @@
-```php
 <?php
 
-class Pengguna
+declare(strict_types=1);
+
+require_once __DIR__ . '/BaseModel.php';
+
+class Pengguna extends BaseModel
 {
-    private $conn;
+    // Kolom password sengaja TIDAK ikut di-SELECT agar tidak bocor ke API/tampilan.
+    private const COLUMNS = 'id_pengguna, nama, username, role';
 
-    public function __construct($conn)
+    public function getAll(): array
     {
-        $this->conn = $conn;
+        return $this->fetchAll('SELECT ' . self::COLUMNS . ' FROM pengguna ORDER BY id_pengguna');
     }
 
-    // Menampilkan semua pengguna
-    public function getAll()
+    public function getById(int $id): ?array
     {
-        $query = "SELECT * FROM pengguna ORDER BY id_pengguna";
-        $result = pg_query($this->conn, $query);
-
-        return pg_fetch_all($result) ?: [];
-    }
-
-    // Menampilkan satu pengguna berdasarkan ID
-    public function getById($id)
-    {
-        $query = "SELECT * FROM pengguna WHERE id_pengguna = $1";
-        $result = pg_query_params($this->conn, $query, [$id]);
-
-        return pg_fetch_assoc($result);
-    }
-
-    // Menambahkan pengguna
-    public function create($nama, $username, $role, $password)
-    {
-        $query = "INSERT INTO pengguna (nama, username, role, password)
-                  VALUES ($1, $2, $3, $4)";
-
-        return pg_query_params(
-            $this->conn,
-            $query,
-            [$nama, $username, $role, $password]
+        return $this->fetchOne(
+            'SELECT ' . self::COLUMNS . ' FROM pengguna WHERE id_pengguna = $1',
+            [$id]
         );
     }
 
-    // Mengubah pengguna
-    public function update($id, $nama, $username, $role, $password)
+    public function create(string $nama, string $username, string $role, string $password): ?array
     {
-        $query = "UPDATE pengguna
-                  SET nama = $1,
-                      username = $2,
-                      role = $3,
-                      password = $4
-                  WHERE id_pengguna = $5";
-
-        return pg_query_params(
-            $this->conn,
-            $query,
-            [$nama, $username, $role, $password, $id]
+        return $this->fetchOne(
+            'INSERT INTO pengguna (nama, username, role, password)
+             VALUES ($1, $2, $3, $4) RETURNING id_pengguna',
+            [$nama, $username, $role, password_hash($password, PASSWORD_DEFAULT)]
         );
     }
 
-    // Menghapus pengguna
-    public function delete($id)
+    /** Jika $password null/kosong, password lama tidak diubah. */
+    public function update(int $id, string $nama, string $username, string $role, ?string $password = null): bool
     {
-        $query = "DELETE FROM pengguna WHERE id_pengguna = $1";
+        if ($password !== null && $password !== '') {
+            return $this->execute(
+                'UPDATE pengguna SET nama = $1, username = $2, role = $3, password = $4
+                 WHERE id_pengguna = $5',
+                [$nama, $username, $role, password_hash($password, PASSWORD_DEFAULT), $id]
+            ) > 0;
+        }
 
-        return pg_query_params($this->conn, $query, [$id]);
+        return $this->execute(
+            'UPDATE pengguna SET nama = $1, username = $2, role = $3 WHERE id_pengguna = $4',
+            [$nama, $username, $role, $id]
+        ) > 0;
+    }
+
+    public function delete(int $id): bool
+    {
+        return $this->execute('DELETE FROM pengguna WHERE id_pengguna = $1', [$id]) > 0;
+    }
+
+    /** Untuk login. Mengembalikan data pengguna (tanpa password) atau null. */
+    public function login(string $username, string $password): ?array
+    {
+        $row = $this->fetchOne('SELECT * FROM pengguna WHERE username = $1', [$username]);
+
+        if ($row === null || !password_verify($password, $row['password'])) {
+            return null;
+        }
+
+        unset($row['password']);
+
+        return $row;
     }
 }
