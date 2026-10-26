@@ -12,9 +12,9 @@ require __DIR__.'/../backend/models/Pengguna.php';
 require __DIR__.'/../backend/models/Pelanggan.php';
 require __DIR__.'/../backend/models/Layanan.php';
 require __DIR__.'/../backend/models/Shift.php';
-require __DIR__.'/../backend/models/Transaksi.php';
-require __DIR__.'/../backend/models/DetailTransaksi.php';
-require __DIR__.'/../backend/middleware/session.php';
+require_once __DIR__.'/../backend/models/Transaksi.php';
+require_once __DIR__.'/../backend/middleware/session.php';
+
 try {
     $module = (string)($_GET['module'] ?? '');
     $action = (string)($_GET['action'] ?? 'list');
