@@ -1,67 +1,41 @@
-```php
 <?php
 
-class Layanan
+declare(strict_types=1);
+
+require_once __DIR__ . '/BaseModel.php';
+
+class Layanan extends BaseModel
 {
-    private $conn;
-
-    public function __construct($conn)
+    public function getAll(): array
     {
-        $this->conn = $conn;
+        return $this->fetchAll('SELECT * FROM layanan ORDER BY id_layanan');
     }
 
-    // Menampilkan semua layanan
-    public function getAll()
+    public function getById(int $id): ?array
     {
-        $query = "SELECT * FROM layanan ORDER BY id_layanan";
-        $result = pg_query($this->conn, $query);
-
-        return pg_fetch_all($result) ?: [];
+        return $this->fetchOne('SELECT * FROM layanan WHERE id_layanan = $1', [$id]);
     }
 
-    // Menampilkan satu layanan berdasarkan ID
-    public function getById($id)
+    public function create(string $nama_layanan, int $harga, ?float $berat_standar): ?array
     {
-        $query = "SELECT * FROM layanan WHERE id_layanan = $1";
-        $result = pg_query_params($this->conn, $query, [$id]);
-
-        return pg_fetch_assoc($result);
-    }
-
-    // Menambahkan layanan
-    public function create($nama_layanan, $harga, $berat_standar)
-    {
-        $query = "INSERT INTO layanan (nama_layanan, harga, berat_standar)
-                  VALUES ($1, $2, $3)";
-
-        return pg_query_params(
-            $this->conn,
-            $query,
+        return $this->fetchOne(
+            'INSERT INTO layanan (nama_layanan, harga, berat_standar)
+             VALUES ($1, $2, $3) RETURNING id_layanan',
             [$nama_layanan, $harga, $berat_standar]
         );
     }
 
-    // Mengubah layanan
-    public function update($id, $nama_layanan, $harga, $berat_standar)
+    public function update(int $id, string $nama_layanan, int $harga, ?float $berat_standar): bool
     {
-        $query = "UPDATE layanan
-                  SET nama_layanan = $1,
-                      harga = $2,
-                      berat_standar = $3
-                  WHERE id_layanan = $4";
-
-        return pg_query_params(
-            $this->conn,
-            $query,
+        return $this->execute(
+            'UPDATE layanan SET nama_layanan = $1, harga = $2, berat_standar = $3
+             WHERE id_layanan = $4',
             [$nama_layanan, $harga, $berat_standar, $id]
-        );
+        ) > 0;
     }
 
-    // Menghapus layanan
-    public function delete($id)
+    public function delete(int $id): bool
     {
-        $query = "DELETE FROM layanan WHERE id_layanan = $1";
-
-        return pg_query_params($this->conn, $query, [$id]);
+        return $this->execute('DELETE FROM layanan WHERE id_layanan = $1', [$id]) > 0;
     }
 }

@@ -1,30 +1,18 @@
-```php
 <?php
 
-class Shift
+declare(strict_types=1);
+
+require_once __DIR__ . '/BaseModel.php';
+
+class Shift extends BaseModel
 {
-    private $conn;
-
-    public function __construct($conn)
+    public function getAll(): array
     {
-        $this->conn = $conn;
+        return $this->fetchAll('SELECT * FROM shift ORDER BY id_shift');
     }
 
-    // Menampilkan semua shift
-    public function getAll()
+    public function getById(int $id): ?array
     {
-        $query = "SELECT * FROM shift ORDER BY id_shift";
-        $result = pg_query($this->conn, $query);
-
-        return pg_fetch_all($result) ?: [];
-    }
-
-    // Menampilkan satu shift berdasarkan ID
-    public function getById($id)
-    {
-        $query = "SELECT * FROM shift WHERE id_shift = $1";
-        $result = pg_query_params($this->conn, $query, [$id]);
-
-        return pg_fetch_assoc($result);
+        return $this->fetchOne('SELECT * FROM shift WHERE id_shift = $1', [$id]);
     }
 }
