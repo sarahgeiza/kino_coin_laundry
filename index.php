@@ -7,6 +7,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $role = $_POST['role'] ?? 'kasir';
     $username = trim($_POST['username'] ?? '');
 
+    if ($role === 'pelanggan') {
+        $_SESSION['customer_login_message'] = 'Scan QR member dari kasir untuk membuka akun pelanggan.';
+        header('Location: pelanggan/login.php');
+        exit;
+    }
+
     $_SESSION['user_role'] = $role;
     $_SESSION['username'] = !empty($username) ? $username : ($role === 'admin' ? 'pemilik' : ($role === 'pelanggan' ? 'budi' : 'daniel'));
 
@@ -270,12 +276,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         <p class="sub-greeting">Pilih peran dan masuk</p>
 
         <form action="index.php" method="POST" id="loginForm">
-            <div class="form-group">
+            <div class="form-group" id="username-group">
                 <label class="form-label" for="usernameInput">Username / Email</label>
                 <input type="text" name="username" id="usernameInput" class="form-control" value="daniel" required>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" id="password-group">
                 <label class="form-label" for="passwordInput">Password</label>
                 <input type="password" name="password" id="passwordInput" class="form-control" value="password123" required>
             </div>
@@ -306,7 +312,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                         <input type="radio" name="role" value="pelanggan" onchange="handleRoleChange('pelanggan', 'budi')">
                         <div class="role-box">
                             <span class="role-icon">🧺</span>
-                            <span class="role-name">Pelanggan</span>
+                            <span class="role-name">Pelanggan (QR)</span>
                         </div>
                     </label>
                 </div>
@@ -329,7 +335,17 @@ function handleRoleChange(role, defaultUsername) {
     if (activeEl) activeEl.classList.add('is-selected');
 
     const uInput = document.getElementById('usernameInput');
-    if (uInput) uInput.value = defaultUsername;
+    const pInput = document.getElementById('passwordInput');
+    const usernameGroup = document.getElementById('username-group');
+    const passwordGroup = document.getElementById('password-group');
+    const customerLogin = role === 'pelanggan';
+    if (uInput) {
+        uInput.value = customerLogin ? '' : defaultUsername;
+        uInput.required = !customerLogin;
+    }
+    if (pInput) pInput.required = !customerLogin;
+    if (usernameGroup) usernameGroup.hidden = customerLogin;
+    if (passwordGroup) passwordGroup.hidden = customerLogin;
 }
 
 document.addEventListener('DOMContentLoaded', function() {
