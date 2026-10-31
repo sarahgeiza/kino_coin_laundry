@@ -15,7 +15,7 @@ $show_toast_logout = (isset($_GET['logout']) && $_GET['logout'] == '1');
         .landing-screen {
             background: linear-gradient(180deg, #1e3a8a 0%, #1d4ed8 45%, #2563eb 100%);
             color: #ffffff;
-            padding: 14px 22px 30px 22px;
+            padding: 24px 22px 30px 22px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -23,16 +23,16 @@ $show_toast_logout = (isset($_GET['logout']) && $_GET['logout'] == '1');
         .landing-top-nav {
             display: flex;
             justify-content: flex-end;
-            gap: 8px;
+            gap: 10px;
             margin-bottom: 24px;
         }
         .btn-role-tag {
             background: rgba(255, 255, 255, 0.16);
             color: #ffffff;
             border: 1px solid rgba(255, 255, 255, 0.35);
-            padding: 6px 14px;
+            padding: 7px 16px;
             border-radius: 20px;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 700;
             text-decoration: none;
             backdrop-filter: blur(4px);
@@ -56,16 +56,49 @@ $show_toast_logout = (isset($_GET['logout']) && $_GET['logout'] == '1');
             box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
             margin-bottom: 14px;
         }
+        .features-grid-landing {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
         .feature-card-landing {
             background: rgba(255, 255, 255, 0.12);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 14px;
-            padding: 12px 14px;
+            border-radius: 16px;
+            padding: 16px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 10px;
+            gap: 14px;
             backdrop-filter: blur(4px);
+        }
+        .cta-box-landing {
+            margin-top: auto;
+            padding-top: 20px;
+        }
+
+        /* Desktop responsiveness for landing */
+        @media (min-width: 768px) {
+            .landing-screen {
+                padding: 40px 50px 40px 50px;
+                border-radius: 24px;
+                margin: 30px auto;
+                min-height: calc(100vh - 60px);
+            }
+            .features-grid-landing {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+            }
+            .feature-card-landing {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 20px;
+            }
+            .cta-buttons-row {
+                display: flex;
+                gap: 14px;
+                max-width: 500px;
+            }
         }
     </style>
 </head>
@@ -84,12 +117,6 @@ $show_toast_logout = (isset($_GET['logout']) && $_GET['logout'] == '1');
     </div>
 
     <div>
-        <!-- Status Bar -->
-        <div class="status-bar white-text" style="padding: 0 0 10px 0;">
-            <span>9:41</span>
-            <div class="icons"><span>📶</span><span>🔋</span></div>
-        </div>
-
         <!-- Tombol Kasir | Pemilik di pojok kanan atas -->
         <div class="landing-top-nav">
             <a href="login-kasir.php" class="btn-role-tag">Kasir</a>
@@ -98,47 +125,51 @@ $show_toast_logout = (isset($_GET['logout']) && $_GET['logout'] == '1');
 
         <!-- Hero Brand -->
         <div class="logo-box-lg">KC</div>
-        <h1 style="font-size: 26px; font-weight: 900; line-height: 1.2; margin-bottom: 6px;">Kino Coin Laundry</h1>
-        <p style="font-size: 13px; opacity: 0.88; line-height: 1.5; margin-bottom: 24px;">
+        <h1 style="font-size: 28px; font-weight: 900; line-height: 1.2; margin-bottom: 8px;">Kino Coin Laundry</h1>
+        <p style="font-size: 14px; opacity: 0.9; line-height: 1.6; margin-bottom: 28px; max-width: 650px;">
             Sistem manajemen operasional laundry modern berbasis koin. Kelola transaksi, pantau bisnis, dan cek riwayat cucian dalam satu aplikasi.
         </p>
 
-        <!-- 3 Feature Cards -->
-        <div class="feature-card-landing">
-            <div style="font-size: 22px;">🪙</div>
-            <div>
-                <strong style="font-size: 13px; display: block;">Token Cuci &amp; Kering</strong>
-                <span style="font-size: 11px; opacity: 0.8;">Pembayaran khusus layanan Self Service</span>
+        <!-- 3 Feature Cards (1 kol di mobile, 3 kol di desktop) -->
+        <div class="features-grid-landing">
+            <div class="feature-card-landing">
+                <div style="font-size: 26px;">🪙</div>
+                <div>
+                    <strong style="font-size: 14px; display: block; margin-bottom: 2px;">Token Cuci &amp; Kering</strong>
+                    <span style="font-size: 12px; opacity: 0.82;">Pembayaran khusus layanan Self Service</span>
+                </div>
             </div>
-        </div>
 
-        <div class="feature-card-landing">
-            <div style="font-size: 22px;">📊</div>
-            <div>
-                <strong style="font-size: 13px; display: block;">Rekap Otomatis</strong>
-                <span style="font-size: 11px; opacity: 0.8;">Laporan shift, kasir, dan berat tercatat rapi</span>
+            <div class="feature-card-landing">
+                <div style="font-size: 26px;">📊</div>
+                <div>
+                    <strong style="font-size: 14px; display: block; margin-bottom: 2px;">Rekap Otomatis</strong>
+                    <span style="font-size: 12px; opacity: 0.82;">Laporan shift, kasir, dan berat tercatat rapi</span>
+                </div>
             </div>
-        </div>
 
-        <div class="feature-card-landing">
-            <div style="font-size: 22px;">💳</div>
-            <div>
-                <strong style="font-size: 13px; display: block;">Scan Kartu Member</strong>
-                <span style="font-size: 11px; opacity: 0.8;">Input kilat dengan QR code pelanggan</span>
+            <div class="feature-card-landing">
+                <div style="font-size: 26px;">💳</div>
+                <div>
+                    <strong style="font-size: 14px; display: block; margin-bottom: 2px;">Scan Kartu Member</strong>
+                    <span style="font-size: 12px; opacity: 0.82;">Input kilat dengan QR code pelanggan</span>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- CTA Buttons Bawah -->
-    <div style="margin-top: 24px;">
-        <a href="pelanggan/login.php" class="btn btn-orange" style="margin-bottom: 10px; font-size: 15px; padding: 14px;">
-            Masuk Pelanggan
-        </a>
-        <a href="pelanggan/daftar.php" class="btn" style="background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.4); color: white; margin-bottom: 18px;">
-            Daftar Pelanggan Baru
-        </a>
+    <div class="cta-box-landing">
+        <div class="cta-buttons-row">
+            <a href="pelanggan/login.php" class="btn btn-orange" style="margin-bottom: 10px; font-size: 15px; padding: 14px;">
+                Masuk Pelanggan
+            </a>
+            <a href="pelanggan/daftar.php" class="btn" style="background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.4); color: white; margin-bottom: 18px; padding: 14px;">
+                Daftar Pelanggan Baru
+            </a>
+        </div>
 
-        <div style="text-align: center; font-size: 11px; opacity: 0.75; line-height: 1.6;">
+        <div style="font-size: 11px; opacity: 0.75; line-height: 1.6;">
             Staff? Masuk lewat <strong>Kasir</strong> / <strong>Pemilik</strong> di pojok kanan atas.<br>
             &copy; 2026 Kino Coin Laundry
         </div>

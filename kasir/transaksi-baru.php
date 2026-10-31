@@ -78,7 +78,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
 <form action="transaksi-baru.php" method="POST" id="formTransaksiBaru">
     <input type="hidden" name="action" value="save_trx">
 
-    <!-- Card 1: Data Pelanggan -->
+    <div class="grid-2-desktop">
+        <div>
+            <!-- Card 1: Data Pelanggan -->
     <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <label class="form-label" style="margin-bottom: 0;">Pelanggan *</label>
@@ -144,7 +146,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
         </div>
     </div>
 
-    <!-- Card 3: Pembayaran Token vs Tunai -->
+        </div><!-- end left column -->
+
+        <div>
+            <!-- Card 3: Pembayaran Token vs Tunai -->
     <div class="card">
         <!-- Self Service Token Input Box -->
         <div id="tokenInputSection">
@@ -203,7 +208,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     <div style="display: flex; gap: 10px; margin-top: 6px;">
         <a href="index.php" class="btn btn-outline" style="width: 35%;">Batal</a>
         <button type="submit" class="btn btn-primary" style="width: 65%;">Simpan Transaksi</button>
-    </div>
+        </div><!-- end right column -->
+    </div><!-- end .grid-2-desktop -->
 </form>
 
 <!-- Modal M2 / M6b: Pelanggan Baru -->
