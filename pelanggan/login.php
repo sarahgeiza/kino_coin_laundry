@@ -3,8 +3,41 @@ session_start();
 require_once __DIR__ . '/../includes/data.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
-    $_SESSION['username'] = 'Budi';
-    $_SESSION['role'] = 'pelanggan';
+    $wa = trim($_POST['wa'] ?? '');
+
+    // Search existing member by WhatsApp
+    $matched = null;
+    foreach ($_SESSION['members'] as $m) {
+        if ($m['wa'] === $wa || stripos($m['nama'], $wa) !== false) {
+            $matched = $m;
+            break;
+        }
+    }
+
+    if ($matched) {
+        $_SESSION['username'] = $matched['nama'];
+        $_SESSION['role'] = 'pelanggan';
+    } else {
+        // Create new member with this WhatsApp number
+        $new_id = count($_SESSION['members']) + 1;
+        $new_code = 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT);
+        $new_name = 'Pelanggan ' . substr($wa, -4);
+        $new_member = [
+            'id' => $new_id,
+            'nama' => $new_name,
+            'wa' => $wa,
+            'kode_kartu' => $new_code,
+            'is_member' => true,
+            'tx_count' => 0,
+            'coin_cuci' => 0,
+            'coin_kering' => 0,
+            'password' => 'password123'
+        ];
+        $_SESSION['members'][] = $new_member;
+        $_SESSION['username'] = $new_name;
+        $_SESSION['role'] = 'pelanggan';
+    }
+
     header('Location: index.php');
     exit;
 }

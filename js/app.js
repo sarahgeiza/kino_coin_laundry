@@ -328,20 +328,31 @@ function viewMemberCard(m) {
 }
 
 // In Pelanggan Home: View user's own dynamic QR card (C2)
-function handleOpenCustomerQR() {
-    const isMember = true;
-    if (isMember) {
-        generateQRCode('customerQrContainer', 'KC-P-0001');
-        openModal('modalCustomerQrCard');
-    } else {
-        showToast('Kartu member belum ada. Minta kasir untuk mendaftarkan Anda', 'dark', 3500);
-    }
+function handleOpenCustomerQR(customCode) {
+    const code = customCode || window.__CURRENT_MEMBER_CODE || 'KC-P-0001';
+    const name = window.__CURRENT_MEMBER_NAME || 'Budi Santoso';
+
+    const nameEl = document.getElementById('custModalName');
+    const idEl = document.getElementById('custModalId');
+    if (nameEl) nameEl.textContent = name;
+    if (idEl) idEl.textContent = code;
+
+    generateQRCode('customerQrContainer', code);
+    openModal('modalCustomerQrCard');
 }
 
 function initCustomerPageQR() {
-    // If on customer page and modal container exists, pre-generate
-    if (document.getElementById('customerQrContainer')) {
-        generateQRCode('customerQrContainer', 'KC-P-0001');
+    const container = document.getElementById('customerQrContainer');
+    if (container) {
+        const code = window.__CURRENT_MEMBER_CODE || 'KC-P-0001';
+        const name = window.__CURRENT_MEMBER_NAME || 'Budi Santoso';
+
+        const nameEl = document.getElementById('custModalName');
+        const idEl = document.getElementById('custModalId');
+        if (nameEl) nameEl.textContent = name;
+        if (idEl) idEl.textContent = code;
+
+        generateQRCode('customerQrContainer', code);
     }
 }
 
