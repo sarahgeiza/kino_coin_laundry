@@ -143,7 +143,7 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
             <!-- Alert Kuantitas 0 (K2f) -->
             <div id="kuantitasErrorAlert" style="display: none; color: #dc2626; font-size: 12px; font-weight: 700; margin-top: 6px;">
-                ⚠ Kuantitas harus &gt; 0
+                Kuantitas harus &gt; 0
             </div>
         </div>
     </div>
@@ -182,7 +182,7 @@ require_once __DIR__ . '/../includes/header.php';
 
         <!-- Alert Tunai Non-Token (K2e) -->
         <div id="tunaiAlertBox" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md); padding: 12px; color: #15803d; font-size: 13px;">
-            <strong>✔ Pembayaran Tunai / Transfer</strong>
+            <strong>Pembayaran Tunai / Transfer</strong>
             <p style="font-size: 11px; margin-top: 4px;">Layanan ini dibayar Tunai / Transfer ke Kasir (tanpa token koin).</p>
         </div>
 
@@ -198,7 +198,7 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 8px;">
                 <span style="font-size: 12px; font-weight: 700;">Status Pembayaran:</span>
-                <span id="statusBadgeDisplay" class="badge badge-lunas">✔ Lunas (lebih Rp 1.000)</span>
+                <span id="statusBadgeDisplay" class="badge badge-lunas">Lunas (lebih Rp 1.000)</span>
             </div>
         </div>
     </div>
@@ -261,7 +261,7 @@ require_once __DIR__ . '/../includes/header.php';
 
         <!-- Tombol Cepat Simulasi Barcode Pelanggan (Memudahkan Pengujian Tanpa Fisik HP) -->
         <div style="margin-bottom: 12px;">
-            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">⚡ Pindai Cepat (Simulasi Kode Member):</div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">Pindai Cepat (Simulasi Kode Member):</div>
             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                 <button type="button" class="chip" style="font-size: 11px; padding: 4px 10px;" onclick="simulateQrScanSuccess('KC-P-0001')">KC-P-0001 (Budi)</button>
                 <button type="button" class="chip" style="font-size: 11px; padding: 4px 10px;" onclick="simulateQrScanSuccess('KC-P-0002')">KC-P-0002 (Sari)</button>
@@ -307,7 +307,7 @@ function handleQuickCreateMember(e) {
     const badge = document.getElementById('memberSelectedBadge');
     if (badge) {
         badge.style.display = 'block';
-        badge.innerHTML = `✓ Member Baru Terdaftar: <strong>${nama}</strong> (${newCode})`;
+        badge.innerHTML = `Member Baru Terdaftar: <strong>${nama}</strong> (${newCode})`;
     }
 
     closeModal('modalNewMember');

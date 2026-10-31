@@ -25,7 +25,7 @@ if (!isset($_SESSION['kino_initialized'])) {
             'satuan' => 'putaran',
             'durasi' => '45 menit',
             'status' => 'Aktif',
-            'icon' => '🧺'
+            'icon' => ''
         ],
         [
             'id' => 2,
@@ -39,7 +39,7 @@ if (!isset($_SESSION['kino_initialized'])) {
             'satuan' => 'putaran',
             'durasi' => '45 menit',
             'status' => 'Aktif',
-            'icon' => '♨️'
+            'icon' => ''
         ],
         [
             'id' => 3,
@@ -53,7 +53,7 @@ if (!isset($_SESSION['kino_initialized'])) {
             'satuan' => 'putaran',
             'durasi' => '90 menit',
             'status' => 'Aktif',
-            'icon' => '👕'
+            'icon' => ''
         ],
         [
             'id' => 4,
@@ -67,7 +67,7 @@ if (!isset($_SESSION['kino_initialized'])) {
             'satuan' => 'putaran',
             'durasi' => '15 menit',
             'status' => 'Aktif',
-            'icon' => '🌀'
+            'icon' => ''
         ],
         [
             'id' => 5,
@@ -81,7 +81,7 @@ if (!isset($_SESSION['kino_initialized'])) {
             'satuan' => '20 menit',
             'durasi' => '20 menit',
             'status' => 'Aktif',
-            'icon' => '☀️'
+            'icon' => ''
         ],
         // Drop Off (Tunai)
         [
@@ -96,7 +96,7 @@ if (!isset($_SESSION['kino_initialized'])) {
             'satuan' => '7 kg',
             'durasi' => '1 hari',
             'status' => 'Aktif',
-            'icon' => '📦'
+            'icon' => ''
         ],
         [
             'id' => 7,
@@ -110,7 +110,7 @@ if (!isset($_SESSION['kino_initialized'])) {
             'satuan' => 'kg',
             'durasi' => '1 hari',
             'status' => 'Aktif',
-            'icon' => '📐'
+            'icon' => ''
         ],
         // Additional (Tunai)
         [
@@ -125,7 +125,7 @@ if (!isset($_SESSION['kino_initialized'])) {
             'satuan' => 'pcs',
             'durasi' => 'Langsung',
             'status' => 'Aktif',
-            'icon' => '🧴'
+            'icon' => ''
         ],
         [
             'id' => 9,
@@ -139,7 +139,7 @@ if (!isset($_SESSION['kino_initialized'])) {
             'satuan' => 'pcs',
             'durasi' => 'Langsung',
             'status' => 'Aktif',
-            'icon' => '🌸'
+            'icon' => ''
         ],
         [
             'id' => 10,
@@ -153,7 +153,7 @@ if (!isset($_SESSION['kino_initialized'])) {
             'satuan' => 'pcs',
             'durasi' => 'Langsung',
             'status' => 'Aktif',
-            'icon' => '🛍️'
+            'icon' => ''
         ]
     ];
 

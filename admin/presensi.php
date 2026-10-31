@@ -19,7 +19,7 @@ if ($filter === 'Bulan Lalu') {
         <span style="font-size: 11px; color: var(--text-muted);">Riwayat log jam kerja staf</span>
     </div>
     <button type="button" class="btn btn-outline" style="width: auto; padding: 6px 12px; font-size: 12px;" onclick="showToast('Log presensi berhasil diexport', 'success')">
-        📥 Export
+        <?= get_icon('export', 14) ?> Export
     </button>
 </div>
 
@@ -34,7 +34,7 @@ if ($filter === 'Bulan Lalu') {
 <?php if (empty($logs)): ?>
     <!-- Empty State (P6b) -->
     <div class="card" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
-        <div style="font-size: 32px; margin-bottom: 8px;">🕒</div>
+        <div style="margin-bottom: 8px;"><?= get_icon("clock", 36, "#94a3b8") ?></div>
         <strong style="font-size: 14px; color: var(--text-main);">Tidak ada data presensi di periode ini</strong>
         <p style="font-size: 12px; margin-top: 4px;">Pilih filter lain untuk melihat log absensi kasir.</p>
     </div>

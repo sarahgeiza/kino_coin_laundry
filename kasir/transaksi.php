@@ -116,7 +116,7 @@ function showInvoiceDetail(trx) {
     } else {
         paymentDetail = `
             <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px; margin-bottom: 12px; color: #15803d;">
-                <strong>✔ Metode Bayar: Tunai / Transfer (Non-Token)</strong>
+                <strong>Metode Bayar: Tunai / Transfer (Non-Token)</strong>
                 <p style="font-size: 11px; margin-top: 2px;">Diterima lunas di meja kasir tanpa penggunaan koin mesin.</p>
             </div>
         `;

@@ -24,9 +24,9 @@ function showToast(message, type = 'success', duration = 3000) {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     
-    let icon = '✔';
-    if (type === 'error') icon = '⚠';
-    if (type === 'dark') icon = 'ℹ';
+    let icon = '';
+    if (type === 'error') icon = '';
+    if (type === 'dark') icon = '';
 
     toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
     container.appendChild(toast);
@@ -171,13 +171,13 @@ function initTransactionCalculator() {
                     statusBadgeEl.textContent = 'Menunggu input';
                 } else if (diff < 0) {
                     statusBadgeEl.className = 'badge badge-kurang';
-                    statusBadgeEl.textContent = '⚠ Kurang Rp ' + Math.abs(diff).toLocaleString('id-ID');
+                    statusBadgeEl.textContent = 'Kurang Rp ' + Math.abs(diff).toLocaleString('id-ID');
                 } else if (diff === 0) {
                     statusBadgeEl.className = 'badge badge-lunas';
-                    statusBadgeEl.textContent = '✔ Lunas (pas)';
+                    statusBadgeEl.textContent = 'Lunas (pas)';
                 } else {
                     statusBadgeEl.className = 'badge badge-lunas';
-                    statusBadgeEl.textContent = '✔ Lunas (lebih Rp ' + diff.toLocaleString('id-ID') + ')';
+                    statusBadgeEl.textContent = 'Lunas (lebih Rp ' + diff.toLocaleString('id-ID') + ')';
                 }
             }
         } else {
@@ -189,7 +189,7 @@ function initTransactionCalculator() {
 
             if (statusBadgeEl) {
                 statusBadgeEl.className = 'badge badge-lunas';
-                statusBadgeEl.textContent = '✔ Lunas (Tunai)';
+                statusBadgeEl.textContent = 'Lunas (Tunai)';
             }
         }
     }
@@ -250,7 +250,7 @@ function initCustomerAutocomplete() {
                     suggestBox.style.display = 'none';
                     if (selectedBadge) {
                         selectedBadge.style.display = 'block';
-                        selectedBadge.innerHTML = `✓ Pelanggan Terpilih: <strong>${m.nama}</strong> (${m.kode_kartu})`;
+                        selectedBadge.innerHTML = `Pelanggan Terpilih: <strong>${m.nama}</strong> (${m.kode_kartu})`;
                     }
                 });
                 suggestBox.appendChild(item);
@@ -398,7 +398,7 @@ function startLiveCameraScanner() {
             // Fallback (Figma M1c: Kamera gagal / izin ditolak)
             if (statusText) {
                 statusText.style.color = '#dc2626';
-                statusText.innerHTML = '⚠ Tidak bisa akses kamera (Permission denied / Tanpa webcam). Gunakan input manual atau tombol simulasi di bawah:';
+                statusText.innerHTML = 'Tidak bisa akses kamera (Permission denied / Tanpa webcam). Gunakan input manual atau tombol simulasi di bawah:';
             }
         });
     }
@@ -425,7 +425,7 @@ function onQrScanSuccess(code) {
     }
     if (statusText) {
         statusText.style.color = '#16a34a';
-        statusText.innerHTML = `✓ Terbaca: <strong>${code}</strong>`;
+        statusText.innerHTML = `Terbaca: <strong>${code}</strong>`;
     }
     if (manualInput) {
         manualInput.value = code;
@@ -463,7 +463,7 @@ function applyScannedCode() {
         if (inputWA) inputWA.value = matched.wa;
         if (selectedBadge) {
             selectedBadge.style.display = 'block';
-            selectedBadge.innerHTML = `✓ Member Terpilih: <strong>${matched.nama}</strong> (${matched.kode_kartu})`;
+            selectedBadge.innerHTML = `Member Terpilih: <strong>${matched.nama}</strong> (${matched.kode_kartu})`;
         }
         closeModal('modalScanQr');
         showToast(`QR ${code} (${matched.nama}) berhasil digunakan!`, 'success');

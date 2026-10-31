@@ -29,7 +29,7 @@ if (!empty($search)) {
 
 <!-- Search Bar -->
 <form action="pelanggan.php" method="GET" style="margin-bottom: 14px;">
-    <input type="text" name="q" class="form-control" placeholder="🔍 Cari nama / WA / kode..." value="<?= htmlspecialchars($search) ?>" onchange="this.form.submit()">
+    <input type="text" name="q" class="form-control" placeholder="Cari nama / WA / kode..." value="<?= htmlspecialchars($search) ?>" onchange="this.form.submit()">
 </form>
 
 <!-- List Members -->

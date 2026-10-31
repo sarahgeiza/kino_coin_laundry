@@ -172,7 +172,7 @@ if ($total_income < 425000) {
         <form action="index.php" method="POST">
             <input type="hidden" name="action" value="mulai_shift">
             <button type="submit" class="btn btn-primary" style="padding: 14px;">
-                ✓ Mulai Shift &amp; Presensi
+                Mulai Shift &amp; Presensi
             </button>
         </form>
     </div>
@@ -215,7 +215,7 @@ if ($total_income < 425000) {
         </div>
 
         <div style="margin-bottom: 12px;">
-            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">⚡ Pindai Cepat (Simulasi Kode Member):</div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">Pindai Cepat (Simulasi Kode Member):</div>
             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                 <button type="button" class="chip" style="font-size: 11px; padding: 4px 10px;" onclick="simulateQrScanSuccess('KC-P-0001')">KC-P-0001 (Budi)</button>
                 <button type="button" class="chip" style="font-size: 11px; padding: 4px 10px;" onclick="simulateQrScanSuccess('KC-P-0002')">KC-P-0002 (Sari)</button>
@@ -262,7 +262,7 @@ function showInvoiceDetail(trx) {
     } else {
         paymentDetail = `
             <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px; margin-bottom: 12px; color: #15803d;">
-                <strong>✔ Metode Bayar: Tunai / Transfer (Non-Token)</strong>
+                <strong>Metode Bayar: Tunai / Transfer (Non-Token)</strong>
                 <p style="font-size: 11px; margin-top: 2px;">Diterima lunas di meja kasir tanpa penggunaan koin mesin.</p>
             </div>
         `;

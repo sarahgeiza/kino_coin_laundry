@@ -62,7 +62,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         <div class="login-sheet-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                 <h2 style="font-size: 19px; font-weight: 900; color: var(--text-main);">Selamat Datang</h2>
-                <span class="badge" style="background: #fef3c7; color: #b45309; font-size: 12px; padding: 4px 10px;">👑 Pemilik</span>
+                <span class="badge" style="background: #fef3c7; color: #b45309; font-size: 12px; padding: 4px 10px;">Pemilik</span>
             </div>
             <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 22px;">Masuk dengan akun staff Anda</p>
 

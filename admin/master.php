@@ -40,10 +40,10 @@ $subtab = $_GET['tab'] ?? 'layanan';
 <!-- Toggle Tabs: Layanan vs Shift (Figma P3, P4) -->
 <div style="display: flex; background: #e2e8f0; border-radius: var(--radius-md); padding: 4px; margin-bottom: 16px;">
     <a href="master.php?tab=layanan" style="flex: 1; text-align: center; padding: 8px; font-size: 13px; font-weight: 800; text-decoration: none; border-radius: 8px; <?= $subtab === 'layanan' ? 'background: white; color: #1e3a8a; box-shadow: 0 2px 6px rgba(0,0,0,0.06);' : 'color: #64748b;' ?>">
-        🧺 Layanan
+        Layanan
     </a>
     <a href="master.php?tab=shift" style="flex: 1; text-align: center; padding: 8px; font-size: 13px; font-weight: 800; text-decoration: none; border-radius: 8px; <?= $subtab === 'shift' ? 'background: white; color: #1e3a8a; box-shadow: 0 2px 6px rgba(0,0,0,0.06);' : 'color: #64748b;' ?>">
-        ⏰ Shift
+        Shift
     </a>
 </div>
 

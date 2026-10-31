@@ -32,7 +32,7 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
         </div>
         <span class="badge <?= $is_owner ? 'badge-token' : 'badge-tunai' ?>">
-            <?= $is_owner ? '👑 Pemilik' : 'Kasir' ?>
+            <?= $is_owner ? 'Pemilik' : 'Kasir' ?>
         </span>
     </div>
 
@@ -42,7 +42,7 @@ require_once __DIR__ . '/../includes/header.php';
         </button>
         <?php if (!$is_owner): ?>
             <button type="button" class="btn btn-outline" style="width: auto; padding: 4px 10px; font-size: 11px; color: #dc2626;" onclick="showToast('Nonaktifkan <?= $u['nama'] ?>', 'error')">
-                ✕
+                &times;
             </button>
         <?php endif; ?>
     </div>

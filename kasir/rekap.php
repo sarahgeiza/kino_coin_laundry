@@ -114,8 +114,8 @@ require_once __DIR__ . '/../includes/header.php';
         <form action="rekap.php" method="POST">
             <input type="hidden" name="action" value="tutup_shift">
             <div style="display: flex; gap: 10px;">
-                <button type="button" class="btn btn-outline" onclick="closeModal('modalTutupShift')">✕ Batal</button>
-                <button type="submit" class="btn btn-primary" style="background: #1e3a8a;">✓ Ya, Tutup</button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('modalTutupShift')">Batal</button>
+                <button type="submit" class="btn btn-primary" style="background: #1e3a8a;">Ya, Tutup Shift</button>
             </div>
         </form>
     </div>
