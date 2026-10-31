@@ -2,28 +2,46 @@
 session_start();
 require_once __DIR__ . '/../includes/data.php';
 
+$reg_error = '';
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $nama = trim($_POST['nama'] ?? '');
     $wa = trim($_POST['wa'] ?? '');
     $pass = $_POST['password'] ?? '';
+    $confirm = $_POST['confirm_password'] ?? '';
 
-    $new_id = count($_SESSION['members']) + 1;
-    $_SESSION['members'][] = [
-        'id' => $new_id,
-        'nama' => $nama,
-        'wa' => $wa,
-        'kode_kartu' => 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT),
-        'is_member' => true,
-        'tx_count' => 0,
-        'coin_cuci' => 0,
-        'coin_kering' => 0,
-        'password' => $pass
-    ];
-
-    $_SESSION['username'] = $nama;
-    $_SESSION['role'] = 'pelanggan';
-    header('Location: index.php?toast=registered');
-    exit;
+    if ($pass !== $confirm) {
+        $reg_error = 'Konfirmasi password tidak cocok. Silakan ulangi.';
+    } else {
+        $exists = false;
+        foreach ($_SESSION['members'] as &$m) {
+            if ($m['wa'] === $wa) {
+                $m['nama'] = $nama;
+                $m['password'] = $pass;
+                $_SESSION['username'] = $nama;
+                $_SESSION['role'] = 'pelanggan';
+                $exists = true;
+                break;
+            }
+        }
+        if (!$exists) {
+            $new_id = count($_SESSION['members']) + 1;
+            $_SESSION['members'][] = [
+                'id' => $new_id,
+                'nama' => $nama,
+                'wa' => $wa,
+                'kode_kartu' => 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT),
+                'is_member' => true,
+                'tx_count' => 0,
+                'coin_cuci' => 0,
+                'coin_kering' => 0,
+                'password' => $pass
+            ];
+            $_SESSION['username'] = $nama;
+            $_SESSION['role'] = 'pelanggan';
+        }
+        header('Location: index.php?toast=registered');
+        exit;
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -79,6 +97,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         <div class="login-sheet-card">
             <h2 style="font-size: 19px; font-weight: 900; color: var(--text-main); margin-bottom: 4px;">Daftar Akun Baru</h2>
             <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 18px;">Isi data diri untuk membuat akun pelanggan</p>
+<?php if (!empty($reg_error)): ?>
+            <div style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; padding:10px 14px; border-radius:10px; font-size:12px; font-weight:700; margin-bottom:14px;">
+                <?= htmlspecialchars($reg_error) ?>
+            </div>
+        <?php endif; ?>
 
             <form action="daftar.php" method="POST">
                 <div class="form-group">

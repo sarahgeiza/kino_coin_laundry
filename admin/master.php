@@ -18,6 +18,25 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
         ];
         header('Location: master.php?tab=shift&toast=saved');
         exit;
+    } elseif ($_POST['action'] === 'edit_shift') {
+        $shift_id = intval($_POST['shift_id'] ?? 0);
+        $nama = trim($_POST['nama_shift'] ?? '');
+        $mulai = trim($_POST['mulai'] ?? '08:00');
+        $selesai = trim($_POST['selesai'] ?? '14:00');
+        $staff = trim($_POST['staff'] ?? '');
+        
+        foreach ($_SESSION['shifts'] as &$sh) {
+            if ($sh['id'] === $shift_id || $sh['nama'] === $nama) {
+                $sh['nama'] = $nama;
+                $sh['mulai'] = $mulai;
+                $sh['selesai'] = $selesai;
+                $sh['jam_tampil'] = "$mulai — $selesai";
+                $sh['staff'] = $staff;
+                break;
+            }
+        }
+        header('Location: master.php?tab=shift&toast=saved');
+        exit;
     }
 }
 
@@ -179,6 +198,7 @@ $subtab = $_GET['tab'] ?? 'layanan';
         </div>
         <form action="master.php?tab=shift" method="POST">
             <input type="hidden" name="action" value="edit_shift">
+            <input type="hidden" id="editShiftId" name="shift_id" value="">
             <div class="form-group">
                 <label class="form-label">Nama Shift</label>
                 <input type="text" id="editShiftName" name="nama_shift" class="form-control" required>
@@ -207,6 +227,7 @@ $subtab = $_GET['tab'] ?? 'layanan';
 
 <script>
 function editShift(sh) {
+    document.getElementById('editShiftId').value = sh.id;
     document.getElementById('editShiftName').value = sh.nama;
     document.getElementById('editShiftStart').value = sh.mulai;
     document.getElementById('editShiftEnd').value = sh.selesai;

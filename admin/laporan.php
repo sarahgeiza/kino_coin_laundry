@@ -21,7 +21,7 @@ if ($periode === 'Kosong') {
         <h2 style="font-size: 16px; font-weight: 800;">Laporan Transaksi</h2>
         <span style="font-size: 11px; color: var(--text-muted);">Audit keuangan &amp; volume shift</span>
     </div>
-    <button type="button" class="btn btn-outline" style="width: auto; padding: 6px 12px; font-size: 12px;" onclick="showToast('Laporan berhasil diekspor ke CSV', 'success')">
+    <button type="button" class="btn btn-outline" style="width: auto; padding: 6px 12px; font-size: 12px;" onclick="exportLaporanTransactionsCSV()">
         <?= get_icon('export', 14) ?> Export
     </button>
 </div>

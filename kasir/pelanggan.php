@@ -1,4 +1,31 @@
 <?php
+require_once __DIR__ . '/../includes/data.php';
+
+// Handle Add Member POST
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    $nama = trim($_POST['nama'] ?? '');
+    $wa = trim($_POST['wa'] ?? '');
+    $is_member = isset($_POST['is_member']);
+
+    if (!empty($nama) && !empty($wa)) {
+        $new_id = count($_SESSION['members']) + 1;
+        $new_code = 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT);
+        $_SESSION['members'][] = [
+            'id' => $new_id,
+            'nama' => $nama,
+            'wa' => $wa,
+            'kode_kartu' => $new_code,
+            'is_member' => $is_member,
+            'tx_count' => 0,
+            'coin_cuci' => 0,
+            'coin_kering' => 0,
+            'password' => 'password123'
+        ];
+        header('Location: pelanggan.php?toast=saved');
+        exit;
+    }
+}
+
 $page_title = 'Pelanggan Member - Kino Coin Laundry';
 $app_role = 'kasir';
 $active_tab = 'pelanggan';

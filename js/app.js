@@ -476,3 +476,56 @@ function applyScannedCode() {
         showToast(`Kode ${code} tidak terdaftar di sistem`, 'error');
     }
 }
+
+// ==========================================================================
+// 8. REAL DATA CSV EXPORTER (Audit Feature for Owner Laporan & Presensi)
+// ==========================================================================
+function downloadCSV(filename, rows) {
+    const processRow = function (row) {
+        let finalVal = '';
+        for (let j = 0; j < row.length; j++) {
+            let innerValue = row[j] === null ? '' : row[j].toString();
+            if (row[j] instanceof Date) {
+                innerValue = row[j].toLocaleString();
+            }
+            let result = innerValue.replace(/"/g, '""');
+            if (result.search(/("|,|\n)/g) >= 0)
+                result = '"' + result + '"';
+            if (j > 0)
+                finalVal += ',';
+            finalVal += result;
+        }
+        return finalVal + '\r\n';
+    };
+
+    let csvFile = '';
+    for (let i = 0; i < rows.length; i++) {
+        csvFile += processRow(rows[i]);
+    }
+
+    const blob = new Blob([csvFile], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('File ' + filename + ' berhasil diunduh', 'success');
+    }
+}
+
+function exportLaporanTransactionsCSV() {
+    const txs = window.__MOCK_TRANSACTIONS || [];
+    const rows = [
+        ['ID Invoice', 'Pelanggan', 'WhatsApp', 'Layanan', 'Kuantitas', 'Total Biaya', 'Total Bayar', 'Metode', 'Status', 'Kasir', 'Shift', 'Tanggal', 'Waktu']
+    ];
+    txs.forEach(t => {
+        rows.push([
+            t.id, t.pelanggan, t.wa || '', t.layanan, t.kuantitas, t.total_biaya, t.total_bayar, t.metode, t.status, t.kasir, t.shift, t.tanggal, t.waktu
+        ]);
+    });
+    downloadCSV('Laporan_Transaksi_Kino_' + new Date().toISOString().slice(0,10) + '.csv', rows);
+}
