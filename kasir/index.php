@@ -2,12 +2,15 @@
 require_once __DIR__ . '/../includes/data.php';
 
 // Handle Check-in POST BEFORE header output
+$current_kasir_name = $_SESSION['username'] ?? 'Daniel';
+$kasir_shift = get_active_kasir_shift($current_kasir_name);
+
 if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
     $_SESSION['kasir_checked_in'] = true;
     $_SESSION['presensi'][] = [
         'id' => count($_SESSION['presensi']) + 1,
-        'kasir' => $_SESSION['username'] ?? 'Daniel',
-        'shift' => 'Shift Siang',
+        'kasir' => $current_kasir_name,
+        'shift' => $kasir_shift['nama'],
         'tanggal' => date('d M Y'),
         'filter_date' => date('Y-m-d'),
         'jam_masuk' => date('H:i'),
@@ -79,7 +82,7 @@ $disp_dry_val = format_rupiah($total_live_dry * 10000);
 <div class="card" style="padding: 16px; margin-bottom: 14px;">
     <div class="card-title" style="margin-bottom: 10px;">
         <span>Ringkasan Shift</span>
-        <span style="font-size: 11px; color: var(--text-muted);">Shift Siang</span>
+        <span style="font-size: 11px; color: var(--text-muted);"><?= htmlspecialchars($kasir_shift['nama']) ?></span>
     </div>
     <div class="metrics-row" style="margin-bottom: 0;">
         <div class="metric-box blue">
@@ -166,11 +169,11 @@ $disp_dry_val = format_rupiah($total_live_dry * 10000);
         <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px; margin-bottom: 20px; font-size: 13px; line-height: 1.8;">
             <div style="display: flex; justify-content: space-between;">
                 <span style="color: var(--text-muted);">Shift:</span>
-                <strong>Shift Siang</strong>
+                <strong><?= htmlspecialchars($kasir_shift['nama']) ?></strong>
             </div>
             <div style="display: flex; justify-content: space-between;">
                 <span style="color: var(--text-muted);">Jadwal Shift:</span>
-                <strong>14:00 — 20:00 WIB</strong>
+                <strong><?= htmlspecialchars($kasir_shift['jam_tampil']) ?> WIB</strong>
             </div>
             <div style="display: flex; justify-content: space-between;">
                 <span style="color: var(--text-muted);">Jam Sekarang:</span>

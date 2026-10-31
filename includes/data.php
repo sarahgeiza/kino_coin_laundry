@@ -474,3 +474,52 @@ if (!isset($_SESSION['kino_initialized'])) {
 function format_rupiah($angka) {
     return 'Rp ' . number_format($angka, 0, ',', '.');
 }
+
+// Helper untuk mendeteksi shift aktif kasir secara dinamis dan real-time
+function get_active_kasir_shift($kasir_name = null) {
+    if (!$kasir_name) {
+        $kasir_name = $_SESSION['username'] ?? 'Daniel';
+    }
+    
+    $all_shifts = $_SESSION['shifts'] ?? [];
+    $shifts_reversed = array_reverse($all_shifts); // shift terbaru / custom diutamakan
+    $candidate_by_name = null;
+    $now_time = date('H:i');
+
+    // 1. Cek shift yang cocok dengan nama kasir DAN jam saat ini
+    foreach ($shifts_reversed as $s) {
+        $staff_list = array_map('trim', explode(',', $s['staff'] ?? ''));
+        foreach ($staff_list as $st) {
+            if (strcasecmp($st, $kasir_name) === 0) {
+                if (!$candidate_by_name) {
+                    $candidate_by_name = $s;
+                }
+                $start = $s['mulai'];
+                $end = $s['selesai'];
+                if ($start < $end) {
+                    if ($now_time >= $start && $now_time <= $end) {
+                        return $s;
+                    }
+                } else {
+                    if ($now_time >= $start || $now_time <= $end) {
+                        return $s;
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Jika kasir ditugaskan di suatu shift, gunakan penugasan terbarunya
+    if ($candidate_by_name) {
+        return $candidate_by_name;
+    }
+
+    return $all_shifts[1] ?? ($all_shifts[0] ?? [
+        'id' => 2,
+        'nama' => 'Shift Siang',
+        'mulai' => '14:00',
+        'selesai' => '20:00',
+        'jam_tampil' => '14:00 — 20:00',
+        'staff' => 'Daniel, Nizar'
+    ]);
+}

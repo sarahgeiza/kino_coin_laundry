@@ -87,7 +87,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
         'total_bayar' => $total_bayar,
         'status' => $status,
         'kasir' => $_SESSION['username'] ?? 'Daniel',
-        'shift' => 'Shift Siang',
+        'shift' => (get_active_kasir_shift($_SESSION['username'] ?? 'Daniel'))['nama'],
         'waktu' => date('H:i') . ' WIB',
         'tanggal' => date('d M Y'),
         'filter_date' => date('Y-m-d')

@@ -36,9 +36,11 @@ $display_wash = $base_wash + $extra_wash;
 $display_dry = $base_dry + $extra_dry;
 
 // Handle Close Shift POST BEFORE header output
+$current_kasir = $_SESSION['username'] ?? 'Daniel';
+$kasir_shift = get_active_kasir_shift($current_kasir);
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'tutup_shift') {
     $_SESSION['kasir_checked_in'] = false;
-    $current_kasir = $_SESSION['username'] ?? 'Daniel';
     $jam_keluar = date('H:i');
 
     // 1. Update status presensi kasir di dashboard Pemilik menjadi 'Selesai' dengan jam keluar aktual!
@@ -56,7 +58,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     $_SESSION['shifts_recap'][] = [
         'id' => count($_SESSION['shifts_recap']) + 1,
         'kasir' => $current_kasir,
-        'shift' => 'Siang',
+        'shift' => $kasir_shift['nama'],
         'tanggal' => date('d M Y'),
         'trx_count' => $display_tx,
         'total_kg' => $display_kg,
@@ -80,7 +82,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 <div style="margin-bottom: 14px;">
     <h2 style="font-size: 17px; font-weight: 800;">Rekapitulasi Operasional</h2>
-    <span style="font-size: 12px; color: var(--text-muted);">Shift Siang • 14:00 — 20:00 • 31 Okt 2026</span>
+    <span style="font-size: 12px; color: var(--text-muted);"><?= htmlspecialchars($kasir_shift['nama']) ?> • <?= htmlspecialchars($kasir_shift['jam_tampil']) ?> • <?= date('d M Y') ?></span>
 </div>
 
 <div class="card">
@@ -139,7 +141,7 @@ require_once __DIR__ . '/../includes/header.php';
             <button type="button" class="sheet-close" onclick="closeModal('modalTutupShift')">&times;</button>
         </div>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
-            Akses input transaksi kasir akan dikunci hingga shift berikutnya dimulai. Konfirmasi penutupan Shift Siang?
+            Akses input transaksi kasir akan dikunci hingga shift berikutnya dimulai. Konfirmasi penutupan <?= htmlspecialchars($kasir_shift['nama']) ?>?
         </p>
         <form action="rekap.php" method="POST">
             <input type="hidden" name="action" value="tutup_shift">

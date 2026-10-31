@@ -13,6 +13,11 @@ $show_bottom_nav = $show_bottom_nav ?? true;
 
 $user_name = $_SESSION['username'] ?? ($app_role === 'pemilik' ? 'Pemilik' : ($app_role === 'pelanggan' ? 'Budi' : 'Daniel'));
 $user_avatar = strtoupper(substr($user_name, 0, 1));
+
+// Resolusi shift kasir secara dinamis
+$active_shift = ($app_role === 'kasir') ? get_active_kasir_shift($user_name) : null;
+$shift_name_badge = $active_shift['nama'] ?? 'Shift Siang';
+$shift_time_label = $active_shift['jam_tampil'] ?? '14:00 — 20:00';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -41,8 +46,8 @@ $user_avatar = strtoupper(substr($user_name, 0, 1));
                     <div class="header-title-box">
                         <h1>Selamat siang,<br><?= htmlspecialchars($user_name) ?></h1>
                         <p>
-                            <span class="badge badge-token" style="background: rgba(255,255,255,0.2); color: white; border: none;">Shift Siang</span>
-                            <span>• 14:00 — 20:00 • 31 Okt 2026</span>
+                            <span class="badge badge-token" style="background: rgba(255,255,255,0.2); color: white; border: none;"><?= htmlspecialchars($shift_name_badge) ?></span>
+                            <span>• <?= htmlspecialchars($shift_time_label) ?> • <?= date('d M Y') ?></span>
                         </p>
                     </div>
                     <div class="header-avatar"><?= $user_avatar ?></div>
