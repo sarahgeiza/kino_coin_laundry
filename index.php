@@ -157,6 +157,7 @@ $show_toast_logout = (isset($_GET['logout']) && $_GET['logout'] == '1');
 
 </div>
 
+<script defer src="js/alpine.min.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

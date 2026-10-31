@@ -143,7 +143,12 @@ function initTransactionCalculator() {
         }
 
         const totalBill = rate * qty;
-        if (totalBillEl) totalBillEl.textContent = 'Rp ' + totalBill.toLocaleString('id-ID');
+        if (totalBillEl) {
+            totalBillEl.textContent = 'Rp ' + totalBill.toLocaleString('id-ID');
+            totalBillEl.classList.remove('num-pulse');
+            void totalBillEl.offsetWidth;
+            totalBillEl.classList.add('num-pulse');
+        }
 
         // Check if Self Service (Token) or Drop Off/Additional (Tunai)
         if (category === 'SELF_SERVICE') {
