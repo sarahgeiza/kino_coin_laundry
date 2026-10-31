@@ -9,7 +9,11 @@
 
 const API_CONFIG = {
     USE_BACKEND_API: false, // Ubah ke 'true' saat controller backend Sarah siap di branch check
-    BASE_URL: '../backend/controllers', // Path controller backend Sarah
+    BASE_URL: (window.location.pathname.includes('/kasir/') || 
+               window.location.pathname.includes('/admin/') || 
+               window.location.pathname.includes('/pelanggan/'))
+               ? '../backend/controllers' 
+               : 'backend/controllers', // Path controller backend Sarah
     HEADERS: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'

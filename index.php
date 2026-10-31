@@ -11,7 +11,7 @@ $show_toast_logout = (isset($_GET['logout']) && $_GET['logout'] == '1');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kino Coin Laundry - Landing Page</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="assets/css/style.css">
     <style>
         .landing-screen {
             background: linear-gradient(180deg, #1e3a8a 0%, #1d4ed8 45%, #2563eb 100%);
@@ -157,7 +157,7 @@ $show_toast_logout = (isset($_GET['logout']) && $_GET['logout'] == '1');
 
 </div>
 
-<script defer src="js/vendor/alpine.min.js"></script>
-<script src="js/app.js"></script>
+<script defer src="assets/js/vendor/alpine.min.js"></script>
+<script src="assets/js/app.js"></script>
 </body>
 </html>

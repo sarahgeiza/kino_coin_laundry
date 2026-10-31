@@ -25,7 +25,7 @@ $shift_time_label = $active_shift['jam_tampil'] ?? '14:00 — 20:00';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($page_title) ?></title>
-    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
     <script>
         window.__MOCK_SERVICES = <?= json_encode($_SESSION['services'] ?? []) ?>;
         window.__MOCK_MEMBERS = <?= json_encode($_SESSION['members'] ?? []) ?>;

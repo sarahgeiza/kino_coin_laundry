@@ -16,7 +16,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login Kasir - Kino Coin Laundry</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="assets/css/style.css">
     <style>
         .login-page-wrapper {
             width: 100%;
@@ -97,6 +97,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     </div>
 </div>
 
-<script src="js/app.js"></script>
+<script src="assets/js/app.js"></script>
 </body>
 </html>
