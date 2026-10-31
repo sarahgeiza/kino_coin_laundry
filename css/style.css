@@ -1,5 +1,6 @@
 /* ==========================================================================
-   Kino Coin Laundry - Responsive Design System (Mobile-First + Desktop Expanded)
+   Kino Coin Laundry - Unified Responsive Design System
+   Mobile-First (Figma Exact) + Desktop PC Web App (Modern Dashboard SaaS)
    ========================================================================== */
 
 :root {
@@ -33,9 +34,9 @@
     --radius-md: 12px;
     --radius-sm: 8px;
     
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.07);
-    --shadow-lg: 0 10px 28px -4px rgba(15, 23, 42, 0.12);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 28px -4px rgba(15, 23, 42, 0.1);
 }
 
 * {
@@ -47,14 +48,14 @@
 }
 
 body {
-    background-color: var(--bg-main);
+    background-color: #f1f5f9;
     color: var(--text-main);
     display: flex;
     justify-content: center;
     min-height: 100vh;
 }
 
-/* App Canvas Screen Frame */
+/* Base App Canvas */
 .app-screen {
     width: 100%;
     max-width: 100%;
@@ -65,7 +66,177 @@ body {
     position: relative;
 }
 
-/* Headers */
+/* ==========================================================================
+   DESKTOP TOP NAVBAR (Hidden on mobile by default)
+   ========================================================================== */
+.desktop-navbar {
+    display: none; /* Shown at min-width: 768px */
+    background: #ffffff;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.desktop-nav-inner {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 12px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.desktop-nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.desktop-logo-badge {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: var(--orange-gold);
+    color: var(--primary-dark);
+    font-size: 18px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.35);
+}
+
+.desktop-brand-title {
+    font-size: 16px;
+    font-weight: 900;
+    color: var(--text-main);
+    line-height: 1.2;
+}
+
+.desktop-brand-role {
+    margin-top: 2px;
+}
+
+.desktop-nav-menu {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.desktop-nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.desktop-nav-link:hover {
+    color: var(--primary);
+    background: var(--primary-subtle);
+}
+
+.desktop-nav-link.active {
+    color: var(--primary-dark);
+    background: var(--primary-subtle);
+    border: 1px solid #bfdbfe;
+}
+
+.desktop-nav-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.desktop-shift-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.dot-online {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #16a34a;
+    display: inline-block;
+}
+
+.desktop-user-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.desktop-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--orange);
+    color: white;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.desktop-avatar.avatar-owner {
+    background: #2563eb;
+}
+
+.desktop-avatar.avatar-cust {
+    background: #1e3a8a;
+}
+
+.desktop-username {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+.btn-logout-desktop {
+    background: #f1f5f9;
+    border: 1px solid var(--border);
+    color: var(--danger);
+    padding: 7px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+}
+
+.btn-logout-desktop:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+}
+
+/* ==========================================================================
+   MOBILE HEADER (Shown on mobile, hidden on desktop)
+   ========================================================================== */
+.mobile-header-only {
+    display: block;
+}
+
 .header-staff {
     background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
     color: #ffffff;
@@ -133,10 +304,12 @@ body {
     background: #2563eb;
 }
 
-/* App Content Area */
+/* ==========================================================================
+   CONTENT AREA
+   ========================================================================== */
 .content-area {
     flex: 1;
-    padding: 16px 18px 95px 18px;
+    padding: 16px 18px 95px 18px; /* space for mobile bottom nav */
     width: 100%;
 }
 
@@ -145,7 +318,7 @@ body {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
     padding: 18px;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
     border: 1px solid var(--border);
     box-shadow: var(--shadow-sm);
 }
@@ -164,8 +337,8 @@ body {
 .metrics-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin-bottom: 14px;
+    gap: 12px;
+    margin-bottom: 16px;
 }
 
 .metric-box {
@@ -204,7 +377,7 @@ body {
     opacity: 0.88;
 }
 
-/* Badges & Tags */
+/* Badges */
 .badge {
     display: inline-flex;
     align-items: center;
@@ -242,7 +415,7 @@ body {
     border: 1px solid #bbf7d0;
 }
 
-/* Transaction Card Item */
+/* Transactions Item */
 .trx-item {
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -345,7 +518,7 @@ body {
     border-color: var(--orange);
 }
 
-/* Form Groups */
+/* Form Controls */
 .form-group {
     margin-bottom: 14px;
 }
@@ -421,7 +594,7 @@ body {
     background: #f1f5f9;
 }
 
-/* Bottom Navigation */
+/* Mobile Bottom Navigation */
 .bottom-nav {
     position: fixed;
     bottom: 0;
@@ -430,7 +603,7 @@ body {
     background: #ffffff;
     border-top: 1px solid var(--border);
     display: flex;
-    justify-content: center;
+    justify-content: space-around;
     padding: 8px 0;
     z-index: 50;
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.04);
@@ -445,7 +618,7 @@ body {
     font-size: 10px;
     font-weight: 700;
     gap: 3px;
-    padding: 4px 16px;
+    padding: 4px 8px;
     position: relative;
     transition: color 0.15s;
 }
@@ -469,11 +642,11 @@ body {
     line-height: 1;
 }
 
-/* Floating Action Button */
+/* Floating Action Button (FAB) */
 .fab-btn {
     position: fixed;
     bottom: 75px;
-    right: max(20px, calc(50% - 500px));
+    right: 20px;
     width: 52px;
     height: 52px;
     border-radius: 50%;
@@ -494,7 +667,7 @@ body {
     transform: scale(1.08);
 }
 
-/* Bottom Sheet Modal */
+/* Modals & Overlays */
 .sheet-overlay {
     display: none;
     position: fixed;
@@ -598,22 +771,11 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 
-.toast-success {
-    background: #15803d;
-    color: #ffffff;
-}
+.toast-success { background: #15803d; color: #ffffff; }
+.toast-error { background: #dc2626; color: #ffffff; }
+.toast-dark { background: #0f172a; color: #ffffff; }
 
-.toast-error {
-    background: #dc2626;
-    color: #ffffff;
-}
-
-.toast-dark {
-    background: #0f172a;
-    color: #ffffff;
-}
-
-/* Digital Member Card */
+/* Member Card */
 .member-card-blue {
     background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
     border-radius: 18px;
@@ -657,42 +819,66 @@ body {
     margin-top: 4px;
 }
 
+/* Grid helper */
+.grid-2-desktop {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
 /* ==========================================================================
-   DESKTOP / LAPTOP / TABLET RESPONSIVE EXPANSION (min-width: 768px)
+   DESKTOP / LAPTOP / PC STYLES (min-width: 768px)
+   TRANSFORMS INTO A CLEAN, EXPANDED, PROFESSIONAL WEB APP
    ========================================================================== */
 @media (min-width: 768px) {
     body {
         background-color: #f1f5f9;
     }
 
-    /* Container widens comfortably up to 1080px */
+    /* 1. Show Desktop Top Navbar & Hide Mobile Components */
+    .desktop-navbar {
+        display: block !important;
+    }
+    .mobile-header-only {
+        display: none !important;
+    }
+    .bottom-nav-mobile {
+        display: none !important;
+    }
+    .fab-btn {
+        display: none !important; /* Action is in top desktop navbar */
+    }
+
+    /* 2. Main App Screen Container */
     .app-screen {
-        max-width: 1080px;
+        max-width: 1200px;
         margin: 0 auto;
         background-color: #ffffff;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.05);
+        border-left: 1px solid var(--border);
+        border-right: 1px solid var(--border);
     }
 
-    .header-staff, .header-customer, .header-owner {
-        padding: 24px 36px 30px 36px;
-        border-radius: 0 0 24px 24px;
-    }
-
-    .header-title-box h1 {
-        font-size: 24px;
-    }
-
-    .header-title-box p {
-        font-size: 13px;
-    }
-
+    /* 3. Content Area Spaciousness */
     .content-area {
-        padding: 24px 36px 95px 36px;
+        padding: 30px 40px 50px 40px; /* no bottom nav needed */
     }
 
-    /* Metrics row expands */
+    /* 4. Multi-column Desktop Grids */
+    .grid-2-desktop {
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 24px;
+        align-items: start;
+    }
+
+    .desktop-2col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
     .metrics-row {
-        gap: 16px;
+        gap: 18px;
     }
 
     .metric-box {
@@ -700,18 +886,20 @@ body {
     }
 
     .metric-box .value {
-        font-size: 24px;
+        font-size: 26px;
     }
 
-    /* Modal bottom sheets become clean centered popups on desktop */
+    /* 5. Desktop Pop-Up Modal (clean centered card, not stretched bottom sheet) */
     .sheet-overlay {
         align-items: center;
+        justify-content: center;
     }
 
     .sheet-card {
-        max-width: 500px;
+        max-width: 520px;
         border-radius: 24px;
         margin: auto;
+        padding: 28px;
         animation: popModal 0.2s ease-out;
     }
 
@@ -722,40 +910,5 @@ body {
 
     .sheet-handle {
         display: none;
-    }
-
-    /* Bottom Nav becomes sleek dock */
-    .bottom-nav {
-        max-width: 800px;
-        border-radius: 18px 18px 0 0;
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
-        border: 1px solid var(--border);
-        border-bottom: none;
-        left: 50%;
-        transform: translateX(-50%);
-    }
-
-    .nav-tab {
-        padding: 4px 24px;
-        font-size: 11px;
-    }
-
-    .nav-tab .tab-icon {
-        font-size: 22px;
-    }
-}
-
-/* Responsive Grid Utility for Desktop */
-.grid-2-desktop {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 14px;
-}
-
-@media (min-width: 768px) {
-    .grid-2-desktop {
-        grid-template-columns: 1.1fr 0.9fr;
-        gap: 20px;
-        align-items: start;
     }
 }

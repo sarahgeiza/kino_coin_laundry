@@ -6,11 +6,11 @@ $active_tab = 'home';
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<!-- Section Monitoring Bisnis -->
-<div class="card" style="padding: 14px;">
-    <div class="card-title" style="margin-bottom: 10px;">
-        <span>Monitoring Bisnis</span>
-        <span style="font-size: 11px; color: var(--text-muted);">Hari Ini</span>
+<!-- Section Monitoring Bisnis Top Row -->
+<div class="card" style="padding: 18px; margin-bottom: 20px;">
+    <div class="card-title" style="margin-bottom: 12px;">
+        <span>Monitoring Bisnis Hari Ini</span>
+        <span style="font-size: 12px; color: var(--primary); font-weight: 700;">31 Okt 2026</span>
     </div>
     <div class="metrics-row" style="margin-bottom: 0;">
         <div class="metric-box blue">
@@ -31,32 +31,63 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<!-- Rekapitulasi Shift Terbaru -->
-<div class="card">
-    <div class="card-title">
-        <span>Rekapitulasi Shift</span>
-        <a href="laporan.php" style="font-size: 12px; color: var(--primary-light); text-decoration: none;">Lihat Laporan →</a>
+<div class="grid-2-desktop">
+
+    <!-- Kolom Kiri: Rekapitulasi Shift -->
+    <div>
+        <div class="card">
+            <div class="card-title">
+                <span>Rekapitulasi Shift Kasir</span>
+                <a href="laporan.php" style="font-size: 12px; color: var(--primary-light); text-decoration: none; font-weight: 700;">Lihat Laporan Detail →</a>
+            </div>
+
+            <?php foreach ($_SESSION['shifts_recap'] as $sr): ?>
+            <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px; margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <strong style="font-size: 13px; color: var(--text-main);">
+                        <?= strtoupper($sr['tanggal']) ?> • <?= strtoupper($sr['shift']) ?>
+                    </strong>
+                    <span class="badge <?= $sr['status'] === 'Valid' ? 'badge-lunas' : 'badge-kurang' ?>">
+                        <?= htmlspecialchars($sr['status']) ?>
+                    </span>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
+                    Kasir Bertugas: <strong><?= htmlspecialchars($sr['kasir']) ?></strong> • <?= $sr['trx_count'] ?> transaksi • <?= $sr['total_kg'] ?> kg
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border); padding-top: 8px; font-size: 12px;">
+                    <span style="color: var(--text-muted);">Token: <?= $sr['koin_cuci'] ?> Coin Cuci | <?= $sr['koin_kering'] ?> Coin Kering</span>
+                    <strong style="font-size: 15px; color: var(--primary-dark);"><?= format_rupiah($sr['pendapatan']) ?></strong>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
     </div>
 
-    <?php foreach ($_SESSION['shifts_recap'] as $sr): ?>
-    <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px; margin-bottom: 10px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <strong style="font-size: 13px; color: var(--text-main);">
-                <?= strtoupper($sr['tanggal']) ?> • <?= strtoupper($sr['shift']) ?>
-            </strong>
-            <span class="badge <?= $sr['status'] === 'Valid' ? 'badge-lunas' : 'badge-kurang' ?>">
-                <?= htmlspecialchars($sr['status']) ?>
-            </span>
-        </div>
-        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">
-            Kasir: <strong><?= htmlspecialchars($sr['kasir']) ?></strong> • <?= $sr['trx_count'] ?> trx • <?= $sr['total_kg'] ?> kg
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border); padding-top: 6px; font-size: 12px;">
-            <span style="color: var(--text-muted);">Cuci: <?= $sr['koin_cuci'] ?> pcs | Kering: <?= $sr['koin_kering'] ?> pcs</span>
-            <strong style="font-size: 14px; color: var(--primary-dark);"><?= format_rupiah($sr['pendapatan']) ?></strong>
+    <!-- Kolom Kanan: Pintasan Manajemen & Audit -->
+    <div>
+        <div class="card">
+            <div class="card-title">Navigasi Cepat Manajemen</div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <a href="laporan.php" class="btn btn-outline" style="justify-content: flex-start; padding: 14px 18px;">
+                    <span style="font-size: 18px;">📊</span>
+                    <span>Audit Laporan Keuangan &amp; Grafik Omset</span>
+                </a>
+                <a href="master.php?tab=layanan" class="btn btn-outline" style="justify-content: flex-start; padding: 14px 18px;">
+                    <span style="font-size: 18px;">🧺</span>
+                    <span>Kelola Master Layanan &amp; Tarif Token</span>
+                </a>
+                <a href="master.php?tab=shift" class="btn btn-outline" style="justify-content: flex-start; padding: 14px 18px;">
+                    <span style="font-size: 18px;">⏰</span>
+                    <span>Pengaturan Jadwal Shift &amp; Staf</span>
+                </a>
+                <a href="presensi.php" class="btn btn-outline" style="justify-content: flex-start; padding: 14px 18px;">
+                    <span style="font-size: 18px;">🕒</span>
+                    <span>Log Presensi Kehadiran Kasir</span>
+                </a>
+            </div>
         </div>
     </div>
-    <?php endforeach; ?>
+
 </div>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

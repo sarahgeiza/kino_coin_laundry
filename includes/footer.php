@@ -6,7 +6,8 @@ $show_bottom_nav = $show_bottom_nav ?? true;
     </main>
 
     <?php if ($show_bottom_nav): ?>
-        <nav class="bottom-nav">
+        <!-- Bottom Nav khusus Mobile (Tersembunyi di Desktop/Laptop) -->
+        <nav class="bottom-nav bottom-nav-mobile">
             <?php if ($app_role === 'kasir'): ?>
                 <a href="index.php" class="nav-tab <?= $active_tab === 'home' ? 'active' : '' ?>">
                     <span class="tab-icon">🏠</span>
