@@ -27,33 +27,42 @@ require_once __DIR__ . '/../includes/header.php';
 // Check if check-in needed (Modal M1)
 $need_checkin = empty($_SESSION['kasir_checked_in']);
 
-// Calculate metrics from session transactions
-$total_income = 0;
-$total_tx = count($_SESSION['transactions']);
-$coins_wash = 0;
-$coins_dry = 0;
+// Calculate metrics dynamically based on shift baseline + real added transactions
+$base_income = 425000;
+$base_tx = 18;
+$base_wash = 24;
+$base_dry = 26;
 
-foreach ($_SESSION['transactions'] as $t) {
-    $total_income += $t['total_bayar'];
-    $coins_wash += ($t['koin_cuci'] ?? 0);
-    $coins_dry += ($t['koin_kering'] ?? 0);
+$initial_count = 4;
+$current_tx_list = $_SESSION['transactions'] ?? [];
+$current_count = count($current_tx_list);
+
+$extra_income = 0;
+$extra_tx = 0;
+$extra_wash = 0;
+$extra_dry = 0;
+
+if ($current_count > $initial_count) {
+    for ($i = $initial_count; $i < $current_count; $i++) {
+        $t = $current_tx_list[$i];
+        $extra_income += ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
+        $extra_tx += 1;
+        $extra_wash += ($t['koin_cuci'] ?? 0);
+        $extra_dry += ($t['koin_kering'] ?? 0);
+    }
 }
 
-if ($total_income < 425000) {
-    $disp_income = 'Rp 425rb';
-    $disp_tx = '18 transaksi';
-    $disp_wash = '24 pcs';
-    $disp_wash_val = 'Rp 168.000';
-    $disp_dry = '26 pcs';
-    $disp_dry_val = 'Rp 260.000';
-} else {
-    $disp_income = format_rupiah($total_income);
-    $disp_tx = $total_tx . ' transaksi';
-    $disp_wash = $coins_wash . ' pcs';
-    $disp_wash_val = format_rupiah($coins_wash * 7000);
-    $disp_dry = $coins_dry . ' pcs';
-    $disp_dry_val = format_rupiah($coins_dry * 10000);
-}
+$total_live_income = $base_income + $extra_income;
+$total_live_tx = $base_tx + $extra_tx;
+$total_live_wash = $base_wash + $extra_wash;
+$total_live_dry = $base_dry + $extra_dry;
+
+$disp_income = format_rupiah($total_live_income);
+$disp_tx = $total_live_tx . ' transaksi';
+$disp_wash = $total_live_wash . ' pcs';
+$disp_wash_val = format_rupiah($total_live_wash * 7000);
+$disp_dry = $total_live_dry . ' pcs';
+$disp_dry_val = format_rupiah($total_live_dry * 10000);
 ?>
 
 <!-- Tombol Aksi Cepat (Persis Figma K1) -->

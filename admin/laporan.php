@@ -55,9 +55,15 @@ if ($periode === 'Kosong') {
     </div>
 <?php else: ?>
     <div class="card">
+        <?php 
+        $total_laporan_omset = 0;
+        foreach ($txs as $t) {
+            $total_laporan_omset += ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
+        }
+        ?>
         <div style="font-size: 11px; color: var(--text-muted); font-weight: 700;">TOTAL OMSET (<?= strtoupper($periode) ?>)</div>
         <div style="font-size: 24px; font-weight: 900; color: var(--primary-dark); margin: 4px 0 14px 0;">
-            Rp 56.000 <span style="font-size: 12px; font-weight: normal; color: var(--text-muted);">(<?= count($txs) ?> transaksi)</span>
+            <?= format_rupiah($total_laporan_omset) ?> <span style="font-size: 12px; font-weight: normal; color: var(--text-muted);">(<?= count($txs) ?> transaksi)</span>
         </div>
 
         <!-- 7-Day Bar Chart Mockup (Figma P2) -->

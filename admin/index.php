@@ -4,6 +4,28 @@ $app_role = 'pemilik';
 $active_tab = 'home';
 
 require_once __DIR__ . '/../includes/header.php';
+
+// Calculate extra metrics from newly added transactions
+$initial_count = 4;
+$current_tx_list = $_SESSION['transactions'] ?? [];
+$current_count = count($current_tx_list);
+
+$extra_income = 0;
+$extra_wash = 0;
+$extra_dry = 0;
+
+if ($current_count > $initial_count) {
+    for ($i = $initial_count; $i < $current_count; $i++) {
+        $t = $current_tx_list[$i];
+        $extra_income += ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
+        $extra_wash += ($t['koin_cuci'] ?? 0);
+        $extra_dry += ($t['koin_kering'] ?? 0);
+    }
+}
+
+$owner_omset = 1250000 + $extra_income;
+$owner_wash = 124 + $extra_wash;
+$owner_dry = 130 + $extra_dry;
 ?>
 
 <!-- Section Monitoring Bisnis (Persis Figma P1) -->
@@ -15,18 +37,18 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="metrics-row" style="margin-bottom: 0;">
         <div class="metric-box blue">
             <div class="label">Omset Hari Ini</div>
-            <div class="value">Rp 1.25jt</div>
+            <div class="value"><?= format_rupiah($owner_omset) ?></div>
             <div class="sub" style="color: #86efac; font-weight: 700;">↑ 8% vs kemarin</div>
         </div>
         <div class="metric-box orange">
             <div class="label">Coin Cuci</div>
-            <div class="value">124 pcs</div>
-            <div class="sub">= Rp 868.000</div>
+            <div class="value"><?= $owner_wash ?> pcs</div>
+            <div class="sub">= <?= format_rupiah($owner_wash * 7000) ?></div>
         </div>
         <div class="metric-box amber">
             <div class="label">Coin Kering</div>
-            <div class="value">130 pcs</div>
-            <div class="sub">= Rp 1.300.000</div>
+            <div class="value"><?= $owner_dry ?> pcs</div>
+            <div class="sub">= <?= format_rupiah($owner_dry * 10000) ?></div>
         </div>
     </div>
 </div>
