@@ -7,7 +7,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
         $nama = trim($_POST['nama_shift'] ?? '');
         $mulai = trim($_POST['mulai'] ?? '08:00');
         $selesai = trim($_POST['selesai'] ?? '14:00');
-        $staff = trim($_POST['staff'] ?? '');
+        
+        if (isset($_POST['selected_staff']) && is_array($_POST['selected_staff'])) {
+            $staff = implode(', ', array_map('trim', $_POST['selected_staff']));
+        } else {
+            $staff = trim($_POST['staff'] ?? '');
+        }
         $_SESSION['shifts'][] = [
             'id' => count($_SESSION['shifts']) + 1,
             'nama' => $nama,
@@ -23,7 +28,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
         $nama = trim($_POST['nama_shift'] ?? '');
         $mulai = trim($_POST['mulai'] ?? '08:00');
         $selesai = trim($_POST['selesai'] ?? '14:00');
-        $staff = trim($_POST['staff'] ?? '');
+        
+        if (isset($_POST['selected_staff']) && is_array($_POST['selected_staff'])) {
+            $staff = implode(', ', array_map('trim', $_POST['selected_staff']));
+        } else {
+            $staff = trim($_POST['staff'] ?? '');
+        }
         
         foreach ($_SESSION['shifts'] as &$sh) {
             if ($sh['id'] === $shift_id || $sh['nama'] === $nama) {
@@ -45,6 +55,11 @@ $app_role = 'pemilik';
 $active_tab = 'master';
 
 require_once __DIR__ . '/../includes/header.php';
+
+// Ambil daftar kasir dari data manajemen pengguna untuk multiple choose
+$kasir_users = array_filter($_SESSION['users'] ?? [], function($u) {
+    return ($u['role'] ?? '') === 'Kasir';
+});
 
 $subtab = $_GET['tab'] ?? 'layanan';
 
@@ -177,8 +192,18 @@ $subtab = $_GET['tab'] ?? 'layanan';
                 </div>
             </div>
             <div class="form-group">
-                <label class="form-label">Kasir (pisahkan dengan koma)</label>
-                <input type="text" name="staff" class="form-control" placeholder="Contoh: Daniel, Sarah">
+                <label class="form-label">Pilih Kasir Bertugas *</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 140px; overflow-y: auto; background: #f8fafc; padding: 10px; border-radius: 12px; border: 1.5px solid var(--border);">
+                    <?php foreach ($kasir_users as $ku): ?>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text-main); cursor: pointer; padding: 6px 8px; border-radius: 8px; background: white; border: 1px solid var(--border);">
+                            <input type="checkbox" name="selected_staff[]" value="<?= htmlspecialchars($ku['nama']) ?>">
+                            <span><?= htmlspecialchars($ku['nama']) ?></span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">
+                    Pilih staf kasir yang ditugaskan (terhubung ke Manajemen Pengguna)
+                </span>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 14px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal('modalAddShift')">Batal</button>
@@ -214,8 +239,18 @@ $subtab = $_GET['tab'] ?? 'layanan';
                 </div>
             </div>
             <div class="form-group">
-                <label class="form-label">Kasir (pisahkan dengan koma)</label>
-                <input type="text" id="editShiftStaff" name="staff" class="form-control">
+                <label class="form-label">Pilih Kasir Bertugas *</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 140px; overflow-y: auto; background: #f8fafc; padding: 10px; border-radius: 12px; border: 1.5px solid var(--border);">
+                    <?php foreach ($kasir_users as $ku): ?>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text-main); cursor: pointer; padding: 6px 8px; border-radius: 8px; background: white; border: 1px solid var(--border);">
+                            <input type="checkbox" class="edit-staff-checkbox" name="selected_staff[]" value="<?= htmlspecialchars($ku['nama']) ?>">
+                            <span><?= htmlspecialchars($ku['nama']) ?></span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">
+                    Pilih staf kasir yang ditugaskan (terhubung ke Manajemen Pengguna)
+                </span>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 14px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal('modalEditShift')">Batal</button>
@@ -231,7 +266,15 @@ function editShift(sh) {
     document.getElementById('editShiftName').value = sh.nama;
     document.getElementById('editShiftStart').value = sh.mulai;
     document.getElementById('editShiftEnd').value = sh.selesai;
-    document.getElementById('editShiftStaff').value = sh.staff;
+    
+    // Auto-check kasir bertugas
+    const assigned = (sh.staff || '').split(',').map(s => s.trim().toLowerCase());
+    document.querySelectorAll('.edit-staff-checkbox').forEach(cb => {
+        const val = cb.value.trim().toLowerCase();
+        // check if name matches or contains
+        cb.checked = assigned.some(a => a.includes(val) || val.includes(a));
+    });
+
     openModal('modalEditShift');
 }
 </script>

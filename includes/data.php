@@ -490,7 +490,10 @@ function get_active_kasir_shift($kasir_name = null) {
     foreach ($shifts_reversed as $s) {
         $staff_list = array_map('trim', explode(',', $s['staff'] ?? ''));
         foreach ($staff_list as $st) {
-            if (strcasecmp($st, $kasir_name) === 0) {
+            $is_match = (strcasecmp($st, $kasir_name) === 0) || 
+                            (stripos($st, $kasir_name) !== false) || 
+                            (stripos($kasir_name, $st) !== false);
+                if ($is_match) {
                 if (!$candidate_by_name) {
                     $candidate_by_name = $s;
                 }
