@@ -287,7 +287,10 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
 
         <!-- Real Webcam / Viewfinder Container -->
-        <div id="qrViewfinder" style="width: 100%; border: 2.5px dashed #ea580c; border-radius: 16px; background: rgba(234, 88, 12, 0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 12px; padding: 12px; position: relative; overflow: hidden; min-height: 180px;">
+        <div id="qrViewfinder" style="width: 100%; border: 2.5px dashed #ea580c; border-radius: 16px;
+            background: rgba(234, 88, 12, 0.05); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; margin-bottom: 12px;
+            padding: 12px; position: relative; overflow: hidden; min-height: 180px;">
             <div id="cameraReader" style="width: 100%; max-width: 240px; margin: 0 auto;"></div>
             <div id="qrStatusText" style="font-size: 12px; font-weight: 700; color: #ea580c; text-align: center; margin-top: 8px;">
                 Arahkan QR ke kamera...
