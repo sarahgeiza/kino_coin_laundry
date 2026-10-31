@@ -1,9 +1,5 @@
 <?php
-$page_title = 'Transaksi Baru - Kino Coin Laundry';
-$app_role = 'kasir';
-$active_tab = 'transaksi';
-
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/data.php';
 
 // Handle Save Transaction POST
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_trx') {
@@ -65,6 +61,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     header('Location: index.php?toast=saved');
     exit;
 }
+
+$page_title = 'Transaksi Baru - Kino Coin Laundry';
+$app_role = 'kasir';
+$active_tab = 'transaksi';
+
+require_once __DIR__ . '/../includes/header.php';
+
 ?>
 
 <!-- Header Meta Sub (Persis Figma K2) -->

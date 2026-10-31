@@ -1,4 +1,23 @@
 <?php
+require_once __DIR__ . '/../includes/data.php';
+
+// Handle Check-in POST BEFORE header output
+if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
+    $_SESSION['kasir_checked_in'] = true;
+    $_SESSION['presensi'][] = [
+        'id' => count($_SESSION['presensi']) + 1,
+        'kasir' => $_SESSION['username'] ?? 'Daniel',
+        'shift' => 'Shift Siang',
+        'tanggal' => date('d M Y'),
+        'filter_date' => date('Y-m-d'),
+        'jam_masuk' => date('H:i'),
+        'jam_keluar' => null,
+        'status' => 'Berjalan'
+    ];
+    header('Location: index.php?shift_started=1');
+    exit;
+}
+
 $page_title = 'Dashboard Kasir - Kino Coin Laundry';
 $app_role = 'kasir';
 $active_tab = 'home';
@@ -34,23 +53,6 @@ if ($total_income < 425000) {
     $disp_wash_val = format_rupiah($coins_wash * 7000);
     $disp_dry = $coins_dry . ' pcs';
     $disp_dry_val = format_rupiah($coins_dry * 10000);
-}
-
-// Handle Check-in POST
-if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
-    $_SESSION['kasir_checked_in'] = true;
-    $_SESSION['presensi'][] = [
-        'id' => count($_SESSION['presensi']) + 1,
-        'kasir' => $_SESSION['username'] ?? 'Daniel',
-        'shift' => 'Shift Siang',
-        'tanggal' => date('d M Y'),
-        'filter_date' => date('Y-m-d'),
-        'jam_masuk' => date('H:i'),
-        'jam_keluar' => null,
-        'status' => 'Berjalan'
-    ];
-    header('Location: index.php?shift_started=1');
-    exit;
 }
 ?>
 
@@ -205,7 +207,6 @@ if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
             <button type="button" class="sheet-close" onclick="closeModal('modalScanQr')">&times;</button>
         </div>
 
-        <!-- Real Webcam / Viewfinder Container -->
         <div id="qrViewfinder" style="width: 100%; border: 2.5px dashed #ea580c; border-radius: 16px; background: rgba(234, 88, 12, 0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 12px; padding: 12px; position: relative; overflow: hidden; min-height: 180px;">
             <div id="cameraReader" style="width: 100%; max-width: 240px; margin: 0 auto;"></div>
             <div id="qrStatusText" style="font-size: 12px; font-weight: 700; color: #ea580c; text-align: center; margin-top: 8px;">
@@ -213,7 +214,6 @@ if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
             </div>
         </div>
 
-        <!-- Tombol Cepat Simulasi Barcode Pelanggan (Memudahkan Pengujian Tanpa Fisik HP) -->
         <div style="margin-bottom: 12px;">
             <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">⚡ Pindai Cepat (Simulasi Kode Member):</div>
             <div style="display: flex; gap: 6px; flex-wrap: wrap;">

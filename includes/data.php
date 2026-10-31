@@ -1,4 +1,6 @@
 <?php
+// Output buffering to prevent headers already sent
+if (ob_get_level() === 0) ob_start();
 // Kino Coin Laundry - State & Data Store
 // Aligned 100% with Figma Page 2 Design Overhaul
 

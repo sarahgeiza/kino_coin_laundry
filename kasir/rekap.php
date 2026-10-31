@@ -1,9 +1,5 @@
 <?php
-$page_title = 'Rekapitulasi Operasional - Kino Coin Laundry';
-$app_role = 'kasir';
-$active_tab = 'rekap';
-
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/data.php';
 
 // Calculate totals from session transactions
 $total_income = 0;
@@ -23,11 +19,10 @@ $display_kg = 62.5;
 $display_wash = max($coins_wash, 24);
 $display_dry = max($coins_dry, 26);
 
-// Handle Close Shift POST
+// Handle Close Shift POST BEFORE header output
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'tutup_shift') {
     $_SESSION['kasir_checked_in'] = false;
     
-    // Save to shifts_recap
     $_SESSION['shifts_recap'][] = [
         'id' => count($_SESSION['shifts_recap']) + 1,
         'kasir' => $_SESSION['username'] ?? 'Daniel',
@@ -45,6 +40,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     header('Location: index.php?shift_closed=1');
     exit;
 }
+
+$page_title = 'Rekapitulasi Operasional - Kino Coin Laundry';
+$app_role = 'kasir';
+$active_tab = 'rekap';
+
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <div style="margin-bottom: 14px;">
@@ -68,11 +69,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     <div class="card-title">Rincian Perolehan Token</div>
     <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px; font-size: 13px; line-height: 1.8; margin-bottom: 14px;">
         <div style="display: flex; justify-content: space-between;">
-            <span>🪙 Coin Cuci (7k):</span>
+            <span>Coin Cuci (7k):</span>
             <strong><?= $display_wash ?> pcs = <?= format_rupiah($display_wash * 7000) ?></strong>
         </div>
         <div style="display: flex; justify-content: space-between;">
-            <span>🪙 Coin Kering (10k):</span>
+            <span>Coin Kering (10k):</span>
             <strong><?= $display_dry ?> pcs = <?= format_rupiah($display_dry * 10000) ?></strong>
         </div>
     </div>

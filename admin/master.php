@@ -1,11 +1,5 @@
 <?php
-$page_title = 'Master Data - Kino Coin Laundry';
-$app_role = 'pemilik';
-$active_tab = 'master';
-
-require_once __DIR__ . '/../includes/header.php';
-
-$subtab = $_GET['tab'] ?? 'layanan';
+require_once __DIR__ . '/../includes/data.php';
 
 // Handle Add/Edit Shift POST
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
@@ -26,6 +20,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
         exit;
     }
 }
+
+$page_title = 'Master Data - Kino Coin Laundry';
+$app_role = 'pemilik';
+$active_tab = 'master';
+
+require_once __DIR__ . '/../includes/header.php';
+
+$subtab = $_GET['tab'] ?? 'layanan';
+
+
 ?>
 
 <div style="margin-bottom: 12px;">
