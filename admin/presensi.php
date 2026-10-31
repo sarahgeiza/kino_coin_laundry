@@ -6,10 +6,18 @@ $active_tab = 'presensi';
 require_once __DIR__ . '/../includes/header.php';
 
 $filter = $_GET['filter'] ?? 'Hari Ini';
-$logs = $_SESSION['presensi'];
+$raw_logs = array_reverse($_SESSION['presensi'] ?? []);
 
 if ($filter === 'Bulan Lalu') {
-    $logs = []; // Test empty state P6b
+    $logs = []; // Empty state P6b
+} elseif ($filter === 'Hari Ini') {
+    $today = date('Y-m-d');
+    $today_str = date('d M Y');
+    $logs = array_filter($raw_logs, function($p) use ($today, $today_str) {
+        return ($p['filter_date'] ?? '') === $today || ($p['tanggal'] ?? '') === $today_str;
+    });
+} else {
+    $logs = $raw_logs;
 }
 ?>
 

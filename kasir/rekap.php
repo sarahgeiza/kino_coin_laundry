@@ -22,10 +22,24 @@ $display_dry = max($coins_dry, 26);
 // Handle Close Shift POST BEFORE header output
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'tutup_shift') {
     $_SESSION['kasir_checked_in'] = false;
+    $current_kasir = $_SESSION['username'] ?? 'Daniel';
+    $jam_keluar = date('H:i');
+
+    // 1. Update status presensi kasir di dashboard Pemilik menjadi 'Selesai' dengan jam keluar aktual!
+    if (isset($_SESSION['presensi']) && is_array($_SESSION['presensi'])) {
+        for ($i = count($_SESSION['presensi']) - 1; $i >= 0; $i--) {
+            if ($_SESSION['presensi'][$i]['kasir'] === $current_kasir && $_SESSION['presensi'][$i]['status'] === 'Berjalan') {
+                $_SESSION['presensi'][$i]['jam_keluar'] = $jam_keluar;
+                $_SESSION['presensi'][$i]['status'] = 'Selesai';
+                break;
+            }
+        }
+    }
     
+    // 2. Catat rekonsiliasi ke riwayat rekapitulasi shift pemilik
     $_SESSION['shifts_recap'][] = [
         'id' => count($_SESSION['shifts_recap']) + 1,
-        'kasir' => $_SESSION['username'] ?? 'Daniel',
+        'kasir' => $current_kasir,
         'shift' => 'Siang',
         'tanggal' => date('d M Y'),
         'trx_count' => $display_tx,
