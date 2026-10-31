@@ -2,12 +2,38 @@
 session_start();
 require_once __DIR__ . '/includes/data.php';
 
+$login_error = '';
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
-    $_SESSION['username'] = 'Daniel';
-    $_SESSION['role'] = 'kasir';
-    $_SESSION['kasir_checked_in'] = false;
-    header('Location: kasir/index.php');
-    exit;
+    $username = trim($_POST['username'] ?? 'daniel');
+    $password = $_POST['password'] ?? '';
+
+    $matched_user = null;
+    foreach ($_SESSION['users'] as $u) {
+        if (($u['role'] === 'Kasir') && 
+            (strcasecmp($u['username'], $username) === 0 || 
+             stripos($u['nama'], $username) !== false)) {
+            $matched_user = $u;
+            break;
+        }
+    }
+
+    if ($matched_user) {
+        if (!empty($matched_user['password']) && $matched_user['password'] !== $password) {
+            $login_error = 'Password salah. Silakan periksa kembali kata sandi Anda.';
+        } else {
+            $_SESSION['username'] = $matched_user['nama'];
+            $_SESSION['role'] = 'kasir';
+            $_SESSION['kasir_checked_in'] = false;
+            header('Location: kasir/index.php');
+            exit;
+        }
+    } else {
+        $_SESSION['username'] = ucfirst($username);
+        $_SESSION['role'] = 'kasir';
+        $_SESSION['kasir_checked_in'] = false;
+        header('Location: kasir/index.php');
+        exit;
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -66,6 +92,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 <span class="badge badge-token" style="font-size: 12px; padding: 4px 10px;">Kasir</span>
             </div>
             <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 22px;">Masuk dengan akun staff Anda</p>
+            <?php if (!empty($login_error)): ?>
+                <div style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; padding:10px 14px; border-radius:10px; font-size:12px; font-weight:700; margin-bottom:14px;">
+                    <?= htmlspecialchars($login_error) ?>
+                </div>
+            <?php endif; ?>
 
             <form action="login-kasir.php" method="POST">
                 <div class="form-group">

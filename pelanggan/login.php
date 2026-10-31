@@ -2,8 +2,10 @@
 session_start();
 require_once __DIR__ . '/../includes/data.php';
 
+$login_error = '';
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $wa = trim($_POST['wa'] ?? '');
+    $pass = $_POST['password'] ?? '';
 
     // Search existing member by WhatsApp
     $matched = null;
@@ -15,10 +17,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     }
 
     if ($matched) {
-        $_SESSION['username'] = $matched['nama'];
-        $_SESSION['role'] = 'pelanggan';
+        // Verifikasi password jika akun terdaftar punya password
+        if (!empty($matched['password']) && $matched['password'] !== $pass) {
+            $login_error = 'Password salah. Silakan periksa kembali kata sandi Anda.';
+        } else {
+            $_SESSION['username'] = $matched['nama'];
+            $_SESSION['role'] = 'pelanggan';
+            header('Location: index.php');
+            exit;
+        }
     } else {
-        // Create new member with this WhatsApp number
+        // Akun belum ada -> buat member baru
         $new_id = count($_SESSION['members']) + 1;
         $new_code = 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT);
         $new_name = 'Pelanggan ' . substr($wa, -4);
@@ -31,15 +40,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             'tx_count' => 0,
             'coin_cuci' => 0,
             'coin_kering' => 0,
-            'password' => 'password123'
+            'password' => $pass ?: 'password123'
         ];
         $_SESSION['members'][] = $new_member;
         $_SESSION['username'] = $new_name;
         $_SESSION['role'] = 'pelanggan';
+        header('Location: index.php');
+        exit;
     }
-
-    header('Location: index.php');
-    exit;
 }
 ?>
 <!DOCTYPE html>
@@ -95,6 +103,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         <div class="login-sheet-card">
             <h2 style="font-size: 20px; font-weight: 900; color: var(--text-main); margin-bottom: 4px;">Masuk Pelanggan</h2>
             <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 22px;">Cek riwayat dan detail cucian Anda</p>
+        <?php if (!empty($login_error)): ?>
+            <div style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; padding:10px 14px; border-radius:10px; font-size:12px; font-weight:700; margin-bottom:14px;">
+                <?= htmlspecialchars($login_error) ?>
+            </div>
+        <?php endif; ?>
 
             <form action="login.php" method="POST">
                 <div class="form-group">

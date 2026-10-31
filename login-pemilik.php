@@ -2,11 +2,36 @@
 session_start();
 require_once __DIR__ . '/includes/data.php';
 
+$login_error = '';
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
-    $_SESSION['username'] = 'Pemilik';
-    $_SESSION['role'] = 'pemilik';
-    header('Location: admin/index.php');
-    exit;
+    $username = trim($_POST['username'] ?? 'pemilik');
+    $password = $_POST['password'] ?? '';
+
+    $matched_user = null;
+    foreach ($_SESSION['users'] as $u) {
+        if (($u['role'] === 'Pemilik') && 
+            (strcasecmp($u['username'], $username) === 0 || 
+             stripos($u['nama'], $username) !== false)) {
+            $matched_user = $u;
+            break;
+        }
+    }
+
+    if ($matched_user) {
+        if (!empty($matched_user['password']) && $matched_user['password'] !== $password) {
+            $login_error = 'Password salah. Silakan periksa kembali kata sandi Anda.';
+        } else {
+            $_SESSION['username'] = $matched_user['nama'];
+            $_SESSION['role'] = 'pemilik';
+            header('Location: admin/index.php');
+            exit;
+        }
+    } else {
+        $_SESSION['username'] = 'Pemilik';
+        $_SESSION['role'] = 'pemilik';
+        header('Location: admin/index.php');
+        exit;
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -65,6 +90,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 <span class="badge" style="background: #fef3c7; color: #b45309; font-size: 12px; padding: 4px 10px;">Pemilik</span>
             </div>
             <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 22px;">Masuk dengan akun staff Anda</p>
+            <?php if (!empty($login_error)): ?>
+                <div style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; padding:10px 14px; border-radius:10px; font-size:12px; font-weight:700; margin-bottom:14px;">
+                    <?= htmlspecialchars($login_error) ?>
+                </div>
+            <?php endif; ?>
 
             <form action="login-pemilik.php" method="POST">
                 <div class="form-group">
