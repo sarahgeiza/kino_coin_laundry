@@ -6,5 +6,7 @@
     "files.exclude": {
         "**/.git": true,
         "**/.DS_Store": true
-    }
+    },
+    "javascript.validate.enable": true,
+    "typescript.validate.enable": true
 }
