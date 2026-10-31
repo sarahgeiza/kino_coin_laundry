@@ -67,20 +67,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
 }
 ?>
 
+<!-- Header Meta Sub (Persis Figma K2) -->
 <div style="margin-bottom: 12px; font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
     <div>
-        <strong>Transaksi Baru</strong>
+        <strong style="color: var(--text-main);">Transaksi Baru</strong>
         <span>• Kasir: <?= htmlspecialchars($user_name) ?></span>
     </div>
-    <span style="font-size: 11px;"><?= date('d/m/Y H.i') ?></span>
+    <span style="font-size: 11px;"><?= date('d/m/Y H.i.s') ?></span>
 </div>
 
 <form action="transaksi-baru.php" method="POST" id="formTransaksiBaru">
     <input type="hidden" name="action" value="save_trx">
 
-    <div class="grid-2-desktop">
-        <div>
-            <!-- Card 1: Data Pelanggan -->
+    <!-- Card 1: Data Pelanggan -->
     <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <label class="form-label" style="margin-bottom: 0;">Pelanggan *</label>
@@ -146,10 +145,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
         </div>
     </div>
 
-        </div><!-- end left column -->
-
-        <div>
-            <!-- Card 3: Pembayaran Token vs Tunai -->
+    <!-- Card 3: Pembayaran Token vs Tunai -->
     <div class="card">
         <!-- Self Service Token Input Box -->
         <div id="tokenInputSection">
@@ -208,8 +204,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     <div style="display: flex; gap: 10px; margin-top: 6px;">
         <a href="index.php" class="btn btn-outline" style="width: 35%;">Batal</a>
         <button type="submit" class="btn btn-primary" style="width: 65%;">Simpan Transaksi</button>
-        </div><!-- end right column -->
-    </div><!-- end .grid-2-desktop -->
+    </div>
 </form>
 
 <!-- Modal M2 / M6b: Pelanggan Baru -->
@@ -296,7 +291,6 @@ function handleQuickCreateMember(e) {
 
     window.__MOCK_MEMBERS.push(newMember);
 
-    // Apply to input fields
     document.getElementById('inputPelangganNama').value = nama;
     document.getElementById('inputPelangganWA').value = wa;
     const badge = document.getElementById('memberSelectedBadge');

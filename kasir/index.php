@@ -54,8 +54,8 @@ if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
 }
 ?>
 
-<!-- Quick Action Buttons (Mobile only, on desktop it is in navbar) -->
-<div class="mobile-only-action" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 10px; margin-bottom: 16px;">
+<!-- Tombol Aksi Cepat (Persis Figma K1) -->
+<div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 10px; margin-bottom: 16px;">
     <a href="transaksi-baru.php" class="btn btn-primary" style="padding: 12px; font-size: 13px;">
         <span>+ Transaksi Baru</span>
     </a>
@@ -65,10 +65,10 @@ if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
 </div>
 
 <!-- Ringkasan Shift (Metrik 3 Box) -->
-<div class="card" style="padding: 18px; margin-bottom: 20px;">
-    <div class="card-title" style="margin-bottom: 12px;">
-        <span>Ringkasan Shift Berjalan</span>
-        <span style="font-size: 12px; color: var(--primary); font-weight: 700;">Shift Siang • 14:00 — 20:00</span>
+<div class="card" style="padding: 16px; margin-bottom: 14px;">
+    <div class="card-title" style="margin-bottom: 10px;">
+        <span>Ringkasan Shift</span>
+        <span style="font-size: 11px; color: var(--text-muted);">Shift Siang</span>
     </div>
     <div class="metrics-row" style="margin-bottom: 0;">
         <div class="metric-box blue">
@@ -89,87 +89,53 @@ if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
     </div>
 </div>
 
-<!-- Desktop 2-Column Split: Kiri = Transaksi Terakhir, Kanan = Alur Cepat & Status -->
-<div class="grid-2-desktop">
-
-    <!-- Kolom Kiri: Daftar Transaksi Terakhir -->
-    <div>
-        <div class="card">
-            <div class="card-title">
-                <span>Transaksi Terakhir</span>
-                <a href="transaksi.php" style="font-size: 12px; color: var(--primary-light); text-decoration: none; font-weight: 700;">Lihat Semua →</a>
-            </div>
-
-            <?php 
-            $recent_txs = array_slice(array_reverse($_SESSION['transactions']), 0, 4);
-            foreach ($recent_txs as $trx):
-                $is_token = ($trx['metode'] === 'Token');
-                $meta_coin = [];
-                if (!empty($trx['koin_cuci'])) $meta_coin[] = $trx['koin_cuci'] . ' Coin Cuci';
-                if (!empty($trx['koin_kering'])) $meta_coin[] = $trx['koin_kering'] . ' Coin Kering';
-                $coin_desc = !empty($meta_coin) ? implode(' + ', $meta_coin) : ($trx['metode'] ?? 'Tunai');
-            ?>
-            <div class="trx-item" onclick="showInvoiceDetail(<?= htmlspecialchars(json_encode($trx)) ?>)">
-                <div class="trx-top">
-                    <div>
-                        <span class="trx-id"><?= htmlspecialchars($trx['id']) ?></span>
-                        <div class="trx-name"><?= htmlspecialchars($trx['pelanggan']) ?></div>
-                    </div>
-                    <span class="badge badge-lunas"><?= htmlspecialchars($trx['status']) ?></span>
-                </div>
-                <div class="trx-meta-line">
-                    <?= htmlspecialchars($trx['layanan']) ?> • <?= htmlspecialchars($trx['kuantitas']) ?>
-                </div>
-                <div class="trx-bottom">
-                    <div>
-                        <div class="trx-price"><?= format_rupiah($trx['total_bayar']) ?></div>
-                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-                            <?= htmlspecialchars($trx['waktu']) ?> | Kasir <?= htmlspecialchars($trx['kasir']) ?> | <?= $coin_desc ?>
-                        </div>
-                    </div>
-                    <button type="button" class="trx-details-btn">Detail</button>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-    </div>
-
-    <!-- Kolom Kanan: Panduan Kasir & Pintasan -->
-    <div>
-        <!-- Banner Info Operasional Token vs Tunai -->
-        <div style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: var(--radius-lg); padding: 18px; color: #1e40af; margin-bottom: 16px;">
-            <div style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; margin-bottom: 6px;">
-                <span>💡</span>
-                <span>Standar Pembayaran Kasir</span>
-            </div>
-            <p style="font-size: 13px; line-height: 1.6; opacity: 0.95;">
-                • <strong>Self Service</strong>: Wajib dibayar dengan <strong>Coin Cuci</strong> (Rp 7.000) dan <strong>Coin Kering</strong> (Rp 10.000).<br>
-                • <strong>Drop Off &amp; Retail</strong>: Diterima lunas secara <strong>Tunai / Transfer</strong> langsung tanpa koin.
-            </p>
-        </div>
-
-        <div class="card" style="padding: 18px;">
-            <div class="card-title">Pintasan Cepat Kasir</div>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button type="button" class="btn btn-outline" style="justify-content: flex-start; padding: 12px 16px;" onclick="openModal('modalScanQr')">
-                    <span style="font-size: 18px;">📷</span>
-                    <span>Scan QR Kartu Member Pelanggan</span>
-                </button>
-                <a href="pelanggan.php" class="btn btn-outline" style="justify-content: flex-start; padding: 12px 16px;">
-                    <span style="font-size: 18px;">👥</span>
-                    <span>Cari / Daftarkan Pelanggan Baru</span>
-                </a>
-                <a href="rekap.php" class="btn btn-outline" style="justify-content: flex-start; padding: 12px 16px;">
-                    <span style="font-size: 18px;">⏰</span>
-                    <span>Audit Kas &amp; Tutup Shift</span>
-                </a>
-            </div>
-        </div>
-    </div>
-
+<!-- Banner Info Operasional Token vs Tunai -->
+<div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 10px 14px; font-size: 12px; color: #1e40af; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+    <span style="font-size: 16px;">💡</span>
+    <span>Pembayaran koin khusus Self Service. Drop off / retail dibayar tunai.</span>
 </div>
 
-<!-- Floating Action Button + (Mobile Only) -->
+<!-- Daftar Transaksi Terakhir -->
+<div class="card">
+    <div class="card-title">
+        <span>Transaksi Terakhir</span>
+        <a href="transaksi.php" style="font-size: 12px; color: var(--primary-light); text-decoration: none; font-weight: 700;">Lihat Semua →</a>
+    </div>
+
+    <?php 
+    $recent_txs = array_slice(array_reverse($_SESSION['transactions']), 0, 4);
+    foreach ($recent_txs as $trx):
+        $is_token = ($trx['metode'] === 'Token');
+        $meta_coin = [];
+        if (!empty($trx['koin_cuci'])) $meta_coin[] = $trx['koin_cuci'] . ' Coin Cuci';
+        if (!empty($trx['koin_kering'])) $meta_coin[] = $trx['koin_kering'] . ' Coin Kering';
+        $coin_desc = !empty($meta_coin) ? implode(' + ', $meta_coin) : ($trx['metode'] ?? 'Tunai');
+    ?>
+    <div class="trx-item" onclick="showInvoiceDetail(<?= htmlspecialchars(json_encode($trx)) ?>)">
+        <div class="trx-top">
+            <div>
+                <span class="trx-id"><?= htmlspecialchars($trx['id']) ?></span>
+                <div class="trx-name"><?= htmlspecialchars($trx['pelanggan']) ?></div>
+            </div>
+            <span class="badge badge-lunas"><?= htmlspecialchars($trx['status']) ?></span>
+        </div>
+        <div class="trx-meta-line">
+            <?= htmlspecialchars($trx['layanan']) ?> • <?= htmlspecialchars($trx['kuantitas']) ?>
+        </div>
+        <div class="trx-bottom">
+            <div>
+                <div class="trx-price"><?= format_rupiah($trx['total_bayar']) ?></div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                    <?= htmlspecialchars($trx['waktu']) ?> | Kasir <?= htmlspecialchars($trx['kasir']) ?> | <?= $coin_desc ?>
+                </div>
+            </div>
+            <button type="button" class="trx-details-btn">Detail</button>
+        </div>
+    </div>
+    <?php endforeach; ?>
+</div>
+
+<!-- Floating Action Button + (Persis Figma K1) -->
 <a href="transaksi-baru.php" class="fab-btn" title="Transaksi Baru">+</a>
 
 <!-- Modal M1: Mulai Shift -->

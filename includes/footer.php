@@ -6,8 +6,7 @@ $show_bottom_nav = $show_bottom_nav ?? true;
     </main>
 
     <?php if ($show_bottom_nav): ?>
-        <!-- Bottom Nav khusus Mobile (Tersembunyi di Desktop/Laptop) -->
-        <nav class="bottom-nav bottom-nav-mobile">
+        <nav class="bottom-nav">
             <?php if ($app_role === 'kasir'): ?>
                 <a href="index.php" class="nav-tab <?= $active_tab === 'home' ? 'active' : '' ?>">
                     <span class="tab-icon">🏠</span>
@@ -69,7 +68,7 @@ $show_bottom_nav = $show_bottom_nav ?? true;
         </nav>
     <?php endif; ?>
 
-    <!-- Modal M5 / C3: Konfirmasi Keluar -->
+    <!-- Modal M5 / C3: Konfirmasi Keluar (Persis Figma) -->
     <div class="sheet-overlay" id="modalLogoutConfirm">
         <div class="sheet-card">
             <div class="sheet-handle"></div>
@@ -78,11 +77,11 @@ $show_bottom_nav = $show_bottom_nav ?? true;
                 <button type="button" class="sheet-close" onclick="closeModal('modalLogoutConfirm')">&times;</button>
             </div>
             <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
-                Anda akan mengakhiri sesi dan kembali ke halaman beranda.
+                Anda akan kembali ke halaman beranda.
             </p>
             <div style="display: flex; gap: 10px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal('modalLogoutConfirm')">Batal</button>
-                <a href="../logout.php" class="btn btn-primary" style="background: #dc2626;">Ya, Keluar</a>
+                <a href="../logout.php" class="btn btn-primary" style="background: #1e3a8a;">Ya, Keluar</a>
             </div>
         </div>
     </div>

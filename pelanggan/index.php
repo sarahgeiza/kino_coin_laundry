@@ -17,85 +17,75 @@ if ($filter === '7 Hari') {
 }
 ?>
 
-<div class="grid-2-desktop">
-
-    <!-- Kolom Kiri: Riwayat Cucian Pelanggan -->
+<!-- Banner Kartu Member Saya (Persis Figma C1) -->
+<div style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); border-radius: var(--radius-md); padding: 16px; color: #ffffff; display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(30, 58, 138, 0.25);">
     <div>
-        <div class="card">
-            <div class="card-title">
-                <span>Riwayat Cucian Anda</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Real-time tracking</span>
-            </div>
+        <span style="font-size: 11px; font-weight: 700; opacity: 0.85;">ID MEMBER: KC-P-0001</span>
+        <h3 style="font-size: 16px; font-weight: 900; margin-top: 2px;">Kartu Member Saya</h3>
+        <p style="font-size: 11px; opacity: 0.85; margin-top: 2px;">Tunjukkan QR ke kasir saat memesan koin</p>
+    </div>
+    <button type="button" class="btn" style="width: auto; background: #f59e0b; color: #1e3a8a; padding: 8px 14px; font-size: 12px; font-weight: 800; border-radius: 10px;" onclick="handleOpenCustomerQR()">
+        Lihat QR →
+    </button>
+</div>
 
-            <!-- Filter chips -->
-            <div class="filter-scroll" style="margin-bottom: 14px;">
-                <a href="index.php?filter=Semua" class="chip chip-orange <?= $filter === 'Semua' ? 'active' : '' ?>">Semua</a>
-                <a href="index.php?filter=7+Hari" class="chip chip-orange <?= $filter === '7 Hari' ? 'active' : '' ?>">7 Hari Terakhir</a>
-            </div>
+<!-- Metrik Pribadi Pelanggan (Persis Figma C1) -->
+<div class="metrics-row" style="margin-bottom: 14px;">
+    <div class="metric-box blue">
+        <div class="label">Total Transaksi</div>
+        <div class="value"><?= $filter === '7 Hari' ? '0' : '4x' ?></div>
+        <div class="sub">Cuci &amp; Kering</div>
+    </div>
+    <div class="metric-box orange">
+        <div class="label">Coin Cuci</div>
+        <div class="value"><?= $filter === '7 Hari' ? '0' : '3 pcs' ?></div>
+        <div class="sub">Telah digunakan</div>
+    </div>
+    <div class="metric-box amber">
+        <div class="label">Coin Kering</div>
+        <div class="value"><?= $filter === '7 Hari' ? '0' : '1 pc' ?></div>
+        <div class="sub">Telah digunakan</div>
+    </div>
+</div>
 
-            <?php if (empty($customer_txs)): ?>
-                <!-- Empty State C1b -->
-                <div style="text-align: center; padding: 40px 10px; color: var(--text-muted); font-size: 13px;">
-                    <div style="font-size: 32px; margin-bottom: 8px;">🧺</div>
-                    <strong style="color: var(--text-main); font-size: 14px;">Belum ada transaksi pada periode ini.</strong>
-                    <p style="font-size: 12px; margin-top: 4px;">Pilih filter "Semua" untuk melihat riwayat lengkap Anda.</p>
-                </div>
-            <?php else: ?>
-                <?php foreach ($customer_txs as $ctx): ?>
-                <div class="trx-item" style="cursor: default;">
-                    <div class="trx-top">
-                        <span class="trx-id"><?= htmlspecialchars($ctx['id']) ?></span>
-                        <span class="badge badge-lunas"><?= $ctx['status'] ?></span>
-                    </div>
-                    <div class="trx-name" style="font-size: 14px; margin: 2px 0;"><?= htmlspecialchars($ctx['layanan']) ?></div>
-                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
-                        <?= $ctx['kuantitas'] ?> • <?= $ctx['metode'] === 'Token' ? '🪙 Pembayaran Token Koin' : '💵 Tunai' ?>
-                    </div>
-                    <div class="trx-bottom" style="padding-top: 8px;">
-                        <span style="font-size: 11px; color: var(--text-muted);"><?= $ctx['tanggal'] ?> • <?= $ctx['waktu'] ?></span>
-                        <strong style="font-size: 15px; color: var(--primary-dark);"><?= format_rupiah($ctx['total_bayar']) ?></strong>
-                    </div>
-                </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
+<!-- Riwayat Cucian & Filter (Persis Figma C1, C1b) -->
+<div class="card">
+    <div class="card-title">
+        <span>Riwayat Cucian</span>
+        <span style="font-size: 11px; color: var(--text-muted);">Real-time tracking</span>
     </div>
 
-    <!-- Kolom Kanan: Kartu Member Digital & Statistik Token -->
-    <div>
-        <!-- Banner Kartu Member Saya (C1) -->
-        <div style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); border-radius: var(--radius-lg); padding: 20px; color: #ffffff; margin-bottom: 16px; box-shadow: 0 6px 18px rgba(30, 58, 138, 0.25);">
-            <span style="font-size: 11px; font-weight: 800; opacity: 0.85; letter-spacing: 0.5px;">KARTU MEMBER DIGITAL</span>
-            <h3 style="font-size: 18px; font-weight: 900; margin: 4px 0 2px 0;">Budi Santoso</h3>
-            <p style="font-size: 12px; opacity: 0.85; margin-bottom: 14px;">ID Member: <strong>KC-P-0001</strong></p>
-            <button type="button" class="btn" style="background: #f59e0b; color: #1e3a8a; padding: 10px 16px; font-size: 13px; font-weight: 800; border-radius: 10px;" onclick="handleOpenCustomerQR()">
-                Tampilkan Kartu QR Member →
-            </button>
-        </div>
-
-        <!-- Metrik Pribadi Pelanggan -->
-        <div class="card" style="padding: 16px;">
-            <div class="card-title">Statistik Penggunaan Koin</div>
-            <div class="metrics-row" style="margin-bottom: 0;">
-                <div class="metric-box blue">
-                    <div class="label">Total Transaksi</div>
-                    <div class="value"><?= $filter === '7 Hari' ? '0' : '4x' ?></div>
-                    <div class="sub">Cuci &amp; Kering</div>
-                </div>
-                <div class="metric-box orange">
-                    <div class="label">Coin Cuci</div>
-                    <div class="value"><?= $filter === '7 Hari' ? '0' : '3 pcs' ?></div>
-                    <div class="sub">Telah dipakai</div>
-                </div>
-                <div class="metric-box amber">
-                    <div class="label">Coin Kering</div>
-                    <div class="value"><?= $filter === '7 Hari' ? '0' : '1 pc' ?></div>
-                    <div class="sub">Telah dipakai</div>
-                </div>
-            </div>
-        </div>
+    <!-- Filter chips -->
+    <div class="filter-scroll" style="margin-bottom: 12px;">
+        <a href="index.php?filter=Semua" class="chip chip-orange <?= $filter === 'Semua' ? 'active' : '' ?>">Semua</a>
+        <a href="index.php?filter=7+Hari" class="chip chip-orange <?= $filter === '7 Hari' ? 'active' : '' ?>">7 Hari</a>
     </div>
 
+    <?php if (empty($customer_txs)): ?>
+        <!-- Empty State C1b -->
+        <div style="text-align: center; padding: 30px 10px; color: var(--text-muted); font-size: 13px;">
+            <div style="font-size: 28px; margin-bottom: 6px;">🧺</div>
+            <strong style="color: var(--text-main);">Belum ada transaksi pada periode ini.</strong>
+            <p style="font-size: 11px; margin-top: 4px;">Pilih filter "Semua" untuk melihat riwayat lengkap Anda.</p>
+        </div>
+    <?php else: ?>
+        <?php foreach ($customer_txs as $ctx): ?>
+        <div class="trx-item" style="cursor: default;">
+            <div class="trx-top">
+                <span class="trx-id"><?= htmlspecialchars($ctx['id']) ?></span>
+                <span class="badge badge-lunas"><?= $ctx['status'] ?></span>
+            </div>
+            <div class="trx-name" style="font-size: 13px; margin: 2px 0;"><?= htmlspecialchars($ctx['layanan']) ?></div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">
+                <?= $ctx['kuantitas'] ?> • <?= $ctx['metode'] === 'Token' ? '🪙 Pembayaran Token Koin' : '💵 Tunai' ?>
+            </div>
+            <div class="trx-bottom" style="padding-top: 6px;">
+                <span style="font-size: 11px; color: var(--text-muted);"><?= $ctx['tanggal'] ?> • <?= $ctx['waktu'] ?></span>
+                <strong style="font-size: 14px; color: var(--primary-dark);"><?= format_rupiah($ctx['total_bayar']) ?></strong>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
 </div>
 
 <!-- Modal C2: Kartu Member Digital Pelanggan -->

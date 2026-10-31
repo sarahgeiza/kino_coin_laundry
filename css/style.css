@@ -1,6 +1,6 @@
 /* ==========================================================================
-   Kino Coin Laundry - Unified Responsive Design System
-   Mobile-First (Figma Exact) + Desktop PC Web App (Modern Dashboard SaaS)
+   Kino Coin Laundry - Exact Figma UI/UX Design System
+   Matches 100% Figma Page 2 Mockups + Clean Fluid Expansion on PC
    ========================================================================== */
 
 :root {
@@ -48,14 +48,14 @@
 }
 
 body {
-    background-color: #f1f5f9;
+    background-color: var(--bg-main);
     color: var(--text-main);
     display: flex;
     justify-content: center;
     min-height: 100vh;
 }
 
-/* Base App Canvas */
+/* App Screen Canvas (Mobile: 100% width; PC: cleanly expanded up to 860px) */
 .app-screen {
     width: 100%;
     max-width: 100%;
@@ -67,180 +67,12 @@ body {
 }
 
 /* ==========================================================================
-   DESKTOP TOP NAVBAR (Hidden on mobile by default)
+   EXACT FIGMA HEADERS (No fake status bar, pure clean brand gradient)
    ========================================================================== */
-.desktop-navbar {
-    display: none; /* Shown at min-width: 768px */
-    background: #ffffff;
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: 90;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
-}
-
-.desktop-nav-inner {
-    max-width: 1240px;
-    margin: 0 auto;
-    padding: 12px 30px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-}
-
-.desktop-nav-brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.desktop-logo-badge {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-    background: var(--orange-gold);
-    color: var(--primary-dark);
-    font-size: 18px;
-    font-weight: 900;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.35);
-}
-
-.desktop-brand-title {
-    font-size: 16px;
-    font-weight: 900;
-    color: var(--text-main);
-    line-height: 1.2;
-}
-
-.desktop-brand-role {
-    margin-top: 2px;
-}
-
-.desktop-nav-menu {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.desktop-nav-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    border-radius: var(--radius-sm);
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-muted);
-    text-decoration: none;
-    transition: all 0.15s ease;
-}
-
-.desktop-nav-link:hover {
-    color: var(--primary);
-    background: var(--primary-subtle);
-}
-
-.desktop-nav-link.active {
-    color: var(--primary-dark);
-    background: var(--primary-subtle);
-    border: 1px solid #bfdbfe;
-}
-
-.desktop-nav-user {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.desktop-shift-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: #eff6ff;
-    color: #1e40af;
-    border: 1px solid #bfdbfe;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.dot-online {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #16a34a;
-    display: inline-block;
-}
-
-.desktop-user-badge {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.desktop-avatar {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: var(--orange);
-    color: white;
-    font-weight: 800;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.desktop-avatar.avatar-owner {
-    background: #2563eb;
-}
-
-.desktop-avatar.avatar-cust {
-    background: #1e3a8a;
-}
-
-.desktop-username {
-    font-size: 13px;
-    font-weight: 800;
-    color: var(--text-main);
-}
-
-.btn-logout-desktop {
-    background: #f1f5f9;
-    border: 1px solid var(--border);
-    color: var(--danger);
-    padding: 7px 12px;
-    border-radius: var(--radius-sm);
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.15s ease;
-}
-
-.btn-logout-desktop:hover {
-    background: #fee2e2;
-    border-color: #fca5a5;
-}
-
-/* ==========================================================================
-   MOBILE HEADER (Shown on mobile, hidden on desktop)
-   ========================================================================== */
-.mobile-header-only {
-    display: block;
-}
-
 .header-staff {
     background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
     color: #ffffff;
-    padding: 20px 20px 24px 20px;
+    padding: 22px 20px 26px 20px;
     border-bottom-left-radius: var(--radius-xl);
     border-bottom-right-radius: var(--radius-xl);
     position: relative;
@@ -250,7 +82,7 @@ body {
 .header-customer {
     background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
     color: #ffffff;
-    padding: 20px 20px 24px 20px;
+    padding: 22px 20px 26px 20px;
     border-bottom-left-radius: var(--radius-xl);
     border-bottom-right-radius: var(--radius-xl);
     position: relative;
@@ -260,9 +92,11 @@ body {
 .header-owner {
     background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
     color: #ffffff;
-    padding: 20px 20px 24px 20px;
+    padding: 22px 20px 26px 20px;
     border-bottom-left-radius: var(--radius-xl);
     border-bottom-right-radius: var(--radius-xl);
+    position: relative;
+    box-shadow: 0 4px 15px rgba(15, 23, 42, 0.2);
 }
 
 .header-top {
@@ -309,7 +143,7 @@ body {
    ========================================================================== */
 .content-area {
     flex: 1;
-    padding: 16px 18px 95px 18px; /* space for mobile bottom nav */
+    padding: 16px 18px 95px 18px; /* 95px padding bottom for bottom nav */
     width: 100%;
 }
 
@@ -318,7 +152,7 @@ body {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
     padding: 18px;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
     border: 1px solid var(--border);
     box-shadow: var(--shadow-sm);
 }
@@ -338,7 +172,7 @@ body {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
 }
 
 .metric-box {
@@ -594,12 +428,17 @@ body {
     background: #f1f5f9;
 }
 
-/* Mobile Bottom Navigation */
+/* ==========================================================================
+   EXACT FIGMA BOTTOM NAVIGATION
+   (Home, Transaksi, Pelanggan, Rekap, Keluar) with orange top-line active
+   ========================================================================== */
 .bottom-nav {
     position: fixed;
     bottom: 0;
-    left: 0;
-    right: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 100%;
     background: #ffffff;
     border-top: 1px solid var(--border);
     display: flex;
@@ -819,66 +658,39 @@ body {
     margin-top: 4px;
 }
 
-/* Grid helper */
-.grid-2-desktop {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px;
-}
-
 /* ==========================================================================
-   DESKTOP / LAPTOP / PC STYLES (min-width: 768px)
-   TRANSFORMS INTO A CLEAN, EXPANDED, PROFESSIONAL WEB APP
+   DESKTOP PC EXPANSION (min-width: 768px)
+   Keeps the EXACT UI/UX from Figma, but expands the canvas cleanly on PC
    ========================================================================== */
 @media (min-width: 768px) {
     body {
         background-color: #f1f5f9;
     }
 
-    /* 1. Show Desktop Top Navbar & Hide Mobile Components */
-    .desktop-navbar {
-        display: block !important;
-    }
-    .mobile-header-only {
-        display: none !important;
-    }
-    .bottom-nav-mobile {
-        display: none !important;
-    }
-    .fab-btn {
-        display: none !important; /* Action is in top desktop navbar */
-    }
-
-    /* 2. Main App Screen Container */
+    /* Screen container widens gracefully on PC without changing the design */
     .app-screen {
-        max-width: 1200px;
+        max-width: 860px;
         margin: 0 auto;
         background-color: #ffffff;
-        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.05);
-        border-left: 1px solid var(--border);
-        border-right: 1px solid var(--border);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.06);
     }
 
-    /* 3. Content Area Spaciousness */
+    /* Headers span nicely across container */
+    .header-staff, .header-customer, .header-owner {
+        padding: 28px 36px 32px 36px;
+        border-radius: 0 0 24px 24px;
+    }
+
+    .header-title-box h1 {
+        font-size: 24px;
+    }
+
     .content-area {
-        padding: 30px 40px 50px 40px; /* no bottom nav needed */
-    }
-
-    /* 4. Multi-column Desktop Grids */
-    .grid-2-desktop {
-        grid-template-columns: 1.15fr 0.85fr;
-        gap: 24px;
-        align-items: start;
-    }
-
-    .desktop-2col {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
+        padding: 24px 36px 100px 36px;
     }
 
     .metrics-row {
-        gap: 18px;
+        gap: 16px;
     }
 
     .metric-box {
@@ -886,20 +698,43 @@ body {
     }
 
     .metric-box .value {
-        font-size: 26px;
+        font-size: 24px;
     }
 
-    /* 5. Desktop Pop-Up Modal (clean centered card, not stretched bottom sheet) */
+    /* Bottom Nav remains the EXACT Figma bottom nav, centered cleanly */
+    .bottom-nav {
+        max-width: 860px;
+        border-radius: 18px 18px 0 0;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid var(--border);
+        border-bottom: none;
+    }
+
+    .nav-tab {
+        padding: 6px 20px;
+        font-size: 11px;
+    }
+
+    .nav-tab .tab-icon {
+        font-size: 22px;
+    }
+
+    /* FAB pinned to right edge of container */
+    .fab-btn {
+        right: max(24px, calc(50% - 400px));
+        bottom: 80px;
+    }
+
+    /* Modals popup smoothly in center on desktop */
     .sheet-overlay {
         align-items: center;
         justify-content: center;
     }
 
     .sheet-card {
-        max-width: 520px;
+        max-width: 480px;
         border-radius: 24px;
         margin: auto;
-        padding: 28px;
         animation: popModal 0.2s ease-out;
     }
 
