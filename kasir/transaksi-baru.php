@@ -1,6 +1,15 @@
 <?php
 require_once __DIR__ . '/../includes/data.php';
 
+if (
+    ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+    && ($_POST['action'] ?? '') === 'save_trx'
+    && !preg_match('/^[0-9]+$/', trim($_POST['wa_pelanggan'] ?? ''))
+) {
+    http_response_code(422);
+    exit('Nomor WhatsApp hanya boleh berisi angka.');
+}
+
 // Handle Save Transaction POST
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_trx') {
     $nama = trim($_POST['nama_pelanggan'] ?? '');
@@ -142,7 +151,7 @@ require_once __DIR__ . '/../includes/header.php';
 
         <div class="form-group" style="margin-top: 10px; margin-bottom: 0;">
             <label class="form-label">Nomor WhatsApp *</label>
-            <input type="tel" id="inputPelangganWA" name="wa_pelanggan" class="form-control" value="08123456789" placeholder="08123456789" required>
+            <input type="text" id="inputPelangganWA" name="wa_pelanggan" class="form-control" value="08123456789" placeholder="08123456789" inputmode="numeric" pattern="[0-9]+" title="Nomor WhatsApp hanya boleh berisi angka" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
         </div>
     </div>
 
@@ -261,7 +270,7 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
             <div class="form-group">
                 <label class="form-label">Nomor WhatsApp *</label>
-                <input type="tel" id="modalMemberWA" class="form-control" placeholder="Contoh: 08155556666" required>
+                <input type="text" id="modalMemberWA" class="form-control" placeholder="Contoh: 08155556666" inputmode="numeric" pattern="[0-9]+" title="Nomor WhatsApp hanya boleh berisi angka" oninput="this.setCustomValidity(''); this.value = this.value.replace(/[^0-9]/g, '')" required>
             </div>
             <div class="form-group">
                 <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
@@ -326,7 +335,13 @@ function handleQuickCreateMember(e) {
     const wa = document.getElementById('modalMemberWA').value.trim();
     const isMember = document.getElementById('modalMemberCheck').checked;
 
-    if (!nama || !wa) return;
+    if (!nama || !/^[0-9]+$/.test(wa)) {
+        document.getElementById('modalMemberWA').setCustomValidity('Nomor WhatsApp hanya boleh berisi angka.');
+        document.getElementById('modalMemberWA').reportValidity();
+        return;
+    }
+
+    document.getElementById('modalMemberWA').setCustomValidity('');
 
     const newCode = 'KC-P-000' + (window.__MOCK_MEMBERS.length + 1);
     const newMember = {
