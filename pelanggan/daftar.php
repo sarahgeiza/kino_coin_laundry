@@ -3,13 +3,17 @@ session_start();
 require_once __DIR__ . '/../includes/data.php';
 
 $reg_error = '';
+$wa_invalid = false;
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $nama = trim($_POST['nama'] ?? '');
     $wa = trim($_POST['wa'] ?? '');
     $pass = $_POST['password'] ?? '';
     $confirm = $_POST['confirm_password'] ?? '';
 
-    if ($pass !== $confirm) {
+    if (!preg_match('/^[0-9]+$/', $wa)) {
+        $wa_invalid = true;
+        $reg_error = 'Nomor WhatsApp hanya boleh berisi angka.';
+    } elseif ($pass !== $confirm) {
         $reg_error = 'Konfirmasi password tidak cocok. Silakan ulangi.';
     } else {
         $exists = false;
@@ -103,7 +107,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             </div>
         <?php endif; ?>
 
-            <form action="daftar.php" method="POST">
+            <form action="daftar.php" method="POST" id="formDaftarPelanggan">
                 <div class="form-group">
                     <label class="form-label">Nama Lengkap</label>
                     <input type="text" name="nama" class="form-control" placeholder="Nama lengkap Anda" required>
@@ -111,7 +115,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
                 <div class="form-group">
                     <label class="form-label">Nomor WhatsApp</label>
-                    <input type="tel" name="wa" class="form-control" placeholder="08123456789" required>
+                    <input type="text" id="nomorWhatsApp" name="wa" class="form-control" placeholder="08123456789" inputmode="numeric" value="<?= htmlspecialchars($wa ?? '') ?>" aria-describedby="peringatanNomorWhatsApp" required>
+                    <small id="peringatanNomorWhatsApp" role="alert" aria-live="polite" style="display:<?= $wa_invalid ? 'block' : 'none' ?>; color:#dc2626; font-size:12px; margin-top:5px;">
+                        Nomor WhatsApp hanya boleh berisi angka.
+                    </small>
                 </div>
 
                 <div class="form-group">
@@ -154,6 +161,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     </div>
 </div>
 
+<script>
+document.getElementById('formDaftarPelanggan').addEventListener('submit', function (event) {
+    const nomorWhatsApp = document.getElementById('nomorWhatsApp');
+    const peringatan = document.getElementById('peringatanNomorWhatsApp');
+    const hanyaAngka = /^[0-9]+$/.test(nomorWhatsApp.value.trim());
+
+    peringatan.style.display = hanyaAngka ? 'none' : 'block';
+    if (!hanyaAngka) {
+        event.preventDefault();
+        nomorWhatsApp.focus();
+    }
+});
+</script>
 <script src="../assets/js/app.js"></script>
 </body>
 </html>

@@ -7,46 +7,50 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $wa = trim($_POST['wa'] ?? '');
     $pass = $_POST['password'] ?? '';
 
-    // Search existing member by WhatsApp
-    $matched = null;
-    foreach ($_SESSION['members'] as $m) {
-        if ($m['wa'] === $wa || stripos($m['nama'], $wa) !== false) {
-            $matched = $m;
-            break;
+    if (!preg_match('/^[0-9]+$/', $wa)) {
+        $login_error = 'Nomor WhatsApp hanya boleh berisi angka.';
+    } else {
+        // Search existing member by WhatsApp
+        $matched = null;
+        foreach ($_SESSION['members'] as $m) {
+            if ($m['wa'] === $wa || stripos($m['nama'], $wa) !== false) {
+                $matched = $m;
+                break;
+            }
         }
-    }
 
-    if ($matched) {
-        // Verifikasi password jika akun terdaftar punya password
-        if (!empty($matched['password']) && $matched['password'] !== $pass) {
-            $login_error = 'Password salah. Silakan periksa kembali kata sandi Anda.';
+        if ($matched) {
+            // Verifikasi password jika akun terdaftar punya password
+            if (!empty($matched['password']) && $matched['password'] !== $pass) {
+                $login_error = 'Password salah. Silakan periksa kembali kata sandi Anda.';
+            } else {
+                $_SESSION['username'] = $matched['nama'];
+                $_SESSION['role'] = 'pelanggan';
+                header('Location: index.php');
+                exit;
+            }
         } else {
-            $_SESSION['username'] = $matched['nama'];
+            // Akun belum ada -> buat member baru
+            $new_id = count($_SESSION['members']) + 1;
+            $new_code = 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT);
+            $new_name = 'Pelanggan ' . substr($wa, -4);
+            $new_member = [
+                'id' => $new_id,
+                'nama' => $new_name,
+                'wa' => $wa,
+                'kode_kartu' => $new_code,
+                'is_member' => true,
+                'tx_count' => 0,
+                'coin_cuci' => 0,
+                'coin_kering' => 0,
+                'password' => $pass ?: 'password123'
+            ];
+            $_SESSION['members'][] = $new_member;
+            $_SESSION['username'] = $new_name;
             $_SESSION['role'] = 'pelanggan';
             header('Location: index.php');
             exit;
         }
-    } else {
-        // Akun belum ada -> buat member baru
-        $new_id = count($_SESSION['members']) + 1;
-        $new_code = 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT);
-        $new_name = 'Pelanggan ' . substr($wa, -4);
-        $new_member = [
-            'id' => $new_id,
-            'nama' => $new_name,
-            'wa' => $wa,
-            'kode_kartu' => $new_code,
-            'is_member' => true,
-            'tx_count' => 0,
-            'coin_cuci' => 0,
-            'coin_kering' => 0,
-            'password' => $pass ?: 'password123'
-        ];
-        $_SESSION['members'][] = $new_member;
-        $_SESSION['username'] = $new_name;
-        $_SESSION['role'] = 'pelanggan';
-        header('Location: index.php');
-        exit;
     }
 }
 ?>
@@ -109,10 +113,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             </div>
         <?php endif; ?>
 
-            <form action="login.php" method="POST">
+            <form action="login.php" method="POST" id="formLoginPelanggan">
                 <div class="form-group">
                     <label class="form-label">Nomor WhatsApp</label>
-                    <input type="text" name="wa" class="form-control" value="08123456789" placeholder="Contoh: 08123456789" required>
+                    <input type="text" id="nomorWhatsApp" name="wa" class="form-control" value="<?= htmlspecialchars($wa ?? '08123456789') ?>" placeholder="Contoh: 08123456789" aria-describedby="peringatanNomorWhatsApp" required>
+                    <small id="peringatanNomorWhatsApp" role="alert" aria-live="polite" style="display:<?= !empty($login_error) && !preg_match('/^[0-9]+$/', $wa ?? '') ? 'block' : 'none' ?>; color:#dc2626; font-size:12px; margin-top:5px;">
+                        Nomor WhatsApp hanya boleh berisi angka.
+                    </small>
                 </div>
 
                 <div class="form-group">
@@ -145,6 +152,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     </div>
 </div>
 
+<script>
+document.getElementById('formLoginPelanggan').addEventListener('submit', function (event) {
+    const nomorWhatsApp = document.getElementById('nomorWhatsApp');
+    const peringatan = document.getElementById('peringatanNomorWhatsApp');
+    const hanyaAngka = /^[0-9]+$/.test(nomorWhatsApp.value.trim());
+
+    peringatan.style.display = hanyaAngka ? 'none' : 'block';
+    if (!hanyaAngka) {
+        event.preventDefault();
+        nomorWhatsApp.focus();
+    }
+});
+</script>
 <script src="../assets/js/app.js"></script>
 </body>
 </html>

@@ -1,13 +1,17 @@
 <?php
 require_once __DIR__ . '/../includes/data.php';
 
+$member_error = '';
+
 // Handle Add Member POST
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $nama = trim($_POST['nama'] ?? '');
     $wa = trim($_POST['wa'] ?? '');
     $is_member = isset($_POST['is_member']);
 
-    if (!empty($nama) && !empty($wa)) {
+    if (!preg_match('/^[0-9]+$/', $wa)) {
+        $member_error = 'Nomor WhatsApp hanya boleh berisi angka.';
+    } elseif (!empty($nama) && !empty($wa)) {
         $new_id = count($_SESSION['members']) + 1;
         $new_code = 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT);
         $_SESSION['members'][] = [
@@ -38,8 +42,8 @@ $members = $_SESSION['members'];
 if (!empty($search)) {
     $members = array_filter($members, function($m) use ($search) {
         return (stripos($m['nama'], $search) !== false) || 
-               (stripos($m['wa'], $search) !== false) || 
-               (stripos($m['kode_kartu'], $search) !== false);
+            (stripos($m['wa'], $search) !== false) || 
+            (stripos($m['kode_kartu'], $search) !== false);
     });
 }
 ?>
@@ -53,6 +57,12 @@ if (!empty($search)) {
         + Tambah
     </button>
 </div>
+
+<?php if ($member_error !== ''): ?>
+    <div style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; padding:10px 14px; border-radius:10px; font-size:12px; font-weight:700; margin-bottom:14px;">
+        <?= htmlspecialchars($member_error) ?>
+    </div>
+<?php endif; ?>
 
 <!-- Search Bar -->
 <form action="pelanggan.php" method="GET" style="margin-bottom: 14px;">
@@ -131,7 +141,10 @@ if (!empty($search)) {
             </div>
             <div class="form-group">
                 <label class="form-label">Nomor WhatsApp *</label>
-                <input type="tel" name="wa" class="form-control" placeholder="Contoh: 08155556666" required>
+                <input type="text" id="memberWaInput" name="wa" class="form-control" placeholder="Contoh: 08155556666" inputmode="numeric" pattern="[0-9]+" title="Nomor WhatsApp hanya boleh berisi angka" aria-describedby="memberWaWarning" oninput="validateMemberWaInput(this)" required>
+                <small id="memberWaWarning" role="alert" aria-live="polite" style="display:none; color:#dc2626; font-size:12px; margin-top:5px;">
+                    Nomor WhatsApp hanya boleh berisi angka.
+                </small>
             </div>
             <div class="form-group">
                 <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
@@ -148,6 +161,12 @@ if (!empty($search)) {
 </div>
 
 <script>
+function validateMemberWaInput(input) {
+    const hasNonDigits = /[^0-9]/.test(input.value);
+    input.value = input.value.replace(/[^0-9]/g, '');
+    document.getElementById('memberWaWarning').style.display = hasNonDigits ? 'block' : 'none';
+}
+
 function viewMemberCard(m) {
     document.getElementById('cardMemberName').textContent = m.nama;
     document.getElementById('cardMemberId').textContent = m.kode_kartu;
