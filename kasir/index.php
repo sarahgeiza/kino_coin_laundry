@@ -60,7 +60,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
         <span>+ Transaksi Baru</span>
     </a>
     <button type="button" class="btn btn-outline" style="padding: 12px; font-size: 13px;" onclick="openModal('modalScanQr')">
-        <span>📷 Scan QR</span>
+        <span><?= get_icon('camera', 16) ?> Scan QR</span>
     </button>
 </div>
 
@@ -91,7 +91,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
 
 <!-- Banner Info Operasional Token vs Tunai -->
 <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 10px 14px; font-size: 12px; color: #1e40af; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-    <span style="font-size: 16px;">💡</span>
+    <?= get_icon('info', 18, '#1e40af') ?>
     <span>Pembayaran koin khusus Self Service. Drop off / retail dibayar tunai.</span>
 </div>
 
@@ -206,7 +206,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
         </div>
 
         <div id="qrViewfinder" style="width: 100%; height: 180px; border: 2.5px dashed #ea580c; border-radius: 16px; background: rgba(234, 88, 12, 0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 14px; position: relative; transition: all 0.2s;">
-            <div style="font-size: 32px; margin-bottom: 6px;">📷</div>
+            <div style="margin-bottom: 8px;"><?= get_icon('camera', 36, '#ea580c') ?></div>
             <div id="qrStatusText" style="font-size: 12px; font-weight: 700; color: #ea580c;">
                 Arahkan QR ke kamera...
             </div>

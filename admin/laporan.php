@@ -22,7 +22,7 @@ if ($periode === 'Kosong') {
         <span style="font-size: 11px; color: var(--text-muted);">Audit keuangan &amp; volume shift</span>
     </div>
     <button type="button" class="btn btn-outline" style="width: auto; padding: 6px 12px; font-size: 12px;" onclick="showToast('Laporan berhasil diekspor ke CSV', 'success')">
-        📥 Export
+        <?= get_icon('export', 14) ?> Export
     </button>
 </div>
 
@@ -49,7 +49,7 @@ if ($periode === 'Kosong') {
 <!-- Omset Summary & Chart -->
 <?php if (empty($txs)): ?>
     <div class="card" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
-        <div style="font-size: 32px; margin-bottom: 8px;">📊</div>
+        <div style="margin-bottom: 8px;"><?= get_icon('rekap', 36, '#94a3b8') ?></div>
         <strong style="font-size: 14px; color: var(--text-main);">Tidak ada transaksi di periode ini</strong>
         <p style="font-size: 12px; margin-top: 4px;">Pilih periode lain atau atur filter kasir.</p>
     </div>

@@ -3,6 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require_once __DIR__ . '/data.php';
+require_once __DIR__ . '/icons.php';
 
 $page_title = $page_title ?? 'Kino Coin Laundry';
 $app_role = $app_role ?? 'kasir'; // 'kasir' | 'pemilik' | 'pelanggan'
@@ -56,7 +57,9 @@ $user_avatar = strtoupper(substr($user_name, 0, 1));
                         <p style="color: #94a3b8;">Dashboard Monitoring Bisnis</p>
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <a href="javascript:void(0)" onclick="openModal('modalLogoutConfirm')" title="Keluar" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 20px;">🚪</a>
+                        <a href="javascript:void(0)" onclick="openModal('modalLogoutConfirm')" title="Keluar" style="color: rgba(255,255,255,0.7); display: flex; align-items: center;">
+                            <?= get_icon('keluar', 20, '#ffffff') ?>
+                        </a>
                         <div class="header-avatar blue-avatar">A</div>
                     </div>
                 </div>
@@ -68,7 +71,7 @@ $user_avatar = strtoupper(substr($user_name, 0, 1));
                     <div class="header-title-box">
                         <h1>Selamat datang,<br><?= htmlspecialchars($user_name) ?></h1>
                         <p>
-                            <span style="background: rgba(255,255,255,0.25); padding: 2px 8px; border-radius: 12px; font-weight: 700;">📍 Kino Coin Laundry</span>
+                            <span style="background: rgba(255,255,255,0.25); padding: 2px 8px; border-radius: 12px; font-weight: 700;">Kino Coin Laundry</span>
                             <span>• Buka 24 Jam</span>
                         </p>
                     </div>

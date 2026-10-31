@@ -85,7 +85,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
             <label class="form-label" style="margin-bottom: 0;">Pelanggan *</label>
             <div style="display: flex; gap: 6px;">
                 <button type="button" class="btn btn-outline" style="width: auto; padding: 4px 10px; font-size: 11px;" onclick="openModal('modalScanQr')">
-                    📷 Scan Kartu
+                    <?= get_icon('camera', 14) ?> Scan Kartu
                 </button>
                 <button type="button" class="btn btn-outline" style="width: auto; padding: 4px 10px; font-size: 11px;" onclick="openModal('modalNewMember')">
                     + Pelanggan Baru
@@ -156,7 +156,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
 
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border);">
                 <div>
-                    <strong>🪙 Coin Cuci</strong>
+                    <strong>Coin Cuci</strong>
                     <div style="font-size: 11px; color: var(--text-muted);">@ Rp 7.000 / pcs</div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -167,7 +167,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
 
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0;">
                 <div>
-                    <strong>🪙 Coin Kering</strong>
+                    <strong>Coin Kering</strong>
                     <div style="font-size: 11px; color: var(--text-muted);">@ Rp 10.000 / pcs</div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -249,7 +249,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
         </div>
 
         <div id="qrViewfinder" style="width: 100%; height: 180px; border: 2.5px dashed #ea580c; border-radius: 16px; background: rgba(234, 88, 12, 0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 14px; position: relative; transition: all 0.2s;">
-            <div style="font-size: 32px; margin-bottom: 6px;">📷</div>
+            <div style="margin-bottom: 8px;"><?= get_icon('camera', 36, '#ea580c') ?></div>
             <div id="qrStatusText" style="font-size: 12px; font-weight: 700; color: #ea580c;">
                 Arahkan QR ke kamera...
             </div>

@@ -64,7 +64,7 @@ if ($filter === '7 Hari') {
     <?php if (empty($customer_txs)): ?>
         <!-- Empty State C1b -->
         <div style="text-align: center; padding: 30px 10px; color: var(--text-muted); font-size: 13px;">
-            <div style="font-size: 28px; margin-bottom: 6px;">🧺</div>
+            <div style="margin-bottom: 8px;"><?= get_icon('master', 32, '#94a3b8') ?></div>
             <strong style="color: var(--text-main);">Belum ada transaksi pada periode ini.</strong>
             <p style="font-size: 11px; margin-top: 4px;">Pilih filter "Semua" untuk melihat riwayat lengkap Anda.</p>
         </div>
@@ -77,7 +77,7 @@ if ($filter === '7 Hari') {
             </div>
             <div class="trx-name" style="font-size: 13px; margin: 2px 0;"><?= htmlspecialchars($ctx['layanan']) ?></div>
             <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">
-                <?= $ctx['kuantitas'] ?> • <?= $ctx['metode'] === 'Token' ? '🪙 Pembayaran Token Koin' : '💵 Tunai' ?>
+                <?= $ctx['kuantitas'] ?> • <?= $ctx['metode'] === 'Token' ? 'Pembayaran Token' : 'Tunai' ?>
             </div>
             <div class="trx-bottom" style="padding-top: 6px;">
                 <span style="font-size: 11px; color: var(--text-muted);"><?= $ctx['tanggal'] ?> • <?= $ctx['waktu'] ?></span>

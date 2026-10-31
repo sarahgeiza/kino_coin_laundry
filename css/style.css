@@ -747,3 +747,17 @@ body {
         display: none;
     }
 }
+
+.nav-tab .tab-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin-bottom: 2px;
+}
+
+.svg-icon {
+    display: inline-block;
+    vertical-align: middle;
+}

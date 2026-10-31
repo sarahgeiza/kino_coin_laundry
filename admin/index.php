@@ -19,12 +19,12 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="sub" style="color: #86efac; font-weight: 700;">↑ 8% vs kemarin</div>
         </div>
         <div class="metric-box orange">
-            <div class="label">🪙 Coin Cuci</div>
+            <div class="label">Coin Cuci</div>
             <div class="value">124 pcs</div>
             <div class="sub">= Rp 868.000</div>
         </div>
         <div class="metric-box amber">
-            <div class="label">🪙 Coin Kering</div>
+            <div class="label">Coin Kering</div>
             <div class="value">130 pcs</div>
             <div class="sub">= Rp 1.300.000</div>
         </div>

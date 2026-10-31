@@ -56,7 +56,7 @@ if (!empty($search)) {
 
         <div style="display: flex; justify-content: flex-end; gap: 8px;">
             <button type="button" class="btn btn-outline" style="width: auto; padding: 5px 12px; font-size: 11px;" onclick="viewMemberCard(<?= htmlspecialchars(json_encode($m)) ?>)">
-                💳 Kartu QR
+                <?= get_icon('qr', 14) ?> Kartu QR
             </button>
         </div>
     </div>
