@@ -90,10 +90,10 @@ $show_bottom_nav = $show_bottom_nav ?? true;
 
 </div><!-- end .app-screen -->
 
-<script src="../js/qrcode.min.js"></script>
-<script src="../js/html5-qrcode.min.js"></script>
+<script src="../js/vendor/qrcode.min.js"></script>
+<script src="../js/vendor/html5-qrcode.min.js"></script>
 <script src="../js/api.js"></script>
-<script defer src="../js/alpine.min.js"></script>
+<script defer src="../js/vendor/alpine.min.js"></script>
 <script src="../js/app.js"></script>
 </body>
 </html>
