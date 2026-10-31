@@ -1,19 +1,47 @@
 <?php
 
-$host = "localhost";
-$port = "5432";
-$dbname = "kino_coin_laundry";
-$username = "postgres";
-$password = "12345678";
+declare(strict_types=1);
 
-$conn = pg_connect(
-    "host=$host port=$port dbname=$dbname user=$username password=$password"
-);
+use PgSql\Connection;
 
-if (!$conn) {
-    die("Koneksi database gagal.");
+/**
+ * Membuat koneksi PostgreSQL.
+ * File ini TIDAK boleh mencetak apa pun (echo) agar aman dipakai di API/JSON.
+ * Kredensial dibaca dari config/database.local.php (tidak di-commit).
+ */
+function getConnection(): Connection
+{
+    static $conn = null;
+
+    if ($conn instanceof Connection) {
+        return $conn;
+    }
+
+    $configFile = __DIR__ . '/database.local.php';
+    if (!is_file($configFile)) {
+        throw new RuntimeException(
+            'File config/database.local.php belum ada. Salin dari database.example.php.'
+        );
+    }
+
+    $cfg = require $configFile;
+
+    $dsn = sprintf(
+        'host=%s port=%s dbname=%s user=%s password=%s',
+        $cfg['host'],
+        $cfg['port'],
+        $cfg['dbname'],
+        $cfg['username'],
+        $cfg['password']
+    );
+
+    $conn = @pg_connect($dsn);
+
+    if ($conn === false) {
+        throw new RuntimeException('Koneksi database gagal.');
+    }
+
+    return $conn;
 }
 
-echo "Database berhasil terhubung.";
-
-?>
+$conn = getConnection();

@@ -1,0 +1,2 @@
+Semua 22 file PHP lulus php -l.
+Belum ada pengujian integrasi PostgreSQL karena tidak tersedia kredensial/database pengguna.
