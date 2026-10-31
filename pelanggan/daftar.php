@@ -1,0 +1,135 @@
+<?php
+session_start();
+require_once __DIR__ . '/../includes/data.php';
+
+$success_msg = '';
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    $nama = trim($_POST['nama'] ?? '');
+    $wa = trim($_POST['wa'] ?? '');
+    $pass = $_POST['password'] ?? '';
+
+    // Register into session members
+    $new_id = count($_SESSION['members']) + 1;
+    $_SESSION['members'][] = [
+        'id' => $new_id,
+        'nama' => $nama,
+        'wa' => $wa,
+        'kode_kartu' => 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT),
+        'is_member' => true,
+        'tx_count' => 0,
+        'coin_cuci' => 0,
+        'coin_kering' => 0,
+        'password' => $pass
+    ];
+
+    $_SESSION['username'] = $nama;
+    $_SESSION['role'] = 'pelanggan';
+    header('Location: index.php?toast=registered');
+    exit;
+}
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daftar Pelanggan - Kino Coin Laundry</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .login-screen-cust {
+            background: linear-gradient(180deg, #d97706 0%, #ea580c 35%, #f8fafc 35%, #f8fafc 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .login-header-top {
+            padding: 24px 24px 16px 24px;
+            color: #ffffff;
+            text-align: center;
+        }
+        .login-sheet-card {
+            background: #ffffff;
+            border-top-left-radius: 28px;
+            border-top-right-radius: 28px;
+            padding: 26px 24px 34px 24px;
+            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.08);
+            flex: 1;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-screen login-screen-cust">
+    <div>
+        <div class="status-bar white-text">
+            <span>9:41</span>
+            <div class="icons"><span>📶</span><span>🔋</span></div>
+        </div>
+
+        <div class="login-header-top">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: #ffffff; color: #ea580c; font-weight: 900; font-size: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px auto;">
+                KC
+            </div>
+            <h2 style="font-size: 18px; font-weight: 900;">Kino Coin Laundry</h2>
+            <p style="font-size: 12px; opacity: 0.9;">Portal Pelanggan</p>
+        </div>
+    </div>
+
+    <div class="login-sheet-card">
+        <h2 style="font-size: 20px; font-weight: 900; color: var(--text-main); margin-bottom: 4px;">Daftar Akun Baru</h2>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Isi data diri untuk membuat akun pelanggan</p>
+
+        <form action="daftar.php" method="POST">
+            <div class="form-group">
+                <label class="form-label">Nama Lengkap</label>
+                <input type="text" name="nama" class="form-control" placeholder="Nama lengkap Anda" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Nomor WhatsApp</label>
+                <input type="tel" name="wa" class="form-control" placeholder="08123456789" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <div style="position: relative;">
+                    <input type="password" id="passDaftar" name="password" class="form-control" placeholder="Buat password" style="padding-right: 80px;" required>
+                    <button type="button" onclick="togglePassword('passDaftar', this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 12px; font-weight: 700; color: #ea580c; cursor: pointer;">
+                        Lihat
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Konfirmasi Password</label>
+                <div style="position: relative;">
+                    <input type="password" id="passConfirm" name="confirm_password" class="form-control" placeholder="Ulangi password" style="padding-right: 80px;" required>
+                    <button type="button" onclick="togglePassword('passConfirm', this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 12px; font-weight: 700; color: #ea580c; cursor: pointer;">
+                        Lihat
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-orange" style="margin-top: 14px; padding: 14px; font-size: 15px;">
+                Daftar Akun
+            </button>
+        </form>
+
+        <div style="margin-top: 18px; text-align: center; font-size: 13px;">
+            <a href="login.php" style="color: #ea580c; text-decoration: none; font-weight: 700;">
+                Sudah punya akun? Masuk di sini
+            </a>
+        </div>
+
+        <div style="margin-top: 12px; text-align: center;">
+            <a href="../index.php" style="font-size: 12px; color: var(--text-muted); text-decoration: none;">
+                ← Kembali ke Beranda
+            </a>
+        </div>
+    </div>
+</div>
+
+<script src="../js/app.js"></script>
+</body>
+</html>

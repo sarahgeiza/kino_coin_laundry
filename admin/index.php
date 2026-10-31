@@ -1,116 +1,62 @@
 <?php
-$page_title = 'Owner Dashboard - Kino Coin Laundry';
-$header_role = 'Mode Pemilik';
-$header_user = 'Pemilik';
-$header_avatar = '👑';
-$header_title = 'Dashboard 👑';
-$header_subtitle = 'Monitoring Real-time Mesin, Koin & Shift';
-$current_role = 'admin';
+$page_title = 'Dashboard Pemilik - Kino Coin Laundry';
+$app_role = 'pemilik';
 $active_tab = 'home';
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<!-- Kartu Metrik Bisnis -->
-<div class="metrics-scroll">
-    <div class="metric-card blue">
-        <div class="metric-label">Hari Ini</div>
-        <div class="metric-value">Rp 1.25jt</div>
-        <div class="metric-sub" style="color: #86efac; font-weight: bold;">↑ 8% dibanding kemarin</div>
+<!-- Section Monitoring Bisnis -->
+<div class="card" style="padding: 14px;">
+    <div class="card-title" style="margin-bottom: 10px;">
+        <span>Monitoring Bisnis</span>
+        <span style="font-size: 11px; color: var(--text-muted);">Hari Ini</span>
     </div>
-    <div class="metric-card orange">
-        <div class="metric-label">🪙 Koin 500</div>
-        <div class="metric-value">1.240</div>
-        <div class="metric-sub">= Rp 620.000</div>
-    </div>
-    <div class="metric-card amber">
-        <div class="metric-label">🪙 Koin 1000</div>
-        <div class="metric-value">630</div>
-        <div class="metric-sub">= Rp 630.000</div>
+    <div class="metrics-row" style="margin-bottom: 0;">
+        <div class="metric-box blue">
+            <div class="label">Omset Hari Ini</div>
+            <div class="value">Rp 1.25jt</div>
+            <div class="sub" style="color: #86efac; font-weight: 700;">↑ 8% vs kemarin</div>
+        </div>
+        <div class="metric-box orange">
+            <div class="label">🪙 Coin Cuci</div>
+            <div class="value">124 pcs</div>
+            <div class="sub">= Rp 868.000</div>
+        </div>
+        <div class="metric-box amber">
+            <div class="label">🪙 Coin Kering</div>
+            <div class="value">130 pcs</div>
+            <div class="sub">= Rp 1.300.000</div>
+        </div>
     </div>
 </div>
 
-<div class="responsive-grid-2">
-    <!-- Grafik Koin Terkumpul 7 Hari -->
-    <div class="card">
-        <div class="card-title">
-            <span>Koin Terkumpul (7 Hari)</span>
-            <span style="font-size: 11px; color: var(--text-muted);">6 Mei — 12 Mei</span>
-        </div>
-
-        <div class="chart-container">
-            <div class="bar-chart">
-                <?php
-                $chart_data = [
-                    ['day' => 'Sen', 'h_org' => '50%', 'h_blu' => '40%'],
-                    ['day' => 'Sel', 'h_org' => '65%', 'h_blu' => '55%'],
-                    ['day' => 'Rab', 'h_org' => '45%', 'h_blu' => '60%'],
-                    ['day' => 'Kam', 'h_org' => '70%', 'h_blu' => '50%'],
-                    ['day' => 'Jum', 'h_org' => '85%', 'h_blu' => '75%'],
-                    ['day' => 'Sab', 'h_org' => '95%', 'h_blu' => '90%'],
-                    ['day' => 'Min', 'h_org' => '80%', 'h_blu' => '70%'],
-                ];
-                foreach ($chart_data as $cd):
-                ?>
-                <div class="chart-bar-group">
-                    <div class="bar-stack">
-                        <div class="bar-pillar bar-orange" style="height: <?= $cd['h_org'] ?>;" title="Koin 500"></div>
-                        <div class="bar-pillar bar-blue" style="height: <?= $cd['h_blu'] ?>;" title="Koin 1000"></div>
-                    </div>
-                    <span class="bar-label"><?= $cd['day'] ?></span>
-                </div>
-                <?php endforeach; ?>
-            </div>
-
-            <div class="chart-legend">
-                <div class="legend-item">
-                    <div class="legend-dot" style="background: var(--accent);"></div>
-                    <span>Koin 500</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-dot" style="background: var(--primary-dark);"></div>
-                    <span>Koin 1.000</span>
-                </div>
-            </div>
-        </div>
+<!-- Rekapitulasi Shift Terbaru -->
+<div class="card">
+    <div class="card-title">
+        <span>Rekapitulasi Shift</span>
+        <a href="laporan.php" style="font-size: 12px; color: var(--primary-light); text-decoration: none;">Lihat Laporan →</a>
     </div>
 
-    <!-- Rekap Shift Terbaru -->
-    <div class="card">
-        <div class="card-title">
-            <span>Rekap Shift Terbaru</span>
-            <a href="laporan.php" style="color: var(--primary-light); font-size: 13px; text-decoration: none; font-weight: 600;">Semua Laporan</a>
+    <?php foreach ($_SESSION['shifts_recap'] as $sr): ?>
+    <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <strong style="font-size: 13px; color: var(--text-main);">
+                <?= strtoupper($sr['tanggal']) ?> • <?= strtoupper($sr['shift']) ?>
+            </strong>
+            <span class="badge <?= $sr['status'] === 'Valid' ? 'badge-lunas' : 'badge-kurang' ?>">
+                <?= htmlspecialchars($sr['status']) ?>
+            </span>
         </div>
-
-        <?php foreach ($_SESSION['shifts_recap'] as $sr): ?>
-        <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px; margin-bottom: 10px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <strong style="font-size: 13px; letter-spacing: 0.5px;">
-                    <?= strtoupper($sr['tanggal']) ?> • <?= strtoupper($sr['shift']) ?>
-                </strong>
-                <span class="badge <?= $sr['status'] === 'Valid' ? 'badge-success' : 'badge-warning' ?>">
-                    <?= htmlspecialchars($sr['status']) ?>
-                </span>
-            </div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
-                Kasir: <strong><?= htmlspecialchars($sr['kasir']) ?></strong> | <?= $sr['trx_count'] ?> trx • <?= $sr['total_kg'] ?> kg
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border-color); padding-top: 6px;">
-                <div style="font-size: 12px; color: var(--text-muted);">
-                    500: <?= $sr['koin_500'] ?> pcs | 1K: <?= $sr['koin_1000'] ?> pcs
-                </div>
-                <div style="font-size: 15px; font-weight: 800; color: var(--primary-dark);">
-                    <?= format_rupiah($sr['pendapatan']) ?>
-                </div>
-            </div>
-            <?php if ($sr['selisih'] != 0): ?>
-                <div style="font-size: 11px; color: var(--danger); font-weight: 700; margin-top: 4px;">
-                    ⚠️ Selisih: <?= format_rupiah($sr['selisih']) ?>
-                </div>
-            <?php endif; ?>
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">
+            Kasir: <strong><?= htmlspecialchars($sr['kasir']) ?></strong> • <?= $sr['trx_count'] ?> trx • <?= $sr['total_kg'] ?> kg
         </div>
-        <?php endforeach; ?>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border); padding-top: 6px; font-size: 12px;">
+            <span style="color: var(--text-muted);">Cuci: <?= $sr['koin_cuci'] ?> pcs | Kering: <?= $sr['koin_kering'] ?> pcs</span>
+            <strong style="font-size: 14px; color: var(--primary-dark);"><?= format_rupiah($sr['pendapatan']) ?></strong>
+        </div>
     </div>
+    <?php endforeach; ?>
 </div>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

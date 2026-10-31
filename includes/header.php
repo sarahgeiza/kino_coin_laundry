@@ -5,13 +5,13 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/data.php';
 
 $page_title = $page_title ?? 'Kino Coin Laundry';
-$header_role = $header_role ?? 'Kasir';
-$header_user = $header_user ?? 'Daniel';
-$header_avatar = $header_avatar ?? substr($header_user, 0, 1);
-$header_theme = $header_theme ?? 'blue';
-$header_title = $header_title ?? ('Selamat siang, ' . $header_user . ' 👋');
-$header_subtitle = $header_subtitle ?? 'Shift Siang • 14:00 — 20:00 • 12 Mei 2026';
+$app_role = $app_role ?? 'kasir'; // 'kasir' | 'pemilik' | 'pelanggan'
+$active_tab = $active_tab ?? 'home';
 $show_app_header = $show_app_header ?? true;
+$show_bottom_nav = $show_bottom_nav ?? true;
+
+$user_name = $_SESSION['username'] ?? ($app_role === 'pemilik' ? 'Pemilik' : ($app_role === 'pelanggan' ? 'Budi' : 'Daniel'));
+$user_avatar = strtoupper(substr($user_name, 0, 1));
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -20,23 +20,75 @@ $show_app_header = $show_app_header ?? true;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($page_title) ?></title>
     <link rel="stylesheet" href="../css/style.css">
+    <script>
+        // Inject mock state for client API service
+        window.__MOCK_SERVICES = <?= json_encode($_SESSION['services'] ?? []) ?>;
+        window.__MOCK_MEMBERS = <?= json_encode($_SESSION['members'] ?? []) ?>;
+        window.__MOCK_TRANSACTIONS = <?= json_encode($_SESSION['transactions'] ?? []) ?>;
+    </script>
 </head>
 <body>
-<div class="app-container">
-<?php if ($show_app_header): ?>
-    <header class="app-header <?= $header_theme === 'orange' ? 'header-orange' : '' ?>">
-        <div class="header-top">
-            <span class="role-badge"><?= htmlspecialchars($header_role) ?></span>
-            <div class="avatar-circle <?= $header_theme === 'orange' ? 'avatar-blue' : '' ?>">
-                <?= htmlspecialchars($header_avatar) ?>
-            </div>
-        </div>
-        <h1 class="greeting-text"><?= htmlspecialchars($header_title) ?></h1>
-        <?php if (!empty($header_subtitle)): ?>
-            <div class="sub-greeting">
-                <span><?= htmlspecialchars($header_subtitle) ?></span>
-            </div>
+
+<div class="app-screen">
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <?php if ($show_app_header): ?>
+        <?php if ($app_role === 'kasir'): ?>
+            <header class="header-staff">
+                <div class="status-bar white-text" style="padding: 0 0 10px 0;">
+                    <span>9:41</span>
+                    <div class="icons"><span>📶</span><span>🔋</span></div>
+                </div>
+                <div class="header-top">
+                    <div class="header-title-box">
+                        <h1>Selamat siang,<br><?= htmlspecialchars($user_name) ?></h1>
+                        <p>
+                            <span class="badge badge-token" style="background: rgba(255,255,255,0.2); color: white; border: none;">Shift Siang</span>
+                            <span>• 14:00 — 20:00 • 31 Okt 2026</span>
+                        </p>
+                    </div>
+                    <div class="header-avatar"><?= $user_avatar ?></div>
+                </div>
+            </header>
+
+        <?php elseif ($app_role === 'pemilik'): ?>
+            <header class="header-owner">
+                <div class="status-bar white-text" style="padding: 0 0 10px 0;">
+                    <span>9:41</span>
+                    <div class="icons"><span>📶</span><span>🔋</span></div>
+                </div>
+                <div class="header-top">
+                    <div class="header-title-box">
+                        <h1>Selamat malam, Pemilik</h1>
+                        <p style="color: #94a3b8;">Dashboard Monitoring Bisnis</p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <a href="javascript:void(0)" onclick="openModal('modalLogoutConfirm')" title="Keluar" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 18px;">🚪</a>
+                        <div class="header-avatar" style="background: #3b82f6;">A</div>
+                    </div>
+                </div>
+            </header>
+
+        <?php elseif ($app_role === 'pelanggan'): ?>
+            <header class="header-customer">
+                <div class="status-bar white-text" style="padding: 0 0 10px 0;">
+                    <span>9:41</span>
+                    <div class="icons"><span>📶</span><span>🔋</span></div>
+                </div>
+                <div class="header-top">
+                    <div class="header-title-box">
+                        <h1>Selamat datang,<br><?= htmlspecialchars($user_name) ?></h1>
+                        <p>
+                            <span style="background: rgba(255,255,255,0.25); padding: 2px 8px; border-radius: 12px; font-weight: 700;">📍 Kino Coin Laundry</span>
+                            <span>• Buka 24 Jam</span>
+                        </p>
+                    </div>
+                    <div class="header-avatar" style="background: #1e3a8a;"><?= $user_avatar ?></div>
+                </div>
+            </header>
         <?php endif; ?>
-    </header>
-<?php endif; ?>
-<main class="app-content">
+    <?php endif; ?>
+
+    <main class="content-area">

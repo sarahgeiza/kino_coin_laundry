@@ -1,143 +1,471 @@
 <?php
-// Session-based data store that mimics PostgreSQL tables
-// Easily replaced with PDO / pg_query in backend phase
+// Kino Coin Laundry - State & Data Store
+// Aligned 100% with Figma Page 2 Design Overhaul
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Initial seed data if not present in session
-if (!isset($_SESSION['initialized'])) {
+// Reset or init database mock in session
+if (!isset($_SESSION['kino_initialized'])) {
+    // 1. Master Layanan (Self Service Token, Drop Off Tunai, Additional Tunai)
     $_SESSION['services'] = [
-        ['id' => 1, 'nama' => 'Cuci Kering', 'tarif' => 6000, 'durasi' => '2 hari', 'status' => 'Aktif', 'icon' => 'baskom'],
-        ['id' => 2, 'nama' => 'Cuci Setrika', 'tarif' => 8000, 'durasi' => '2 hari', 'status' => 'Aktif', 'icon' => 'baju'],
-        ['id' => 3, 'nama' => 'Setrika Saja', 'tarif' => 5000, 'durasi' => '1 hari', 'status' => 'Aktif', 'icon' => 'setrika'],
-        ['id' => 4, 'nama' => 'Bed Cover', 'tarif' => 15000, 'durasi' => '3 hari', 'status' => 'Aktif', 'icon' => 'kasur']
+        // Self Service (Token)
+        [
+            'id' => 1,
+            'kategori' => 'SELF_SERVICE',
+            'kategori_label' => 'Self Service (Token)',
+            'nama' => 'Cuci',
+            'deskripsi' => '1 Coin Cuci (Rp 7.000)',
+            'tarif' => 7000,
+            'koin_cuci_req' => 1,
+            'koin_kering_req' => 0,
+            'satuan' => 'putaran',
+            'durasi' => '45 menit',
+            'status' => 'Aktif',
+            'icon' => '🧺'
+        ],
+        [
+            'id' => 2,
+            'kategori' => 'SELF_SERVICE',
+            'kategori_label' => 'Self Service (Token)',
+            'nama' => 'Kering',
+            'deskripsi' => '1 Coin Kering (Rp 10.000)',
+            'tarif' => 10000,
+            'koin_cuci_req' => 0,
+            'koin_kering_req' => 1,
+            'satuan' => 'putaran',
+            'durasi' => '45 menit',
+            'status' => 'Aktif',
+            'icon' => '♨️'
+        ],
+        [
+            'id' => 3,
+            'kategori' => 'SELF_SERVICE',
+            'kategori_label' => 'Self Service (Token)',
+            'nama' => 'Cuci Kering',
+            'deskripsi' => 'Cuci Kering — Rp 16.000 / 7kg (Hemat Rp 1.000)',
+            'tarif' => 16000,
+            'koin_cuci_req' => 1,
+            'koin_kering_req' => 1,
+            'satuan' => 'putaran',
+            'durasi' => '90 menit',
+            'status' => 'Aktif',
+            'icon' => '👕'
+        ],
+        [
+            'id' => 4,
+            'kategori' => 'SELF_SERVICE',
+            'kategori_label' => 'Self Service (Token)',
+            'nama' => 'Extra Spin',
+            'deskripsi' => 'Peras tambahan kecepatan tinggi',
+            'tarif' => 4000,
+            'koin_cuci_req' => 0,
+            'koin_kering_req' => 0,
+            'satuan' => 'putaran',
+            'durasi' => '15 menit',
+            'status' => 'Aktif',
+            'icon' => '🌀'
+        ],
+        [
+            'id' => 5,
+            'kategori' => 'SELF_SERVICE',
+            'kategori_label' => 'Self Service (Token)',
+            'nama' => 'Extra Dry',
+            'deskripsi' => 'Kering ekstra / 20 menit',
+            'tarif' => 5000,
+            'koin_cuci_req' => 0,
+            'koin_kering_req' => 1,
+            'satuan' => '20 menit',
+            'durasi' => '20 menit',
+            'status' => 'Aktif',
+            'icon' => '☀️'
+        ],
+        // Drop Off (Tunai)
+        [
+            'id' => 6,
+            'kategori' => 'DROP_OFF',
+            'kategori_label' => 'Drop Off (Tunai)',
+            'nama' => 'Cuci Kering (Drop Off)',
+            'deskripsi' => 'Cuci Kering — Rp 20.000 / 7kg',
+            'tarif' => 20000,
+            'koin_cuci_req' => 0,
+            'koin_kering_req' => 0,
+            'satuan' => '7 kg',
+            'durasi' => '1 hari',
+            'status' => 'Aktif',
+            'icon' => '📦'
+        ],
+        [
+            'id' => 7,
+            'kategori' => 'DROP_OFF',
+            'kategori_label' => 'Drop Off (Tunai)',
+            'nama' => 'Lipat',
+            'deskripsi' => 'Jasa lipat rapi — Rp 1.500 / kg',
+            'tarif' => 1500,
+            'koin_cuci_req' => 0,
+            'koin_kering_req' => 0,
+            'satuan' => 'kg',
+            'durasi' => '1 hari',
+            'status' => 'Aktif',
+            'icon' => '📐'
+        ],
+        // Additional (Tunai)
+        [
+            'id' => 8,
+            'kategori' => 'ADDITIONAL',
+            'kategori_label' => 'Additional (Tunai)',
+            'nama' => 'Sabun Deterjen',
+            'deskripsi' => 'Deterjen cair konsentrat — Rp 1.500 / Pcs',
+            'tarif' => 1500,
+            'koin_cuci_req' => 0,
+            'koin_kering_req' => 0,
+            'satuan' => 'pcs',
+            'durasi' => 'Langsung',
+            'status' => 'Aktif',
+            'icon' => '🧴'
+        ],
+        [
+            'id' => 9,
+            'kategori' => 'ADDITIONAL',
+            'kategori_label' => 'Additional (Tunai)',
+            'nama' => 'Softener Pewangi',
+            'deskripsi' => 'Pewangi & pelembut — Rp 1.500 / Pcs',
+            'tarif' => 1500,
+            'koin_cuci_req' => 0,
+            'koin_kering_req' => 0,
+            'satuan' => 'pcs',
+            'durasi' => 'Langsung',
+            'status' => 'Aktif',
+            'icon' => '🌸'
+        ],
+        [
+            'id' => 10,
+            'kategori' => 'ADDITIONAL',
+            'kategori_label' => 'Additional (Tunai)',
+            'nama' => 'Kresek Laundry',
+            'deskripsi' => 'Kantong kresek tebal — Rp 2.000 / Pcs',
+            'tarif' => 2000,
+            'koin_cuci_req' => 0,
+            'koin_kering_req' => 0,
+            'satuan' => 'pcs',
+            'durasi' => 'Langsung',
+            'status' => 'Aktif',
+            'icon' => '🛍️'
+        ]
     ];
 
+    // 2. Data Pelanggan & Member
+    $_SESSION['members'] = [
+        [
+            'id' => 1,
+            'nama' => 'Budi Santoso',
+            'wa' => '08123456789',
+            'kode_kartu' => 'KC-P-0001',
+            'is_member' => true,
+            'tx_count' => 4,
+            'coin_cuci' => 3,
+            'coin_kering' => 1,
+            'password' => 'password123'
+        ],
+        [
+            'id' => 2,
+            'nama' => 'Sari Dewi',
+            'wa' => '08129876543',
+            'kode_kartu' => 'KC-P-0002',
+            'is_member' => true,
+            'tx_count' => 2,
+            'coin_cuci' => 2,
+            'coin_kering' => 1,
+            'password' => 'password123'
+        ],
+        [
+            'id' => 3,
+            'nama' => 'Andi Pratama',
+            'wa' => '08131112222',
+            'kode_kartu' => 'KC-P-0003',
+            'is_member' => true,
+            'tx_count' => 3,
+            'coin_cuci' => 1,
+            'coin_kering' => 2,
+            'password' => 'password123'
+        ],
+        [
+            'id' => 4,
+            'nama' => 'Rina Marlina',
+            'wa' => '08155556666',
+            'kode_kartu' => 'KC-P-0004',
+            'is_member' => false, // Non-member
+            'tx_count' => 1,
+            'coin_cuci' => 0,
+            'coin_kering' => 0,
+            'password' => 'password123'
+        ],
+        [
+            'id' => 5,
+            'nama' => 'Dewi Lestari',
+            'wa' => '08177778888',
+            'kode_kartu' => 'KC-P-0005',
+            'is_member' => true,
+            'tx_count' => 0,
+            'coin_cuci' => 0,
+            'coin_kering' => 0,
+            'password' => 'password123'
+        ]
+    ];
+
+    // 3. Shift Kerja
+    $_SESSION['shifts'] = [
+        [
+            'id' => 1,
+            'nama' => 'Shift Pagi',
+            'mulai' => '08:00',
+            'selesai' => '14:00',
+            'jam_tampil' => '08:00 — 14:00',
+            'staff' => 'Sarah, Daniel'
+        ],
+        [
+            'id' => 2,
+            'nama' => 'Shift Siang',
+            'mulai' => '14:00',
+            'selesai' => '20:00',
+            'jam_tampil' => '14:00 — 20:00',
+            'staff' => 'Daniel, Nizar'
+        ],
+        [
+            'id' => 3,
+            'nama' => 'Shift Malam',
+            'mulai' => '20:00',
+            'selesai' => '02:00',
+            'jam_tampil' => '20:00 — 02:00',
+            'staff' => 'Nizar, Adittya'
+        ],
+        [
+            'id' => 4,
+            'nama' => 'Shift Midnight',
+            'mulai' => '00:00',
+            'selesai' => '08:00',
+            'jam_tampil' => '00:00 — 08:00',
+            'staff' => 'Adittya'
+        ]
+    ];
+
+    // 4. Staf & Manajemen Pengguna
+    $_SESSION['users'] = [
+        [
+            'id' => 1,
+            'nama' => 'Andrey Shevchenko',
+            'role' => 'Pemilik',
+            'email' => 'andrey@kino.com',
+            'username' => 'pemilik',
+            'password' => 'password123'
+        ],
+        [
+            'id' => 2,
+            'nama' => 'Daniel Afifi',
+            'role' => 'Kasir',
+            'email' => 'daniel@kino.com',
+            'username' => 'daniel',
+            'password' => '123456'
+        ],
+        [
+            'id' => 3,
+            'nama' => 'Sarah Geiza',
+            'role' => 'Kasir',
+            'email' => 'sarah@kino.com',
+            'username' => 'sarah',
+            'password' => '123456'
+        ],
+        [
+            'id' => 4,
+            'nama' => 'Nizar Maulana',
+            'role' => 'Kasir',
+            'email' => 'nizar@kino.com',
+            'username' => 'nizar',
+            'password' => '123456'
+        ],
+        [
+            'id' => 5,
+            'nama' => 'Adittya',
+            'role' => 'Kasir',
+            'email' => 'adittya@kino.com',
+            'username' => 'adittya',
+            'password' => '123456'
+        ]
+    ];
+
+    // 5. Presensi Kasir
+    $_SESSION['presensi'] = [
+        [
+            'id' => 1,
+            'kasir' => 'Daniel',
+            'shift' => 'Shift Siang',
+            'tanggal' => '31 Okt 2026',
+            'filter_date' => date('Y-m-d'),
+            'jam_masuk' => '13:55',
+            'jam_keluar' => null,
+            'status' => 'Berjalan'
+        ],
+        [
+            'id' => 2,
+            'kasir' => 'Sarah',
+            'shift' => 'Shift Pagi',
+            'tanggal' => '31 Okt 2026',
+            'filter_date' => date('Y-m-d'),
+            'jam_masuk' => '07:58',
+            'jam_keluar' => '14:05',
+            'status' => 'Selesai'
+        ],
+        [
+            'id' => 3,
+            'kasir' => 'Nizar',
+            'shift' => 'Shift Malam',
+            'tanggal' => '30 Okt 2026',
+            'filter_date' => date('Y-m-d', strtotime('-1 day')),
+            'jam_masuk' => '19:58',
+            'jam_keluar' => '02:03',
+            'status' => 'Selesai'
+        ]
+    ];
+
+    // 6. Transaksi
     $_SESSION['transactions'] = [
         [
             'id' => 'INV-2026-001',
             'pelanggan' => 'Budi Santoso',
-            'telepon' => '08123456789',
-            'layanan_id' => 1,
-            'layanan' => 'Cuci Kering',
-            'berat' => 3.5,
-            'total_biaya' => 21000,
-            'koin_500' => 7,
-            'koin_1000' => 0,
-            'total_koin_nilai' => 3500,
-            'sisa_bayar' => 17500,
+            'wa' => '08123456789',
+            'kode_kartu' => 'KC-P-0001',
+            'layanan' => 'Cuci Kering (Self)',
+            'layanan_tipe' => 'Self Service',
+            'kategori' => 'SELF_SERVICE',
+            'kuantitas' => '1 putaran',
+            'qty_num' => 1,
+            'total_biaya' => 16000,
+            'metode' => 'Token',
+            'koin_cuci' => 1,
+            'koin_kering' => 1,
+            'total_bayar' => 17000,
             'status' => 'Lunas',
-            'waktu' => '14:30 WIB',
-            'tanggal' => '12 Mei 2026',
             'kasir' => 'Daniel',
-            'shift' => 'Siang'
+            'shift' => 'Shift Siang',
+            'waktu' => '14:30 WIB',
+            'tanggal' => '31 Okt 2026',
+            'filter_date' => date('Y-m-d')
         ],
         [
             'id' => 'INV-2026-002',
             'pelanggan' => 'Sari Dewi',
-            'telepon' => '08129876543',
-            'layanan_id' => 2,
-            'layanan' => 'Cuci Setrika',
-            'berat' => 5.0,
-            'total_biaya' => 40000,
-            'koin_500' => 0,
-            'koin_1000' => 5,
-            'total_koin_nilai' => 5000,
-            'sisa_bayar' => 35000,
+            'wa' => '08129876543',
+            'kode_kartu' => 'KC-P-0002',
+            'layanan' => 'Cuci + Kering (Self)',
+            'layanan_tipe' => 'Self Service',
+            'kategori' => 'SELF_SERVICE',
+            'kuantitas' => '2 putaran',
+            'qty_num' => 2,
+            'total_biaya' => 17000,
+            'metode' => 'Token',
+            'koin_cuci' => 1,
+            'koin_kering' => 1,
+            'total_bayar' => 17000,
             'status' => 'Lunas',
-            'waktu' => '14:52 WIB',
-            'tanggal' => '12 Mei 2026',
             'kasir' => 'Daniel',
-            'shift' => 'Siang'
+            'shift' => 'Shift Siang',
+            'waktu' => '14:52 WIB',
+            'tanggal' => '31 Okt 2026',
+            'filter_date' => date('Y-m-d')
         ],
         [
             'id' => 'INV-2026-003',
             'pelanggan' => 'Andi Pratama',
-            'telepon' => '08571122334',
-            'layanan_id' => 3,
-            'layanan' => 'Setrika Saja',
-            'berat' => 2.0,
-            'total_biaya' => 12000,
-            'koin_500' => 4,
-            'koin_1000' => 1,
-            'total_koin_nilai' => 3000,
-            'sisa_bayar' => 9000,
+            'wa' => '08131112222',
+            'kode_kartu' => 'KC-P-0003',
+            'layanan' => 'Cuci Kering (Drop Off)',
+            'layanan_tipe' => 'Drop Off',
+            'kategori' => 'DROP_OFF',
+            'kuantitas' => '7 kg',
+            'qty_num' => 1,
+            'total_biaya' => 20000,
+            'metode' => 'Tunai',
+            'koin_cuci' => 0,
+            'koin_kering' => 0,
+            'total_bayar' => 20000,
             'status' => 'Lunas',
-            'waktu' => '15:10 WIB',
-            'tanggal' => '12 Mei 2026',
             'kasir' => 'Daniel',
-            'shift' => 'Siang'
+            'shift' => 'Shift Siang',
+            'waktu' => '15:10 WIB',
+            'tanggal' => '31 Okt 2026',
+            'filter_date' => date('Y-m-d')
         ],
         [
             'id' => 'INV-2026-004',
             'pelanggan' => 'Rina Marlina',
-            'telepon' => '08987654321',
-            'layanan_id' => 4,
-            'layanan' => 'Bed Cover',
-            'berat' => 4.0,
-            'total_biaya' => 60000,
-            'koin_500' => 0,
-            'koin_1000' => 6,
-            'total_koin_nilai' => 6000,
-            'sisa_bayar' => 54000,
+            'wa' => '08155556666',
+            'kode_kartu' => 'KC-P-0004',
+            'layanan' => 'Sabun + Softener',
+            'layanan_tipe' => 'Drop Off',
+            'kategori' => 'ADDITIONAL',
+            'kuantitas' => '2 pcs',
+            'qty_num' => 2,
+            'total_biaya' => 3000,
+            'metode' => 'Tunai',
+            'koin_cuci' => 0,
+            'koin_kering' => 0,
+            'total_bayar' => 3000,
             'status' => 'Lunas',
-            'waktu' => '15:35 WIB',
-            'tanggal' => '12 Mei 2026',
             'kasir' => 'Daniel',
-            'shift' => 'Siang'
+            'shift' => 'Shift Siang',
+            'waktu' => '15:35 WIB',
+            'tanggal' => '31 Okt 2026',
+            'filter_date' => date('Y-m-d')
         ]
     ];
 
+    // 7. Rekapitulasi Shift (untuk Pemilik & Kasir)
     $_SESSION['shifts_recap'] = [
         [
             'id' => 1,
-            'tanggal' => '12 Mei 2026',
-            'shift' => 'Pagi',
             'kasir' => 'Sarah',
+            'shift' => 'Pagi',
+            'tanggal' => '31 Okt 2026',
             'trx_count' => 22,
             'total_kg' => 78.0,
             'pendapatan' => 512000,
-            'koin_500' => 280,
-            'koin_1000' => 372,
-            'selisih' => 0,
-            'status' => 'Valid'
+            'koin_cuci' => 28,
+            'koin_kering' => 37,
+            'status' => 'Valid',
+            'selisih' => 0
         ],
         [
             'id' => 2,
-            'tanggal' => '12 Mei 2026',
-            'shift' => 'Siang',
             'kasir' => 'Daniel',
+            'shift' => 'Siang',
+            'tanggal' => '31 Okt 2026',
             'trx_count' => 18,
             'total_kg' => 62.5,
             'pendapatan' => 425000,
-            'koin_500' => 320,
-            'koin_1000' => 265,
-            'selisih' => 0,
-            'status' => 'Valid'
+            'koin_cuci' => 24,
+            'koin_kering' => 26,
+            'status' => 'Valid',
+            'selisih' => 0
         ],
         [
             'id' => 3,
-            'tanggal' => '11 Mei 2026',
-            'shift' => 'Malam',
             'kasir' => 'Nizar',
+            'shift' => 'Malam',
+            'tanggal' => '30 Okt 2026',
             'trx_count' => 15,
             'total_kg' => 55.0,
             'pendapatan' => 380000,
-            'koin_500' => 250,
-            'koin_1000' => 255,
-            'selisih' => -5000,
-            'status' => 'Review'
+            'koin_cuci' => 20,
+            'koin_kering' => 25,
+            'status' => 'Review',
+            'selisih' => -5000
         ]
     ];
 
-    $_SESSION['antrian'] = [
-        ['nomor' => '08', 'pelanggan' => 'Budi Santoso', 'estimasi' => '~45 menit', 'status' => 'Proses', 'status_color' => 'orange', 'layanan' => 'Cuci Kering • 3,5 kg'],
-        ['nomor' => '09', 'pelanggan' => 'Siti Nurhaliza', 'estimasi' => '~1 jam', 'status' => 'Antri', 'status_color' => 'yellow', 'layanan' => 'Cuci Setrika • 5,0 kg'],
-        ['nomor' => '10', 'pelanggan' => 'Ahmad R.', 'estimasi' => '~1,5 jam', 'status' => 'Siap Diambil', 'status_color' => 'green', 'layanan' => 'Setrika Saja • 2,0 kg']
-    ];
-
-    $_SESSION['initialized'] = true;
+    // Status presensi aktif sesi kasir saat ini
+    $_SESSION['kasir_checked_in'] = true;
+    $_SESSION['kino_initialized'] = true;
 }
 
 // Helpers
