@@ -239,7 +239,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     </div>
 </div>
 
-<!-- Modal M1a-c: Scan QR Kartu -->
+<!-- Modal M1a-c: Scan QR Kartu Pelanggan (Live Webcam + Fallback Input Manual M1c) -->
 <div class="sheet-overlay" id="modalScanQr">
     <div class="sheet-card">
         <div class="sheet-handle"></div>
@@ -248,18 +248,26 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
             <button type="button" class="sheet-close" onclick="closeModal('modalScanQr')">&times;</button>
         </div>
 
-        <div id="qrViewfinder" style="width: 100%; height: 180px; border: 2.5px dashed #ea580c; border-radius: 16px; background: rgba(234, 88, 12, 0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 14px; position: relative; transition: all 0.2s;">
-            <div style="margin-bottom: 8px;"><?= get_icon('camera', 36, '#ea580c') ?></div>
-            <div id="qrStatusText" style="font-size: 12px; font-weight: 700; color: #ea580c;">
+        <!-- Real Webcam / Viewfinder Container -->
+        <div id="qrViewfinder" style="width: 100%; border: 2.5px dashed #ea580c; border-radius: 16px; background: rgba(234, 88, 12, 0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 12px; padding: 12px; position: relative; overflow: hidden; min-height: 180px;">
+            <div id="cameraReader" style="width: 100%; max-width: 240px; margin: 0 auto;"></div>
+            <div id="qrStatusText" style="font-size: 12px; font-weight: 700; color: #ea580c; text-align: center; margin-top: 8px;">
                 Arahkan QR ke kamera...
             </div>
-            <div style="position: absolute; bottom: 8px; font-size: 11px; background: rgba(0,0,0,0.6); color: white; padding: 2px 10px; border-radius: 12px; cursor: pointer;" onclick="simulateQrScanSuccess()">
-                ⚡ Simulasi Scan Berhasil
+        </div>
+
+        <!-- Tombol Cepat Simulasi Barcode Pelanggan (Memudahkan Pengujian Tanpa Fisik HP) -->
+        <div style="margin-bottom: 12px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">⚡ Pindai Cepat (Simulasi Kode Member):</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button type="button" class="chip" style="font-size: 11px; padding: 4px 10px;" onclick="simulateQrScanSuccess('KC-P-0001')">KC-P-0001 (Budi)</button>
+                <button type="button" class="chip" style="font-size: 11px; padding: 4px 10px;" onclick="simulateQrScanSuccess('KC-P-0002')">KC-P-0002 (Sari)</button>
+                <button type="button" class="chip" style="font-size: 11px; padding: 4px 10px;" onclick="simulateQrScanSuccess('KC-P-0003')">KC-P-0003 (Andi)</button>
             </div>
         </div>
 
         <div class="form-group">
-            <label class="form-label">Atau ketik kode kartu manual:</label>
+            <label class="form-label">Atau ketik kode kartu manual (mis. KC-P-0001):</label>
             <input type="text" id="qrManualInput" class="form-control" placeholder="Contoh: KC-P-0001" value="">
         </div>
 

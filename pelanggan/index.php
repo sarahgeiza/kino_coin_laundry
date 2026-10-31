@@ -101,29 +101,7 @@ if ($filter === '7 Hari') {
             <div class="store-name">KINO COIN LAUNDRY</div>
             <div class="cust-name">Budi Santoso</div>
             
-            <div class="qr-box-white">
-                <svg width="130" height="130" viewBox="0 0 120 120">
-                    <rect width="120" height="120" fill="white"/>
-                    <rect x="10" y="10" width="30" height="30" fill="#1e3a8a"/>
-                    <rect x="16" y="16" width="18" height="18" fill="white"/>
-                    <rect x="20" y="20" width="10" height="10" fill="#1e3a8a"/>
-                    
-                    <rect x="80" y="10" width="30" height="30" fill="#1e3a8a"/>
-                    <rect x="86" y="16" width="18" height="18" fill="white"/>
-                    <rect x="90" y="20" width="10" height="10" fill="#1e3a8a"/>
-                    
-                    <rect x="10" y="80" width="30" height="30" fill="#1e3a8a"/>
-                    <rect x="16" y="86" width="18" height="18" fill="white"/>
-                    <rect x="20" y="90" width="10" height="10" fill="#1e3a8a"/>
-
-                    <!-- Data dots -->
-                    <rect x="50" y="20" width="8" height="8" fill="#1e3a8a"/>
-                    <rect x="62" y="32" width="8" height="8" fill="#1e3a8a"/>
-                    <rect x="50" y="50" width="12" height="12" fill="#1e3a8a"/>
-                    <rect x="70" y="60" width="10" height="10" fill="#1e3a8a"/>
-                    <rect x="85" y="85" width="15" height="15" fill="#1e3a8a"/>
-                </svg>
-            </div>
+            <div class="qr-box-white" id="customerQrContainer" style="display:inline-flex; align-items:center; justify-content:center; min-width:130px; min-height:130px;"></div>
 
             <div class="cust-id">KC-P-0001</div>
             <div class="tip">Tingkatkan kecerahan layar saat kasir memindai kode</div>

@@ -1,6 +1,6 @@
 // ==========================================================================
 // Kino Coin Laundry - Frontend Interactivity & Business Logic
-// Aligned 100% with Figma Page 2 Design Overhaul
+// Aligned 100% with Figma Page 2 Design Overhaul + Dynamic QR Code Generation
 // ==========================================================================
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initTransactionCalculator();
     initCustomerAutocomplete();
     initUrlToasts();
+    initCustomerPageQR();
 });
 
 // 1. Toast Notification Manager
@@ -38,7 +39,6 @@ function showToast(message, type = 'success', duration = 3000) {
     }, duration);
 }
 
-// Check URL params for toasts (e.g. ?toast=saved or ?logout=1)
 function initUrlToasts() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('toast') === 'saved') {
@@ -53,14 +53,22 @@ function initUrlToasts() {
     if (params.get('shift_closed') === '1') {
         showToast('Shift berhasil ditutup', 'success');
     }
+    if (params.get('toast') === 'registered') {
+        showToast('Akun pelanggan berhasil didaftarkan', 'success');
+    }
 }
 
-// 2. Modal Management (Bottom Sheet Overlay)
+// 2. Modal Management (Bottom Sheet Overlay / Centered on PC)
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
+
+        // Auto trigger camera scan when opening scan modal
+        if (modalId === 'modalScanQr') {
+            startLiveCameraScanner();
+        }
     }
 }
 
@@ -69,11 +77,15 @@ function closeModal(modalId) {
     if (modal) {
         modal.classList.remove('active');
         document.body.style.overflow = '';
+
+        // Stop camera if scanner modal closed
+        if (modalId === 'modalScanQr') {
+            stopLiveCameraScanner();
+        }
     }
 }
 
 function initModals() {
-    // Close modal when clicking backdrop
     document.querySelectorAll('.sheet-overlay').forEach(overlay => {
         overlay.addEventListener('click', function (e) {
             if (e.target === this) {
@@ -187,10 +199,8 @@ function initTransactionCalculator() {
     if (coinWashInput) coinWashInput.addEventListener('input', calculate);
     if (coinDryInput) coinDryInput.addEventListener('input', calculate);
 
-    // Initial calculation
     calculate();
 
-    // Form submit guard
     form.addEventListener('submit', function (e) {
         const qty = parseInt(qtyInput.value) || 0;
         const name = document.getElementById('inputPelangganNama').value.trim();
@@ -258,7 +268,6 @@ function initCustomerAutocomplete() {
     });
 }
 
-// Quick service category select helper
 function selectServiceByCategory(categoryKeyword) {
     const select = document.getElementById('serviceSelect');
     if (!select) return;
@@ -273,7 +282,6 @@ function selectServiceByCategory(categoryKeyword) {
     select.dispatchEvent(new Event('change'));
 }
 
-// Quantity helper buttons
 function changeQty(delta) {
     const input = document.getElementById('qtyInput');
     if (!input) return;
@@ -283,8 +291,119 @@ function changeQty(delta) {
     input.dispatchEvent(new Event('input'));
 }
 
-// 6. QR Scanner Simulation (M1a, M1b, M1c)
-function simulateQrScanSuccess(sampleCode = 'KC-P-0001') {
+// ==========================================================================
+// 6. DYNAMIC QR CODE GENERATOR (Real SVG / Canvas Generation)
+// ==========================================================================
+function generateQRCode(containerId, textToEncode) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = ''; // Clear previous
+
+    if (typeof QRCode !== 'undefined') {
+        new QRCode(container, {
+            text: textToEncode,
+            width: 130,
+            height: 130,
+            colorDark: "#1e3a8a",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    } else {
+        // Fallback display
+        container.innerHTML = `<div style="font-family:monospace; font-weight:800; font-size:16px; padding:20px; color:#1e3a8a;">[QR: ${textToEncode}]</div>`;
+    }
+}
+
+// In Kasir Pelanggan list: View member's dynamic QR card (M7)
+function viewMemberCard(m) {
+    const nameEl = document.getElementById('cardMemberName');
+    const idEl = document.getElementById('cardMemberId');
+    if (nameEl) nameEl.textContent = m.nama;
+    if (idEl) idEl.textContent = m.kode_kartu;
+
+    // Dynamically generate the real QR code for this specific member!
+    generateQRCode('modalMemberQrContainer', m.kode_kartu);
+    openModal('modalMemberCard');
+}
+
+// In Pelanggan Home: View user's own dynamic QR card (C2)
+function handleOpenCustomerQR() {
+    const isMember = true;
+    if (isMember) {
+        generateQRCode('customerQrContainer', 'KC-P-0001');
+        openModal('modalCustomerQrCard');
+    } else {
+        showToast('Kartu member belum ada. Minta kasir untuk mendaftarkan Anda', 'dark', 3500);
+    }
+}
+
+function initCustomerPageQR() {
+    // If on customer page and modal container exists, pre-generate
+    if (document.getElementById('customerQrContainer')) {
+        generateQRCode('customerQrContainer', 'KC-P-0001');
+    }
+}
+
+// ==========================================================================
+// 7. REAL QR CODE SCANNER (Webcam Camera + Fallback M1c + Simulation)
+// ==========================================================================
+let html5QrScannerInstance = null;
+
+function startLiveCameraScanner() {
+    const readerDiv = document.getElementById('cameraReader');
+    const statusText = document.getElementById('qrStatusText');
+    const manualInput = document.getElementById('qrManualInput');
+
+    if (!readerDiv) return;
+
+    // Reset status
+    if (statusText) {
+        statusText.style.color = '#ea580c';
+        statusText.innerHTML = 'Arahkan QR ke kamera...';
+    }
+
+    if (typeof Html5Qrcode !== 'undefined') {
+        if (!html5QrScannerInstance) {
+            html5QrScannerInstance = new Html5Qrcode("cameraReader");
+        }
+
+        html5QrScannerInstance.start(
+            { facingMode: "environment" },
+            {
+                fps: 10,
+                qrbox: { width: 170, height: 170 }
+            },
+            (decodedText) => {
+                // SUCCESS: Scanned a real QR Code!
+                console.log("Scanned QR:", decodedText);
+                onQrScanSuccess(decodedText);
+            },
+            (error) => {
+                // scanning frame (silent)
+            }
+        ).catch(err => {
+            console.log("Camera access notice:", err);
+            // Fallback (Figma M1c: Kamera gagal / izin ditolak)
+            if (statusText) {
+                statusText.style.color = '#dc2626';
+                statusText.innerHTML = '⚠ Tidak bisa akses kamera (Permission denied / Tanpa webcam). Gunakan input manual atau tombol simulasi di bawah:';
+            }
+        });
+    }
+}
+
+function stopLiveCameraScanner() {
+    if (html5QrScannerInstance && html5QrScannerInstance.isScanning) {
+        html5QrScannerInstance.stop().then(() => {
+            console.log("Camera scanner stopped.");
+        }).catch(err => console.log(err));
+    }
+}
+
+function onQrScanSuccess(code) {
+    stopLiveCameraScanner();
+
     const viewfinder = document.getElementById('qrViewfinder');
     const statusText = document.getElementById('qrStatusText');
     const manualInput = document.getElementById('qrManualInput');
@@ -295,11 +414,21 @@ function simulateQrScanSuccess(sampleCode = 'KC-P-0001') {
     }
     if (statusText) {
         statusText.style.color = '#16a34a';
-        statusText.innerHTML = `✓ Terbaca: <strong>${sampleCode}</strong>`;
+        statusText.innerHTML = `✓ Terbaca: <strong>${code}</strong>`;
     }
     if (manualInput) {
-        manualInput.value = sampleCode;
+        manualInput.value = code;
     }
+
+    // Auto apply if matched
+    setTimeout(() => {
+        applyScannedCode();
+    }, 400);
+}
+
+// Quick simulation buttons for demo / testing
+function simulateQrScanSuccess(sampleCode = 'KC-P-0001') {
+    onQrScanSuccess(sampleCode);
 }
 
 function applyScannedCode() {
@@ -326,18 +455,8 @@ function applyScannedCode() {
             selectedBadge.innerHTML = `✓ Member Terpilih: <strong>${matched.nama}</strong> (${matched.kode_kartu})`;
         }
         closeModal('modalScanQr');
-        showToast(`QR ${code} berhasil digunakan`, 'success');
+        showToast(`QR ${code} (${matched.nama}) berhasil digunakan!`, 'success');
     } else {
-        showToast(`Kode ${code} tidak ditemukan`, 'error');
-    }
-}
-
-// 7. Customer QR Modal Handler (C1c / C2)
-function handleOpenCustomerQR() {
-    const isMember = true; // In mock state, Budi is a member
-    if (isMember) {
-        openModal('modalCustomerQrCard');
-    } else {
-        showToast('Kartu member belum ada. Minta kasir untuk mendaftarkan Anda', 'dark', 3500);
+        showToast(`Kode ${code} tidak terdaftar di sistem`, 'error');
     }
 }
