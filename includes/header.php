@@ -11,7 +11,10 @@ $active_tab = $active_tab ?? 'home';
 $show_app_header = $show_app_header ?? true;
 $show_bottom_nav = $show_bottom_nav ?? true;
 
-$user_name = $_SESSION['username'] ?? ($app_role === 'pemilik' ? 'Pemilik' : ($app_role === 'pelanggan' ? 'Budi' : 'Daniel'));
+// Validasi otorisasi & keaslian akun pengguna terhadap data Manajemen Pengguna
+check_auth_guard($app_role);
+
+$user_name = $_SESSION['username'] ?? '';
 $user_avatar = strtoupper(substr($user_name, 0, 1));
 
 // Resolusi shift kasir secara dinamis

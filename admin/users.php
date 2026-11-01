@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/data.php';
+check_auth_guard('pemilik');
 
 // Handle Add / Edit / Deactivate User POST BEFORE header output
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {

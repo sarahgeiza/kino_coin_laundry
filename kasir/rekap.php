@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/data.php';
+check_auth_guard('kasir');
 
 // Calculate totals from session transactions dynamically
 $base_income = 425000;

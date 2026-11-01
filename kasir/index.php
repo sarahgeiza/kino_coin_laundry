@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/data.php';
+check_auth_guard('kasir');
 
 // Handle Check-in POST BEFORE header output
 $current_kasir_name = $_SESSION['username'] ?? 'Daniel';

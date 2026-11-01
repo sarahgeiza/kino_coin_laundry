@@ -526,3 +526,65 @@ function get_active_kasir_shift($kasir_name = null) {
         'staff' => 'Daniel, Nizar'
     ]);
 }
+
+
+// Helper untuk validasi autentikasi & otorisasi pengguna secara ketat
+function check_auth_guard($role) {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    $username = $_SESSION['username'] ?? '';
+    $sess_role = $_SESSION['role'] ?? '';
+    
+    if (empty($username) || $sess_role !== $role) {
+        if ($role === 'kasir') {
+            header('Location: ../login-kasir.php');
+            exit;
+        } elseif ($role === 'pemilik') {
+            header('Location: ../login-pemilik.php');
+            exit;
+        } elseif ($role === 'pelanggan') {
+            header('Location: login.php');
+            exit;
+        }
+    }
+    
+    // Verifikasi apakah akun pengguna masih terdaftar dan aktif di sistem (Manajemen Pengguna)
+    if ($role === 'kasir' || $role === 'pemilik') {
+        $db_role = ($role === 'kasir') ? 'Kasir' : 'Pemilik';
+        $user_valid = false;
+        foreach ($_SESSION['users'] as $u) {
+            if (($u['role'] ?? '') === $db_role) {
+                $first_name = explode(' ', trim($u['nama']))[0];
+                if (strcasecmp($u['nama'], $username) === 0 || 
+                    strcasecmp($u['username'], $username) === 0 ||
+                    strcasecmp($first_name, $username) === 0) {
+                    $user_valid = true;
+                    break;
+                }
+            }
+        }
+        if (!$user_valid) {
+            $_SESSION['username'] = null;
+            $_SESSION['role'] = null;
+            $redirect = ($role === 'kasir') ? '../login-kasir.php' : '../login-pemilik.php';
+            header("Location: $redirect");
+            exit;
+        }
+    } elseif ($role === 'pelanggan') {
+        $member_valid = false;
+        foreach ($_SESSION['members'] as $m) {
+            if (strcasecmp($m['nama'], $username) === 0 || ($m['wa'] ?? '') === $username) {
+                $member_valid = true;
+                break;
+            }
+        }
+        if (!$member_valid) {
+            $_SESSION['username'] = null;
+            $_SESSION['role'] = null;
+            header('Location: login.php');
+            exit;
+        }
+    }
+}

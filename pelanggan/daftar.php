@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once __DIR__ . '/../includes/data.php';
 
 $reg_error = '';
@@ -10,41 +12,48 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $pass = $_POST['password'] ?? '';
     $confirm = $_POST['confirm_password'] ?? '';
 
-    if (!preg_match('/^[0-9]+$/', $wa)) {
+    if (empty($nama) || empty($wa) || empty($pass)) {
+        $reg_error = 'Seluruh kolom pendaftaran wajib diisi.';
+    } elseif (!preg_match('/^[0-9]+$/', $wa)) {
         $wa_invalid = true;
         $reg_error = 'Nomor WhatsApp hanya boleh berisi angka.';
+    } elseif (strlen($wa) < 10 || strlen($wa) > 15) {
+        $wa_invalid = true;
+        $reg_error = 'Nomor WhatsApp tidak valid (minimal 10 digit, maksimal 15 digit).';
     } elseif ($pass !== $confirm) {
         $reg_error = 'Konfirmasi password tidak cocok. Silakan ulangi.';
     } else {
-        $exists = false;
-        foreach ($_SESSION['members'] as &$m) {
+        // Check if WhatsApp already registered
+        $is_already_registered = false;
+        foreach ($_SESSION['members'] as $m) {
             if ($m['wa'] === $wa) {
-                $m['nama'] = $nama;
-                $m['password'] = $pass;
-                $_SESSION['username'] = $nama;
-                $_SESSION['role'] = 'pelanggan';
-                $exists = true;
+                $is_already_registered = true;
                 break;
             }
         }
-        if (!$exists) {
+
+        if ($is_already_registered) {
+            $reg_error = 'Nomor WhatsApp ' . htmlspecialchars($wa) . ' sudah terdaftar. Silakan masuk menggunakan akun Anda di halaman login.';
+        } else {
             $new_id = count($_SESSION['members']) + 1;
+            $new_code = 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT);
             $_SESSION['members'][] = [
                 'id' => $new_id,
                 'nama' => $nama,
                 'wa' => $wa,
-                'kode_kartu' => 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT),
+                'kode_kartu' => $new_code,
                 'is_member' => true,
                 'tx_count' => 0,
                 'coin_cuci' => 0,
                 'coin_kering' => 0,
                 'password' => $pass
             ];
+
             $_SESSION['username'] = $nama;
             $_SESSION['role'] = 'pelanggan';
+            header('Location: index.php?toast=registered');
+            exit;
         }
-        header('Location: index.php?toast=registered');
-        exit;
     }
 }
 ?>
@@ -101,22 +110,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         <div class="login-sheet-card">
             <h2 style="font-size: 19px; font-weight: 900; color: var(--text-main); margin-bottom: 4px;">Daftar Akun Baru</h2>
             <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 18px;">Isi data diri untuk membuat akun pelanggan</p>
-<?php if (!empty($reg_error)): ?>
-            <div style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; padding:10px 14px; border-radius:10px; font-size:12px; font-weight:700; margin-bottom:14px;">
-                <?= htmlspecialchars($reg_error) ?>
-            </div>
-        <?php endif; ?>
 
-            <form action="daftar.php" method="POST" id="formDaftarPelanggan">
+            <?php if (!empty($reg_error)): ?>
+                <div style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; padding:12px 14px; border-radius:10px; font-size:12px; font-weight:700; margin-bottom:14px; line-height: 1.5;">
+                    <?= htmlspecialchars($reg_error) ?>
+                </div>
+            <?php endif; ?>
+
+            <form action="daftar.php" method="POST">
                 <div class="form-group">
                     <label class="form-label">Nama Lengkap</label>
-                    <input type="text" name="nama" class="form-control" placeholder="Nama lengkap Anda" required>
+                    <input type="text" name="nama" class="form-control" placeholder="Nama lengkap Anda" value="<?= htmlspecialchars($_POST['nama'] ?? '') ?>" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Nomor WhatsApp</label>
-                    <input type="text" id="nomorWhatsApp" name="wa" class="form-control" placeholder="08123456789" inputmode="numeric" value="<?= htmlspecialchars($wa ?? '') ?>" aria-describedby="peringatanNomorWhatsApp" required>
-                    <small id="peringatanNomorWhatsApp" role="alert" aria-live="polite" style="display:<?= $wa_invalid ? 'block' : 'none' ?>; color:#dc2626; font-size:12px; margin-top:5px;">
+                    <input type="text" id="custRegWa" name="wa" class="form-control" placeholder="08123456789" value="<?= htmlspecialchars($_POST['wa'] ?? '') ?>" inputmode="numeric" pattern="[0-9]+" title="Nomor WhatsApp hanya boleh berisi angka" aria-describedby="custRegWaWarning" oninput="validateCustRegWa(this)" required>
+                    <small id="custRegWaWarning" role="alert" aria-live="polite" style="display:none; color:#dc2626; font-size:12px; margin-top:5px;">
                         Nomor WhatsApp hanya boleh berisi angka.
                     </small>
                 </div>
@@ -161,19 +171,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     </div>
 </div>
 
-<script>
-document.getElementById('formDaftarPelanggan').addEventListener('submit', function (event) {
-    const nomorWhatsApp = document.getElementById('nomorWhatsApp');
-    const peringatan = document.getElementById('peringatanNomorWhatsApp');
-    const hanyaAngka = /^[0-9]+$/.test(nomorWhatsApp.value.trim());
-
-    peringatan.style.display = hanyaAngka ? 'none' : 'block';
-    if (!hanyaAngka) {
-        event.preventDefault();
-        nomorWhatsApp.focus();
-    }
-});
-</script>
 <script src="../assets/js/app.js"></script>
+<script>
+function validateCustRegWa(input) {
+    const hasNonDigits = /[^0-9]/.test(input.value);
+    document.getElementById('custRegWaWarning').style.display = hasNonDigits ? 'block' : 'none';
+}
+</script>
 </body>
 </html>

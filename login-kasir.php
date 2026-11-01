@@ -1,38 +1,43 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once __DIR__ . '/includes/data.php';
 
 $login_error = '';
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
-    $username = trim($_POST['username'] ?? 'daniel');
+    $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    $matched_user = null;
-    foreach ($_SESSION['users'] as $u) {
-        if (($u['role'] === 'Kasir') && 
-            (strcasecmp($u['username'], $username) === 0 || 
-             stripos($u['nama'], $username) !== false)) {
-            $matched_user = $u;
-            break;
+    if (empty($username) || empty($password)) {
+        $login_error = 'Username dan password wajib diisi.';
+    } else {
+        $matched_user = null;
+        foreach ($_SESSION['users'] as $u) {
+            if (($u['role'] ?? '') === 'Kasir') {
+                $first_name = explode(' ', trim($u['nama']))[0];
+                if (strcasecmp($u['username'], $username) === 0 || 
+                    strcasecmp($u['email'], $username) === 0 || 
+                    strcasecmp($u['nama'], $username) === 0 ||
+                    strcasecmp($first_name, $username) === 0) {
+                    $matched_user = $u;
+                    break;
+                }
+            }
         }
-    }
 
-    if ($matched_user) {
-        if (!empty($matched_user['password']) && $matched_user['password'] !== $password) {
+        if (!$matched_user) {
+            $login_error = 'Akun kasir tidak terdaftar di sistem. Hubungi Pemilik toko untuk mendaftarkan akun Anda di Manajemen Pengguna.';
+        } elseif ($matched_user['password'] !== $password) {
             $login_error = 'Password salah. Silakan periksa kembali kata sandi Anda.';
         } else {
+            $_SESSION['user_id'] = $matched_user['id'];
             $_SESSION['username'] = $matched_user['nama'];
             $_SESSION['role'] = 'kasir';
             $_SESSION['kasir_checked_in'] = false;
             header('Location: kasir/index.php');
             exit;
         }
-    } else {
-        $_SESSION['username'] = ucfirst($username);
-        $_SESSION['role'] = 'kasir';
-        $_SESSION['kasir_checked_in'] = false;
-        header('Location: kasir/index.php');
-        exit;
     }
 }
 ?>
@@ -92,8 +97,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 <span class="badge badge-token" style="font-size: 12px; padding: 4px 10px;">Kasir</span>
             </div>
             <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 22px;">Masuk dengan akun staff Anda</p>
+
             <?php if (!empty($login_error)): ?>
-                <div style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; padding:10px 14px; border-radius:10px; font-size:12px; font-weight:700; margin-bottom:14px;">
+                <div style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; padding:12px 14px; border-radius:10px; font-size:12px; font-weight:700; margin-bottom:16px; line-height: 1.5;">
                     <?= htmlspecialchars($login_error) ?>
                 </div>
             <?php endif; ?>
@@ -101,13 +107,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             <form action="login-kasir.php" method="POST">
                 <div class="form-group">
                     <label class="form-label">Username / Email</label>
-                    <input type="text" name="username" class="form-control" value="daniel" required>
+                    <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($_POST['username'] ?? 'daniel') ?>" placeholder="Contoh: daniel" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Password</label>
                     <div style="position: relative;">
-                        <input type="password" id="inputPassKasir" name="password" class="form-control" value="123456" style="padding-right: 80px;" required>
+                        <input type="password" id="inputPassKasir" name="password" class="form-control" value="<?= htmlspecialchars($_POST['password'] ?? '123456') ?>" style="padding-right: 80px;" required>
                         <button type="button" class="btn-toggle-pass" onclick="togglePassword('inputPassKasir', this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 12px; font-weight: 700; color: #2563eb; cursor: pointer;">
                             Lihat
                         </button>
