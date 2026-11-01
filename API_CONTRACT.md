@@ -1,151 +1,141 @@
 # Kontrak API Integrasi Frontend <-> Backend (Kino Coin Laundry)
 
-Dokumentasi ini disiapkan oleh **Frontend Developer (Nizar Maulana Ramzy)** untuk **Backend Developer (Sarah Geiza)** sebagai panduan endpoint REST API yang dipanggil oleh antarmuka web.
+Dokumentasi resmi arsitektur komunikasi data antara **Frontend (Nizar Maulana Ramzy)** dan **Backend (Sarah Geiza)**.
 
-- **Lokasi Controller Backend**: `backend/controllers/*.php`
+- **Router Utama Backend**: `api/index.php?module={module}&action={action}`
 - **Format Header**: `Content-Type: application/json`
-- **Format Standar Response**:
+- **Format Sukses**:
   ```json
   {
-    "success": true,
-    "message": "Operasi berhasil",
     "data": { ... }
   }
   ```
-  Jika gagal:
+- **Format Gagal**:
   ```json
   {
-    "success": false,
-    "error": "Pesan error validasi / kredensial salah"
+    "error": "Deskripsi pesan error / validasi"
   }
   ```
 
 ---
 
-## 1. Modul Autentikasi (`backend/controllers/auth.php`)
+## 1. Modul Autentikasi (`?module=auth`)
 
-### A. Login (`?action=login`) - Method: `POST`
+### A. Login Staf (`action=login`) - Method: `POST`
 * **Request Body**:
   ```json
   {
-    "role": "kasir",          // "kasir" | "pemilik" | "pelanggan"
-    "username": "daniel",     // username staf / nomor WhatsApp pelanggan
+    "username": "daniel",
     "password": "password123"
   }
   ```
-* **Response Success**:
+* **Response Sukses (200)**:
   ```json
   {
-    "success": true,
-    "data": {
-      "id": 2,
+    "message": "Login berhasil",
+    "user": {
+      "id_pengguna": 2,
       "nama": "Daniel Afifi",
-      "role": "Kasir",
-      "token": "bearer-token-or-session"
-    }
+      "role": "kasir"
+    },
+    "csrf_token": "a1b2c3d4..."
   }
   ```
 
-### B. Register Pelanggan Mandiri (`?action=register`) - Method: `POST`
-* **Request Body**:
-  ```json
-  {
-    "nama": "Adit",
-    "wa": "08123456789",
-    "password": "password123"
-  }
-  ```
-* **Catatan Backend**: Otomatis generate string `kode_kartu` (format: `KC-P-XXXX`) dan simpan ke tabel `pelanggan`.
+### B. Cek Sesi (`action=me`) - Method: `GET`
+Mengembalikan data pengguna yang sedang login beserta CSRF token aktif.
 
 ---
 
-## 2. Modul Pelanggan & Kartu Member QR (`backend/controllers/pelanggan.php`)
+## 2. Modul Pelanggan (`?module=pelanggan`)
 
-### A. Cari Pelanggan / Autocomplete (`?action=search&q={query}`) - Method: `GET`
-* **Response Success**:
+### A. Cari Pelanggan (`action=list`) - Method: `GET`
+* **Query Params**: `q` (nama atau no_hp)
+* **Response (200)**: Array data pelanggan.
+
+### B. Tambah Pelanggan Baru (`action=create`) - Method: `POST`
+* **Request Body**:
   ```json
   {
-    "success": true,
-    "data": [
+    "nama_pelanggan": "Zaki Ramadhan",
+    "no_hp": "081377889900"
+  }
+  ```
+
+---
+
+## 3. Modul Layanan (`?module=layanan`)
+
+### Daftar Layanan (`action=list`) - Method: `GET`
+* Mengambil seluruh katalog tarif (Cuci Koin Rp 7.000, Kering Koin Rp 10.000, Setrika, dll).
+
+---
+
+## 4. Modul Shift (`?module=shift`)
+
+### Daftar Shift Kerja (`action=list`) - Method: `GET`
+* Mengambil master jadwal shift operasional toko (Pagi, Siang, Malam).
+
+---
+
+## 5. Modul Transaksi (`?module=transaksi`)
+
+### A. Buat Transaksi Baru (`action=create`) - Method: `POST`
+* **Batasan Kapasitas Mesin**: Maksimal **7.5 kg** per detail beban mesin.
+* **Request Body**:
+  ```json
+  {
+    "no_hp": "081377889900",
+    "nama_pelanggan": "Zaki Ramadhan",
+    "id_shift": 2,
+    "jenis_pembayaran": "cash",
+    "detail_transaksi": [
       {
-        "id": 1,
-        "nama": "Budi Santoso",
-        "wa": "08123456789",
-        "kode_kartu": "KC-P-0001",
-        "is_member": true
+        "id_layanan": 1,
+        "jumlah_koin": 1,
+        "berat": 6.5
       }
     ]
   }
   ```
-
-### B. Get Data via Scan QR (`?action=get_by_code&kode={kode_kartu}`) - Method: `GET`
-* Digunakan saat kamera kasir memindai QR code pelanggan (misal: `KC-P-0001`).
-* **Response Success**: Return object detail pelanggan sesuai `kode_kartu`.
-
-### C. Tambah Pelanggan Baru oleh Kasir (`?action=create`) - Method: `POST`
-* **Request Body**:
+* **Response (201)**:
   ```json
   {
-    "nama": "Dewi Lestari",
-    "wa": "08155556666",
-    "is_member": true
+    "id_transaksi": 105,
+    "total_bayar": 7000
+  }
+  ```
+
+### B. Riwayat Transaksi (`action=list`) - Method: `GET`
+* **Query Params**: `page` (default 1).
+
+---
+
+## 6. Modul Dashboard & Rekapitulasi (`?module=dashboard` / `?module=rekap`)
+
+### Ringkasan Omset & Metrik (`action=index`) - Method: `GET`
+* **Query Params**: `start` (YYYY-MM-DD), `end` (YYYY-MM-DD), `kasir`, `shift`.
+* **Response (200)**:
+  ```json
+  {
+    "data": {
+      "jumlah_transaksi": "25",
+      "pendapatan": "520000",
+      "total_berat": "112.5",
+      "total_koin": "55"
+    }
   }
   ```
 
 ---
 
-## 3. Modul Transaksi (`backend/controllers/transaksi.php`)
+## 7. Modul Tracking Pelanggan (`?module=riwayat`)
 
-### A. Simpan Transaksi Baru (`?action=create`) - Method: `POST`
+### Lacak Cucian Pelanggan (`action=tracking`) - Method: `POST`
 * **Request Body**:
   ```json
   {
-    "nama_pelanggan": "Budi Santoso",
-    "wa_pelanggan": "08123456789",
-    "service_id": 3,
-    "qty": 1,
-    "metode_pembayaran": "TOKEN",   // "TOKEN" (Self Service) | "TUNAI" (Drop Off/Retail)
-    "koin_cuci": 1,                 // jumlah Coin Cuci (7k)
-    "koin_kering": 1,               // jumlah Coin Kering (10k)
-    "total_biaya": 16000,
-    "total_bayar": 17000,
-    "id_kasir": 2,
-    "id_shift": 2
+    "no_hp": "08123456789"
   }
   ```
-
-### B. List Transaksi (`?action=list&filter={filter}`) - Method: `GET`
-* Filter: `Semua` | `Self Service` | `Drop Off` | `pelanggan_id={id}`.
-
----
-
-## 4. Modul Presensi & Shift (`backend/controllers/shift.php` & `presensi.php`)
-
-### A. Mulai Shift / Check-in (`presensi.php?action=checkin`) - Method: `POST`
-* **Request Body**:
-  ```json
-  {
-    "id_kasir": 2,
-    "id_shift": 2
-  }
-  ```
-
-### B. Tutup Shift Kasir (`shift.php?action=tutup`) - Method: `POST`
-* **Request Body**: Rekap total pendapatan, koin fisik, dan selisih kas rekonsiliasi.
-
----
-
-## 5. Modul Master Layanan (`backend/controllers/layanan.php`)
-* `?action=list`: Mengembalikan daftar paket layanan dengan kolom `kategori` (`SELF_SERVICE`, `DROP_OFF`, `ADDITIONAL`).
-
----
-
-## Cara Mengaktifkan di Frontend:
-Buka file `js/api.js`, ubah baris:
-```javascript
-USE_BACKEND_API: false,
-```
-menjadi:
-```javascript
-USE_BACKEND_API: true,
-```
+* **Response**: Data riwayat cucian pelanggan berdasarkan nomor WhatsApp.

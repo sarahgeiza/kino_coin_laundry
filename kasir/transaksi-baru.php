@@ -1,19 +1,24 @@
 <?php
 require_once __DIR__ . '/../includes/data.php';
 
-if (
-    ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
-    && ($_POST['action'] ?? '') === 'save_trx'
-    && !preg_match('/^[0-9]+$/', trim($_POST['wa_pelanggan'] ?? ''))
-) {
-    http_response_code(422);
-    exit('Nomor WhatsApp hanya boleh berisi angka.');
-}
 
+
+$trx_error = '';
 // Handle Save Transaction POST
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_trx') {
     $nama = trim($_POST['nama_pelanggan'] ?? '');
     $wa = trim($_POST['wa_pelanggan'] ?? '');
+    
+    if (empty($nama)) {
+        $trx_error = 'Nama pelanggan wajib diisi.';
+    } elseif (empty($wa)) {
+        $trx_error = 'Nomor WhatsApp wajib diisi.';
+    } elseif (!preg_match('/^[0-9]+$/', $wa)) {
+        $trx_error = 'Nomor WhatsApp hanya boleh berisi angka.';
+    } elseif (strlen($wa) < 10 || strlen($wa) > 15) {
+        $trx_error = 'Nomor WhatsApp tidak valid (minimal 10 digit, maksimal 15 digit).';
+    }
+    if (empty($trx_error)) {
     $service_id = intval($_POST['service_id'] ?? 1);
     $qty = intval($_POST['qty'] ?? 1);
     $koin_cuci = intval($_POST['koin_cuci'] ?? 0);
@@ -104,6 +109,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
 
     header('Location: index.php?toast=saved');
     exit;
+    }
 }
 
 $page_title = 'Transaksi Baru - Kino Coin Laundry';

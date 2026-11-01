@@ -6,23 +6,39 @@ check_auth_guard('pemilik');
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
 
+    $user_error = '';
     if ($action === 'add_user') {
         $nama = trim($_POST['nama'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $username = trim($_POST['username'] ?? '');
         $role = trim($_POST['role'] ?? 'Kasir');
+        $pass = trim($_POST['password'] ?? '123456');
 
-        if (!empty($nama) && !empty($username)) {
-            $_SESSION['users'][] = [
-                'id' => count($_SESSION['users']) + 1,
-                'nama' => $nama,
-                'role' => $role,
-                'email' => $email ?: strtolower($username) . '@kino.com',
-                'username' => $username,
-                'password' => '123456'
-            ];
-            header('Location: users.php?toast=saved');
-            exit;
+        if (empty($nama) || empty($username)) {
+            $user_error = 'Nama staf dan username wajib diisi.';
+        } else {
+            // Cek apakah username sudah dipakai (hindari duplikat)
+            $is_duplicate = false;
+            foreach ($_SESSION['users'] as $u) {
+                if (strcasecmp($u['username'], $username) === 0) {
+                    $is_duplicate = true;
+                    break;
+                }
+            }
+            if ($is_duplicate) {
+                $user_error = 'Username ' . htmlspecialchars($username) . ' sudah digunakan oleh staf lain.';
+            } else {
+                $_SESSION['users'][] = [
+                    'id' => count($_SESSION['users']) + 1,
+                    'nama' => $nama,
+                    'role' => $role,
+                    'email' => $email ?: strtolower($username) . '@kino.com',
+                    'username' => $username,
+                    'password' => $pass ?: '123456'
+                ];
+                header('Location: users.php?toast=saved');
+                exit;
+            }
         }
     } elseif ($action === 'edit_user') {
         $user_id = intval($_POST['user_id'] ?? 0);
@@ -56,6 +72,11 @@ $active_tab = 'user';
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
+<?php if (!empty($user_error)): ?>
+    <div style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; padding:12px 14px; border-radius:10px; font-size:12px; font-weight:700; margin-bottom:16px;">
+        <?= htmlspecialchars($user_error) ?>
+    </div>
+<?php endif; ?>
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
     <div>
         <h2 style="font-size: 16px; font-weight: 800;">Manajemen Pengguna</h2>
