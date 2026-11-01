@@ -119,6 +119,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     }
 }
 
+// Cek apakah ada scan member dari dashboard kasir
+$scan_code = trim($_GET['scan_member'] ?? '');
+$prefilled_member = null;
+if (!empty($scan_code)) {
+    foreach ($_SESSION['members'] as $m) {
+        if (strcasecmp($m['kode_kartu'], $scan_code) === 0) {
+            $prefilled_member = $m;
+            break;
+        }
+    }
+}
+
 $page_title = 'Transaksi Baru - Kino Coin Laundry';
 $app_role = 'kasir';
 $active_tab = 'transaksi';
@@ -154,7 +166,9 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
 
         <!-- Selected Member Alert (K2c) -->
-        <div id="memberSelectedBadge" style="display: none; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 8px 12px; border-radius: 8px; font-size: 12px; margin-bottom: 10px;"></div>
+        <div id="memberSelectedBadge" style="display: <?= $prefilled_member ? 'block' : 'none' ?>; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 8px 12px; border-radius: 8px; font-size: 12px; margin-bottom: 10px;">
+            <?= $prefilled_member ? 'Member Terpilih: <strong>' . htmlspecialchars($prefilled_member['nama']) . '</strong> (' . htmlspecialchars($prefilled_member['kode_kartu']) . ')' : '' ?>
+        </div>
 
         <div style="position: relative;">
             <input type="text" id="inputPelangganNama" name="nama_pelanggan" class="form-control" placeholder="Ketik nama / WA / scan kartu..." value="Budi Santoso" autocomplete="off" required>

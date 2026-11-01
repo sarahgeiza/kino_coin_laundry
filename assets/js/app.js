@@ -467,14 +467,23 @@ function applyScannedCode() {
         const inputWA = document.getElementById('inputPelangganWA');
         const selectedBadge = document.getElementById('memberSelectedBadge');
 
-        if (inputNama) inputNama.value = matched.nama;
-        if (inputWA) inputWA.value = matched.wa;
-        if (selectedBadge) {
-            selectedBadge.style.display = 'block';
-            selectedBadge.innerHTML = `Member Terpilih: <strong>${matched.nama}</strong> (${matched.kode_kartu})`;
+        if (inputNama && inputWA) {
+            inputNama.value = matched.nama;
+            inputWA.value = matched.wa;
+            if (selectedBadge) {
+                selectedBadge.style.display = 'block';
+                selectedBadge.innerHTML = `Member Terpilih: <strong>${matched.nama}</strong> (${matched.kode_kartu})`;
+            }
+            closeModal('modalScanQr');
+            showToast(`QR ${code} (${matched.nama}) berhasil digunakan!`, 'success');
+        } else {
+            // Jika discan langsung dari Dashboard Kasir, langsung arahkan ke transaksi baru dengan data member terisi
+            closeModal('modalScanQr');
+            showToast(`Member terdeteksi: ${matched.nama}. Mengalihkan ke transaksi...`, 'success');
+            setTimeout(() => {
+                window.location.href = `transaksi-baru.php?scan_member=${encodeURIComponent(matched.kode_kartu)}`;
+            }, 600);
         }
-        closeModal('modalScanQr');
-        showToast(`QR ${code} (${matched.nama}) berhasil digunakan!`, 'success');
     } else {
         showToast(`Kode ${code} tidak terdaftar di sistem`, 'error');
     }
