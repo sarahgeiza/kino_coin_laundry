@@ -60,7 +60,7 @@ $owner_dry = 130 + $extra_dry;
         <a href="laporan.php" style="font-size: 12px; color: var(--primary-light); text-decoration: none; font-weight: 700;">Lihat Laporan →</a>
     </div>
 
-    <?php foreach ($_SESSION['shifts_recap'] as $sr): ?>
+    <?php foreach (array_reverse($_SESSION['shifts_recap'] ?? []) as $sr): ?>
     <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px; margin-bottom: 10px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
             <strong style="font-size: 13px; color: var(--text-main);">

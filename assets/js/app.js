@@ -56,6 +56,9 @@ function initUrlToasts() {
     if (params.get('toast') === 'registered') {
         showToast('Akun pelanggan berhasil didaftarkan', 'success');
     }
+    if (params.get('toast') === 'need_checkin') {
+        showToast('Wajib mulai shift & presensi terlebih dahulu sebelum mencatat transaksi', 'error', 4000);
+    }
 }
 
 // 2. Modal Management (Bottom Sheet Overlay / Centered on PC)
@@ -528,4 +531,19 @@ function exportLaporanTransactionsCSV() {
         ]);
     });
     downloadCSV('Laporan_Transaksi_Kino_' + new Date().toISOString().slice(0,10) + '.csv', rows);
+}
+
+
+function exportPresensiCSV() {
+    const logs = window.__MOCK_PRESENSI || [];
+    const rows = [
+        ['ID Presensi', 'Nama Kasir', 'Shift', 'Tanggal', 'Jam Masuk', 'Jam Keluar', 'Status']
+    ];
+    logs.forEach(l => {
+        rows.push([
+            l.id, l.kasir, l.shift, l.tanggal, l.jam_masuk, l.jam_keluar || '-', l.status
+        ]);
+    });
+    downloadCSV('Presensi_Kasir_Kino_' + new Date().toISOString().slice(0,10) + '.csv', rows);
+    showToast('Log presensi berhasil diexport ke CSV', 'success');
 }

@@ -33,6 +33,7 @@ $shift_time_label = $active_shift['jam_tampil'] ?? '14:00 — 20:00';
         window.__MOCK_SERVICES = <?= json_encode($_SESSION['services'] ?? []) ?>;
         window.__MOCK_MEMBERS = <?= json_encode($_SESSION['members'] ?? []) ?>;
         window.__MOCK_TRANSACTIONS = <?= json_encode($_SESSION['transactions'] ?? []) ?>;
+        window.__MOCK_PRESENSI = <?= json_encode($_SESSION['presensi'] ?? []) ?>;
     </script>
 </head>
 <body>

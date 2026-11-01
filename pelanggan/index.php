@@ -59,15 +59,22 @@ if ($total_tx_count === 0 && !empty($current_member['tx_count'])) {
 }
 
 if ($filter === '7 Hari') {
-    $customer_txs = []; // Empty state C1b
-    $disp_tx = 0;
-    $disp_wash = '0 pcs';
-    $disp_dry = '0 pc';
-} else {
-    $disp_tx = $total_tx_count . 'x';
-    $disp_wash = $total_wash_count . ' pcs';
-    $disp_dry = $total_dry_count . ' pc';
+    $seven_days_ago = date('Y-m-d', strtotime('-7 days'));
+    $customer_txs = array_filter($customer_txs, function($t) use ($seven_days_ago) {
+        $fdate = $t['filter_date'] ?? date('Y-m-d');
+        return $fdate >= $seven_days_ago;
+    });
+    $total_tx_count = count($customer_txs);
+    $total_wash_count = 0;
+    $total_dry_count = 0;
+    foreach ($customer_txs as $t) {
+        $total_wash_count += ($t['koin_cuci'] ?? 0);
+        $total_dry_count += ($t['koin_kering'] ?? 0);
+    }
 }
+$disp_tx = $total_tx_count . 'x';
+$disp_wash = $total_wash_count . ' pcs';
+$disp_dry = $total_dry_count . ' pc';
 ?>
 
 <script>

@@ -26,7 +26,7 @@ if ($filter === 'Bulan Lalu') {
         <h2 style="font-size: 16px; font-weight: 800;">Presensi Kasir</h2>
         <span style="font-size: 11px; color: var(--text-muted);">Riwayat log jam kerja staf</span>
     </div>
-    <button type="button" class="btn btn-outline" style="width: auto; padding: 6px 12px; font-size: 12px;" onclick="showToast('Log presensi berhasil diexport', 'success')">
+    <button type="button" class="btn btn-outline" style="width: auto; padding: 6px 12px; font-size: 12px;" onclick="exportPresensiCSV()">
         <?= get_icon('export', 14) ?> Export
     </button>
 </div>

@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/../includes/data.php';
 
+check_auth_guard('kasir');
+
 $member_error = '';
 
 // Handle Add Member POST
@@ -9,24 +11,43 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $wa = trim($_POST['wa'] ?? '');
     $is_member = isset($_POST['is_member']);
 
-    if (!preg_match('/^[0-9]+$/', $wa)) {
+    if (empty($nama)) {
+        $member_error = 'Nama pelanggan wajib diisi.';
+    } elseif (empty($wa)) {
+        $member_error = 'Nomor WhatsApp wajib diisi.';
+    } elseif (!preg_match('/^[0-9]+$/', $wa)) {
         $member_error = 'Nomor WhatsApp hanya boleh berisi angka.';
-    } elseif (!empty($nama) && !empty($wa)) {
-        $new_id = count($_SESSION['members']) + 1;
-        $new_code = 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT);
-        $_SESSION['members'][] = [
-            'id' => $new_id,
-            'nama' => $nama,
-            'wa' => $wa,
-            'kode_kartu' => $new_code,
-            'is_member' => $is_member,
-            'tx_count' => 0,
-            'coin_cuci' => 0,
-            'coin_kering' => 0,
-            'password' => 'password123'
-        ];
-        header('Location: pelanggan.php?toast=saved');
-        exit;
+    } elseif (strlen($wa) < 10 || strlen($wa) > 15) {
+        $member_error = 'Nomor WhatsApp tidak valid (minimal 10 digit, maksimal 15 digit).';
+    } else {
+        // Cek duplikasi nomor WhatsApp pelanggan
+        $is_duplicate = false;
+        foreach ($_SESSION['members'] as $m) {
+            if ($m['wa'] === $wa) {
+                $is_duplicate = true;
+                break;
+            }
+        }
+
+        if ($is_duplicate) {
+            $member_error = 'Nomor WhatsApp ' . htmlspecialchars($wa) . ' sudah terdaftar atas nama pelanggan lain.';
+        } else {
+            $new_id = count($_SESSION['members']) + 1;
+            $new_code = 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT);
+            $_SESSION['members'][] = [
+                'id' => $new_id,
+                'nama' => $nama,
+                'wa' => $wa,
+                'kode_kartu' => $new_code,
+                'is_member' => $is_member,
+                'tx_count' => 0,
+                'coin_cuci' => 0,
+                'coin_kering' => 0,
+                'password' => 'password123'
+            ];
+            header('Location: pelanggan.php?toast=saved');
+            exit;
+        }
     }
 }
 
