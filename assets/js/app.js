@@ -518,7 +518,7 @@ function downloadCSV(filename, rows) {
 }
 
 function exportLaporanTransactionsCSV() {
-    const txs = window.__MOCK_TRANSACTIONS || [];
+    const txs = window.__CURRENT_LAPORAN_TXS || window.__MOCK_TRANSACTIONS || [];
     const rows = [
         ['ID Invoice', 'Pelanggan', 'WhatsApp', 'Layanan', 'Kuantitas', 'Total Biaya', 'Total Bayar', 'Metode', 'Status', 'Kasir', 'Shift', 'Tanggal', 'Waktu']
     ];
