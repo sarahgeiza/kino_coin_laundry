@@ -1,0 +1,20 @@
+2026-11-02 17:15:03
+RuntimeException: Query database gagal: ERROR:  column "jumlah_dibayar" of relation "transaksi" does not exist
+LINE 3:                     no_invoice,jumlah_dibayar,sisa_bayar,sta...
+                                       ^ in C:\laragon\www\kino_coin_laundry2\includes\helpers.php:87
+Stack trace:
+#0 C:\laragon\www\kino_coin_laundry2\includes\helpers.php(102): query_db('INSERT INTO tra...', Array)
+#1 C:\laragon\www\kino_coin_laundry2\backend\controllers\TransaksiController.php(156): one('INSERT INTO tra...', Array)
+#2 C:\laragon\www\kino_coin_laundry2\api\index.php(138): require_once('C:\\laragon\\www\\...')
+#3 {main}
+
+2026-11-02 17:18:37
+RuntimeException: Query database gagal: ERROR:  column "jumlah_dibayar" of relation "transaksi" does not exist
+LINE 3:                     no_invoice,jumlah_dibayar,sisa_bayar,sta...
+                                       ^ in C:\laragon\www\kino_coin_laundry2\includes\helpers.php:87
+Stack trace:
+#0 C:\laragon\www\kino_coin_laundry2\includes\helpers.php(102): query_db('INSERT INTO tra...', Array)
+#1 C:\laragon\www\kino_coin_laundry2\backend\controllers\TransaksiController.php(156): one('INSERT INTO tra...', Array)
+#2 C:\laragon\www\kino_coin_laundry2\api\index.php(138): require_once('C:\\laragon\\www\\...')
+#3 {main}
+

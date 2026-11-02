@@ -1,0 +1,66 @@
+2026-11-02 13:30:38
+RuntimeException: Terjadi kesalahan saat mengakses database. in C:\laragon\www\kino_coin_laundry2\includes\helpers.php:90
+Stack trace:
+#0 C:\laragon\www\kino_coin_laundry2\includes\helpers.php(105): query_db('SELECT COUNT(*)...', Array)
+#1 C:\laragon\www\kino_coin_laundry2\backend\controllers\DashboardRekapController.php(32): one('SELECT COUNT(*)...', Array)
+#2 C:\laragon\www\kino_coin_laundry2\api\index.php(46): require('C:\\laragon\\www\\...')
+#3 {main}
+
+2026-11-02 13:41:12
+Error: Call to undefined function actor() in C:\laragon\www\kino_coin_laundry2\api\index.php:28
+Stack trace:
+#0 {main}
+
+2026-11-02 13:47:46
+RuntimeException: Query database gagal: ERROR:  column t.jumlah_dibayar does not exist
+LINE 2:                     COALESCE(SUM(t.jumlah_dibayar),0)::bigin...
+                                         ^ in C:\laragon\www\kino_coin_laundry2\includes\helpers.php:87
+Stack trace:
+#0 C:\laragon\www\kino_coin_laundry2\includes\helpers.php(102): query_db('SELECT COUNT(*)...', Array)
+#1 C:\laragon\www\kino_coin_laundry2\backend\controllers\DashboardRekapController.php(32): one('SELECT COUNT(*)...', Array)
+#2 C:\laragon\www\kino_coin_laundry2\api\index.php(46): require('C:\\laragon\\www\\...')
+#3 {main}
+
+2026-11-02 13:58:20
+RuntimeException: Query database gagal: ERROR:  column t.jumlah_dibayar does not exist
+LINE 2:                     t.jenis_pembayaran, t.jumlah_dibayar, t....
+                                                ^ in C:\laragon\www\kino_coin_laundry2\includes\helpers.php:87
+Stack trace:
+#0 C:\laragon\www\kino_coin_laundry2\includes\helpers.php(97): query_db('SELECT t.id_tra...', Array)
+#1 C:\laragon\www\kino_coin_laundry2\backend\controllers\TransaksiController.php(27): rows('SELECT t.id_tra...', Array)
+#2 C:\laragon\www\kino_coin_laundry2\api\index.php(44): require('C:\\laragon\\www\\...')
+#3 {main}
+
+2026-11-02 14:20:57
+Error: Call to undefined method Layanan::find() in C:\laragon\www\kino_coin_laundry2\backend\controllers\LayananController.php:14
+Stack trace:
+#0 C:\laragon\www\kino_coin_laundry2\api\index.php(41): require()
+#1 {main}
+
+2026-11-02 14:30:41
+ArgumentCountError: Too few arguments to function BaseModel::__construct(), 0 passed in C:\laragon\www\kino_coin_laundry2\backend\controllers\LayananController.php on line 15 and exactly 1 expected in C:\laragon\www\kino_coin_laundry2\backend\models\BaseModel.php:11
+Stack trace:
+#0 C:\laragon\www\kino_coin_laundry2\backend\controllers\LayananController.php(15): BaseModel->__construct()
+#1 C:\laragon\www\kino_coin_laundry2\api\index.php(87): require_once('C:\\laragon\\www\\...')
+#2 {main}
+
+2026-11-02 17:07:03
+RuntimeException: Query database gagal: ERROR:  column "jumlah_dibayar" does not exist
+LINE 1: SELECT COALESCE(SUM(jumlah_dibayar) FILTER (WHERE jenis_pemb...
+                            ^ in C:\laragon\www\kino_coin_laundry2\includes\helpers.php:87
+Stack trace:
+#0 C:\laragon\www\kino_coin_laundry2\includes\helpers.php(102): query_db('SELECT COALESCE...', Array)
+#1 C:\laragon\www\kino_coin_laundry2\backend\controllers\ShiftOperasionalController.php(68): one('SELECT COALESCE...', Array)
+#2 C:\laragon\www\kino_coin_laundry2\api\index.php(137): require_once('C:\\laragon\\www\\...')
+#3 {main}
+
+2026-11-02 17:07:16
+RuntimeException: Query database gagal: ERROR:  column "jumlah_dibayar" does not exist
+LINE 1: SELECT COALESCE(SUM(jumlah_dibayar) FILTER (WHERE jenis_pemb...
+                            ^ in C:\laragon\www\kino_coin_laundry2\includes\helpers.php:87
+Stack trace:
+#0 C:\laragon\www\kino_coin_laundry2\includes\helpers.php(102): query_db('SELECT COALESCE...', Array)
+#1 C:\laragon\www\kino_coin_laundry2\backend\controllers\ShiftOperasionalController.php(68): one('SELECT COALESCE...', Array)
+#2 C:\laragon\www\kino_coin_laundry2\api\index.php(137): require_once('C:\\laragon\\www\\...')
+#3 {main}
+
