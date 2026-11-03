@@ -1,0 +1,5 @@
+# Konfigurasi database (berisi password)
+backend/config/database.local.php
+
+# File debug
+backend/phpinfo.php

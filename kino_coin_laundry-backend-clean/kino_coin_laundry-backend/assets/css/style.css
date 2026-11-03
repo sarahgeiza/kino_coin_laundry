@@ -1,0 +1,845 @@
+/* ==========================================================================
+   Kino Coin Laundry - Exact Figma UI/UX Design System
+   Matches 100% Figma Page 2 Mockups + Clean Fluid Expansion on PC
+   ========================================================================== */
+
+:root {
+    --primary: #1e40af;
+    --primary-dark: #1e3a8a;
+    --primary-light: #2563eb;
+    --primary-subtle: #eff6ff;
+    
+    --orange: #ea580c;
+    --orange-light: #f97316;
+    --orange-gold: #f59e0b;
+    --orange-subtle: #fff7ed;
+    
+    --bg-main: #f8fafc;
+    --bg-card: #ffffff;
+    --border: #e2e8f0;
+    
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --text-light: #94a3b8;
+    
+    --success: #16a34a;
+    --success-bg: #dcfce7;
+    --danger: #dc2626;
+    --danger-bg: #fee2e2;
+    --warning: #d97706;
+    --warning-bg: #fef3c7;
+    
+    --radius-xl: 24px;
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 28px -4px rgba(15, 23, 42, 0.1);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+/* App Screen Canvas (Mobile: 100% width; PC: cleanly expanded up to 860px) */
+.app-screen {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+    background-color: var(--bg-main);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* ==========================================================================
+   EXACT FIGMA HEADERS (No fake status bar, pure clean brand gradient)
+   ========================================================================== */
+.header-staff {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+    color: #ffffff;
+    padding: 22px 20px 26px 20px;
+    border-bottom-left-radius: var(--radius-xl);
+    border-bottom-right-radius: var(--radius-xl);
+    position: relative;
+    box-shadow: 0 4px 15px rgba(30, 58, 138, 0.18);
+}
+
+.header-customer {
+    background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+    color: #ffffff;
+    padding: 22px 20px 26px 20px;
+    border-bottom-left-radius: var(--radius-xl);
+    border-bottom-right-radius: var(--radius-xl);
+    position: relative;
+    box-shadow: 0 4px 15px rgba(217, 119, 6, 0.18);
+}
+
+.header-owner {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+    color: #ffffff;
+    padding: 22px 20px 26px 20px;
+    border-bottom-left-radius: var(--radius-xl);
+    border-bottom-right-radius: var(--radius-xl);
+    position: relative;
+    box-shadow: 0 4px 15px rgba(15, 23, 42, 0.2);
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-title-box h1 {
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.header-title-box p {
+    font-size: 12px;
+    opacity: 0.9;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.header-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #f97316;
+    color: white;
+    font-weight: 800;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+}
+
+.header-avatar.blue-avatar {
+    background: #2563eb;
+}
+
+/* ==========================================================================
+   CONTENT AREA
+   ========================================================================== */
+.content-area {
+    flex: 1;
+    padding: 16px 18px 95px 18px; /* 95px padding bottom for bottom nav */
+    width: 100%;
+}
+
+/* Cards */
+.card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    margin-bottom: 14px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+}
+
+.card-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Metrics Row */
+.metrics-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.metric-box {
+    border-radius: var(--radius-md);
+    padding: 14px 12px;
+    color: white;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.metric-box.blue {
+    background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+}
+
+.metric-box.orange {
+    background: linear-gradient(135deg, #ea580c, #f97316);
+}
+
+.metric-box.amber {
+    background: linear-gradient(135deg, #b45309, #d97706);
+}
+
+.metric-box .label {
+    font-size: 11px;
+    font-weight: 700;
+    opacity: 0.92;
+}
+
+.metric-box .value {
+    font-size: 20px;
+    font-weight: 900;
+    margin: 5px 0 2px 0;
+}
+
+.metric-box .sub {
+    font-size: 11px;
+    opacity: 0.88;
+}
+
+/* Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.badge-lunas {
+    background: var(--success-bg);
+    color: var(--success);
+}
+
+.badge-kurang {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
+.badge-proses {
+    background: var(--warning-bg);
+    color: var(--warning);
+}
+
+.badge-token {
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+.badge-tunai {
+    background: #f0fdf4;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+
+/* Transactions Item */
+.trx-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: 10px;
+    transition: transform 0.15s, box-shadow 0.15s;
+    cursor: pointer;
+}
+
+.trx-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.trx-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.trx-id {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--primary-light);
+}
+
+.trx-name {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+.trx-meta-line {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 4px 0 8px 0;
+}
+
+.trx-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px dashed var(--border);
+    padding-top: 8px;
+    margin-top: 4px;
+}
+
+.trx-price {
+    font-size: 15px;
+    font-weight: 900;
+    color: var(--text-main);
+}
+
+.trx-details-btn {
+    background: #f1f5f9;
+    color: var(--primary);
+    border: none;
+    padding: 5px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* Quick Filter Chips */
+.filter-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    margin-bottom: 14px;
+    scrollbar-width: none;
+}
+
+.chip {
+    padding: 7px 14px;
+    border-radius: 20px;
+    background: #ffffff;
+    border: 1.5px solid var(--border);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.chip.active {
+    background: var(--primary-dark);
+    color: #ffffff;
+    border-color: var(--primary-dark);
+}
+
+.chip-orange.active {
+    background: var(--orange);
+    color: #ffffff;
+    border-color: var(--orange);
+}
+
+/* Form Controls */
+.form-group {
+    margin-bottom: 14px;
+}
+
+.form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 6px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--border);
+    font-size: 14px;
+    color: var(--text-main);
+    background: #f8fafc;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.form-control:focus {
+    background: #ffffff;
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 13px 18px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+    transition: all 0.15s;
+}
+
+.btn-primary {
+    background: var(--primary-light);
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+}
+
+.btn-orange {
+    background: var(--orange);
+    color: #ffffff;
+}
+
+.btn-orange:hover {
+    background: #c2410c;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    color: var(--text-main);
+}
+
+.btn-outline:hover {
+    background: #f1f5f9;
+}
+
+/* ==========================================================================
+   EXACT FIGMA BOTTOM NAVIGATION
+   (Home, Transaksi, Pelanggan, Rekap, Keluar) with orange top-line active
+   ========================================================================== */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 100%;
+    background: #ffffff;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0;
+    z-index: 50;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.nav-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    gap: 3px;
+    padding: 4px 8px;
+    position: relative;
+    transition: color 0.15s;
+}
+
+.nav-tab.active {
+    color: var(--primary-dark);
+}
+
+.nav-tab.active::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    width: 28px;
+    height: 3px;
+    background: var(--orange);
+    border-radius: 2px;
+}
+
+.nav-tab .tab-icon {
+    font-size: 20px;
+    line-height: 1;
+}
+
+/* Floating Action Button (FAB) */
+.fab-btn {
+    position: fixed;
+    bottom: 75px;
+    right: 20px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--primary-dark);
+    color: white;
+    font-size: 26px;
+    font-weight: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    box-shadow: 0 6px 16px rgba(30, 58, 138, 0.35);
+    z-index: 45;
+    transition: transform 0.15s;
+}
+
+.fab-btn:hover {
+    transform: scale(1.08);
+}
+
+/* Modals & Overlays */
+.sheet-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.65);
+    z-index: 100;
+    justify-content: center;
+    align-items: flex-end;
+    backdrop-filter: blur(2px);
+}
+
+.sheet-overlay.active {
+    display: flex;
+}
+
+.sheet-card {
+    width: 100%;
+    max-width: 480px;
+    background: #ffffff;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    padding: 20px 22px 28px 22px;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15);
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.25s ease-out;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+.sheet-handle {
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: #cbd5e1;
+    margin: 0 auto 16px auto;
+}
+
+.sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.sheet-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+.sheet-close {
+    background: #f1f5f9;
+    border: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+/* Toast */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 440px;
+    z-index: 120;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.toast {
+    padding: 12px 18px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: var(--shadow-lg);
+    animation: fadeInDown 0.3s ease;
+}
+
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.toast-success { background: #15803d; color: #ffffff; }
+.toast-error { background: #dc2626; color: #ffffff; }
+.toast-dark { background: #0f172a; color: #ffffff; }
+
+/* Member Card */
+.member-card-blue {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    border-radius: 18px;
+    color: #ffffff;
+    padding: 24px;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(30, 58, 138, 0.35);
+    margin: 12px 0 18px 0;
+}
+
+.member-card-blue .store-name {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.member-card-blue .cust-name {
+    font-size: 20px;
+    font-weight: 900;
+    margin: 6px 0 16px 0;
+}
+
+.qr-box-white {
+    background: #ffffff;
+    padding: 14px;
+    border-radius: 14px;
+    display: inline-block;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.member-card-blue .cust-id {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-top: 14px;
+}
+
+.member-card-blue .tip {
+    font-size: 11px;
+    opacity: 0.8;
+    margin-top: 4px;
+}
+
+/* ==========================================================================
+   DESKTOP PC EXPANSION (min-width: 768px)
+   Keeps the EXACT UI/UX from Figma, but expands the canvas cleanly on PC
+   ========================================================================== */
+@media (min-width: 768px) {
+    body {
+        background-color: #f1f5f9;
+    }
+
+    /* Screen container widens gracefully on PC without changing the design */
+    .app-screen {
+        max-width: 860px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Headers span nicely across container */
+    .header-staff, .header-customer, .header-owner {
+        padding: 28px 36px 32px 36px;
+        border-radius: 0 0 24px 24px;
+    }
+
+    .header-title-box h1 {
+        font-size: 24px;
+    }
+
+    .content-area {
+        padding: 24px 36px 100px 36px;
+    }
+
+    .metrics-row {
+        gap: 16px;
+    }
+
+    .metric-box {
+        padding: 18px 16px;
+    }
+
+    .metric-box .value {
+        font-size: 24px;
+    }
+
+    /* Bottom Nav remains the EXACT Figma bottom nav, centered cleanly */
+    .bottom-nav {
+        max-width: 860px;
+        border-radius: 18px 18px 0 0;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid var(--border);
+        border-bottom: none;
+    }
+
+    .nav-tab {
+        padding: 6px 20px;
+        font-size: 11px;
+    }
+
+    .nav-tab .tab-icon {
+        font-size: 22px;
+    }
+
+    /* FAB pinned to right edge of container */
+    .fab-btn {
+        right: max(24px, calc(50% - 400px));
+        bottom: 80px;
+    }
+
+    /* Modals popup smoothly in center on desktop */
+    .sheet-overlay {
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sheet-card {
+        max-width: 480px;
+        border-radius: 24px;
+        margin: auto;
+        animation: popModal 0.2s ease-out;
+    }
+
+    @keyframes popModal {
+        from { transform: scale(0.95); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+
+    .sheet-handle {
+        display: none;
+    }
+}
+
+.nav-tab .tab-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin-bottom: 2px;
+}
+
+.svg-icon {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* ==========================================================================
+   MICRO-INTERACTIONS & TACTILE ANIMATIONS (Alpine.js Enhanced)
+   0% Design Changes — Only Smooth Physics & Responsive Feedback
+   ========================================================================== */
+
+/* 1. Tactile Press Feedback on Interactive Elements */
+.btn, .chip, .btn-role-tag, .fab-btn, .trx-details-btn {
+    transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.16s ease, background-color 0.15s ease !important;
+}
+
+.btn:active, .chip:active, .btn-role-tag:active {
+    transform: scale(0.96) !important;
+}
+
+.fab-btn:active {
+    transform: scale(0.90) !important;
+}
+
+.trx-item {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease !important;
+}
+
+.trx-item:active {
+    transform: scale(0.985);
+}
+
+/* 2. Spring Physics for Bottom Sheet Modal (iOS native curve) */
+.sheet-card {
+    animation: springSlideUp 0.32s cubic-bezier(0.32, 0.72, 0, 1) !important;
+}
+
+@keyframes springSlideUp {
+    0% { transform: translateY(100%); opacity: 0.8; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+@media (min-width: 768px) {
+    .sheet-card {
+        animation: springModalPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    }
+    @keyframes springModalPop {
+        0% { transform: scale(0.92); opacity: 0; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+}
+
+/* 3. Smooth Tab Indicator Transition */
+.nav-tab {
+    transition: color 0.18s ease, transform 0.15s ease !important;
+}
+
+.nav-tab:active {
+    transform: scale(0.90);
+}
+
+.nav-tab::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    width: 0px;
+    height: 3px;
+    background: var(--orange);
+    border-radius: 2px;
+    transition: width 0.24s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.nav-tab.active::before {
+    width: 28px !important;
+}
+
+/* 4. Live Counter & Tagihan Number Pulse */
+@keyframes numPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.06); color: var(--primary-light); }
+    100% { transform: scale(1); }
+}
+
+.num-pulse {
+    display: inline-block;
+    animation: numPulse 0.18s ease-out;
+}

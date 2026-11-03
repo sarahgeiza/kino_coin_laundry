@@ -1,0 +1,678 @@
+{
+  "info": {
+    "name": "Kino Coin Laundry API - Final",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Jalankan Login sebelum endpoint yang memerlukan sesi. Jangan jalankan semua request otomatis karena ada operasi mutasi."
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "csrf_token",
+      "value": ""
+    },
+    {
+      "key": "kasir_password",
+      "value": "ISI_PASSWORD_KASIR"
+    },
+    {
+      "key": "pemilik_password",
+      "value": "ISI_PASSWORD_PEMILIK"
+    },
+    {
+      "key": "kode_pelanggan",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=health&action=list"
+      }
+    },
+    {
+      "name": "Login Kasir",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/index.php?module=auth&action=login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"kasir\",\n  \"password\": \"{{kasir_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  const json = pm.response.json();",
+              "  if (json.csrf_token) pm.collectionVariables.set(\"csrf_token\", json.csrf_token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login Pemilik",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/index.php?module=auth&action=login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"pemilik\",\n  \"password\": \"{{pemilik_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  const json = pm.response.json();",
+              "  if (json.csrf_token) pm.collectionVariables.set(\"csrf_token\", json.csrf_token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Saya",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=auth&action=me"
+      }
+    },
+    {
+      "name": "Logout",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/index.php?module=auth&action=logout",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Daftar Pengguna",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=pengguna&action=list"
+      }
+    },
+    {
+      "name": "Tambah Pengguna",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/index.php?module=pengguna&action=create",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nama\": \"Kasir Demo\",\n  \"username\": \"kasirdemo\",\n  \"role\": \"kasir\",\n  \"password\": \"PasswordDemo123!\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Ubah Pengguna",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/index.php?module=pengguna&action=update",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id_pengguna\": 2,\n  \"nama\": \"Kasir Kino\",\n  \"username\": \"kasir\",\n  \"role\": \"kasir\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Ubah Password Pengguna",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/index.php?module=pengguna&action=password",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id_pengguna\": 2,\n  \"password\": \"PasswordBaru123!\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Daftar Pelanggan",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=pelanggan&action=list"
+      }
+    },
+    {
+      "name": "Cari Pelanggan",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=pelanggan&action=list&q=Kino"
+      }
+    },
+    {
+      "name": "Tambah Pelanggan",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/index.php?module=pelanggan&action=create",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nama_pelanggan\": \"Pelanggan Uji\",\n  \"no_hp\": \"081299900001\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Ubah Pelanggan",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/index.php?module=pelanggan&action=update",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id_pelanggan\": 1,\n  \"nama_pelanggan\": \"Pelanggan Kino\",\n  \"no_hp\": \"081234567890\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Daftar Layanan",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=layanan&action=list"
+      }
+    },
+    {
+      "name": "Detail Layanan",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=layanan&action=detail&id=1"
+      }
+    },
+    {
+      "name": "Tambah Layanan",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/index.php?module=layanan&action=create",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nama_layanan\": \"Layanan Uji\",\n  \"harga\": 5000,\n  \"berat_standar\": 7.5\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Ubah Layanan",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/index.php?module=layanan&action=update",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id_layanan\": 1,\n  \"nama_layanan\": \"Cuci\",\n  \"harga\": 7000,\n  \"berat_standar\": 7.5\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Hapus Layanan",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/index.php?module=layanan&action=delete",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id_layanan\": 6\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Daftar Shift",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=shift&action=list"
+      }
+    },
+    {
+      "name": "Tambah Shift",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/index.php?module=shift&action=create",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nama_shift\": \"Shift Uji\",\n  \"jam_mulai\": \"08:00\",\n  \"jam_selesai\": \"10:00\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Tambah Transaksi",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/index.php?module=transaksi&action=create",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id_pelanggan\": 1,\n  \"id_shift\": 1,\n  \"jenis_pembayaran\": \"cash\",\n  \"detail_transaksi\": [\n    {\n      \"id_layanan\": 1,\n      \"berat\": 7,\n      \"jumlah_koin\": 1\n    },\n    {\n      \"id_layanan\": 5,\n      \"berat\": 7,\n      \"jumlah_koin\": 1\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Daftar Transaksi",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=transaksi&action=list"
+      }
+    },
+    {
+      "name": "Detail Transaksi",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=transaksi&action=detail&id=1"
+      }
+    },
+    {
+      "name": "Detail Layanan Transaksi",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=detail-transaksi&action=list&id_transaksi=1"
+      }
+    },
+    {
+      "name": "Dashboard Kasir",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=dashboard&action=index&start=2026-09-01&end=2026-10-31"
+      }
+    },
+    {
+      "name": "Dashboard Pemilik",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=dashboard&action=pemilik&start=2026-09-01&end=2026-10-31"
+      }
+    },
+    {
+      "name": "Rekap Ringkas",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=rekap&action=index&start=2026-09-01&end=2026-10-31"
+      }
+    },
+    {
+      "name": "Rekap Periode",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=rekap&action=periode&start=2026-09-01&end=2026-10-31"
+      }
+    },
+    {
+      "name": "Rekap Layanan",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=rekap&action=layanan&start=2026-09-01&end=2026-10-31"
+      }
+    },
+    {
+      "name": "Rekap Shift",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=rekap&action=shift&start=2026-09-01&end=2026-10-31"
+      }
+    },
+    {
+      "name": "Rekap Kasir",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=rekap&action=kasir&start=2026-09-01&end=2026-10-31"
+      }
+    },
+    {
+      "name": "Rekap Pembayaran",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=rekap&action=pembayaran&start=2026-09-01&end=2026-10-31"
+      }
+    },
+    {
+      "name": "Rekap Koin",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=rekap&action=koin&start=2026-09-01&end=2026-10-31"
+      }
+    },
+    {
+      "name": "Buat Kode Pelanggan",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/index.php?module=riwayat&action=buat-akses",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id_pelanggan\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  pm.collectionVariables.set(\"kode_pelanggan\", pm.response.json().kode_akses);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login Pelanggan",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/index.php?module=riwayat&action=login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"no_hp\": \"081234567890\",\n  \"kode_akses\": \"{{kode_pelanggan}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  const json = pm.response.json();",
+              "  if (json.csrf_token) pm.collectionVariables.set(\"csrf_token\", json.csrf_token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Riwayat Pelanggan",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=riwayat&action=list"
+      }
+    },
+    {
+      "name": "Detail Riwayat Pelanggan",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/index.php?module=riwayat&action=detail&id=1"
+      }
+    },
+    {
+      "name": "Logout Pelanggan",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrf_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/index.php?module=riwayat&action=logout",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
