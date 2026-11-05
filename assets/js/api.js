@@ -8,8 +8,7 @@
  */
 
 const API_CONFIG = {
-    // Ubah USE_BACKEND_API ke 'true' untuk mengaktifkan koneksi live ke PostgreSQL backend Sarah
-    USE_BACKEND_API: false,
+    USE_BACKEND_API: true,
     
     // Auto-detect base path ke api/index.php
     BASE_URL: (window.location.pathname.includes('/kasir/') || 
@@ -23,6 +22,13 @@ const API_CONFIG = {
         'Accept': 'application/json'
     }
 };
+
+function getCsrfHeaders() {
+    const formToken = document.querySelector('#formTransaksiBaru [name="csrf_token"]');
+    const metaToken = document.querySelector('meta[name="csrf-token"]');
+    const token = formToken ? formToken.value : (metaToken ? metaToken.content : '');
+    return token ? { 'X-CSRF-Token': token } : {};
+}
 
 const KinoAPI = {
     // 1. Autentikasi Pengguna & Staf
@@ -50,7 +56,7 @@ const KinoAPI = {
         if (API_CONFIG.USE_BACKEND_API) {
             const res = await fetch(`${API_CONFIG.BASE_URL}?module=auth&action=logout`, {
                 method: 'POST',
-                headers: API_CONFIG.HEADERS
+                headers: { ...API_CONFIG.HEADERS, ...getCsrfHeaders() }
             });
             return await res.json();
         }
@@ -67,10 +73,11 @@ const KinoAPI = {
     },
 
     // 3. Pelanggan & Member
-    async searchMember(query = '') {
-        if (API_CONFIG.USE_BACKEND_API) {
+    async searchMember(query = '', forceBackend = false) {
+        if (API_CONFIG.USE_BACKEND_API || forceBackend) {
             const res = await fetch(`${API_CONFIG.BASE_URL}?module=pelanggan&action=list&q=${encodeURIComponent(query)}`);
             const json = await res.json();
+            if (!res.ok) throw new Error(json.error || 'Gagal mencari pelanggan');
             return json.data || [];
         }
         const members = window.__MOCK_MEMBERS || [];
@@ -82,14 +89,16 @@ const KinoAPI = {
         );
     },
 
-    async createMember(nama, noHp) {
-        if (API_CONFIG.USE_BACKEND_API) {
+    async createMember(nama, noHp, forceBackend = false) {
+        if (API_CONFIG.USE_BACKEND_API || forceBackend) {
             const res = await fetch(`${API_CONFIG.BASE_URL}?module=pelanggan&action=create`, {
                 method: 'POST',
-                headers: API_CONFIG.HEADERS,
+                headers: { ...API_CONFIG.HEADERS, ...getCsrfHeaders() },
                 body: JSON.stringify({ nama_pelanggan: nama, no_hp: noHp })
             });
-            return await res.json();
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Gagal menyimpan pelanggan');
+            return data;
         }
         return { success: true, data: { nama_pelanggan: nama, no_hp: noHp } };
     },
@@ -104,26 +113,40 @@ const KinoAPI = {
         return window.__MOCK_TRANSACTIONS || [];
     },
 
-    async createTransaction(payload) {
+    async closeShift(payload) {
+        const res = await fetch(`${API_CONFIG.BASE_URL}?module=shift-operasional&action=close`, {
+            method: 'POST',
+            headers: { ...API_CONFIG.HEADERS, ...getCsrfHeaders() },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal menutup shift');
+        return data;
+    },
+
+    async createTransaction(payload, forceBackend = false) {
         /**
          * Payload format sesuai controller Sarah:
          * {
          *   no_hp: '08123456789',
          *   nama_pelanggan: 'Budi Santoso',
-         *   id_shift: 2,
          *   jenis_pembayaran: 'cash' | 'qris',
+         *   jumlah_dibayar: 7000,
          *   detail_transaksi: [
-         *     { id_layanan: 1, jumlah_koin: 1, berat: 5.0 }
+         *     { id_layanan: 1, berat: 5.0 },
+         *     { id_layanan: 8, jumlah: 2 }
          *   ]
          * }
          */
-        if (API_CONFIG.USE_BACKEND_API) {
+        if (API_CONFIG.USE_BACKEND_API || forceBackend) {
             const res = await fetch(`${API_CONFIG.BASE_URL}?module=transaksi&action=create`, {
                 method: 'POST',
-                headers: API_CONFIG.HEADERS,
+                headers: { ...API_CONFIG.HEADERS, ...getCsrfHeaders() },
                 body: JSON.stringify(payload)
             });
-            return await res.json();
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Gagal menyimpan transaksi');
+            return data;
         }
         return { success: true, id: 'INV-2026-00' + Math.floor(Math.random() * 900 + 100), data: payload };
     },

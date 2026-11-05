@@ -1,67 +1,77 @@
 <?php
 require_once __DIR__ . '/../includes/data.php';
+require_once __DIR__ . '/../backend/config/database.php';
+require_once __DIR__ . '/../includes/helpers.php';
 check_auth_guard('pemilik');
 
-// Handle Add / Edit / Deactivate User POST BEFORE header output
+$user_error = '';
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
 
-    $user_error = '';
-    if ($action === 'add_user') {
-        $nama = trim($_POST['nama'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $username = trim($_POST['username'] ?? '');
-        $role = trim($_POST['role'] ?? 'Kasir');
-        $pass = trim($_POST['password'] ?? '123456');
+    if (
+        empty($_SESSION['csrf'])
+        || empty($_POST['csrf_token'])
+        || !hash_equals((string)$_SESSION['csrf'], (string)$_POST['csrf_token'])
+    ) {
+        $user_error = 'Sesi tidak valid. Muat ulang halaman dan coba kembali.';
+    } else {
+        try {
+            if ($action === 'add_user') {
+                $name = trim($_POST['nama'] ?? '');
+                $username = trim($_POST['username'] ?? '');
+                $role = strtolower(trim($_POST['role'] ?? 'kasir'));
+                $password = (string)($_POST['password'] ?? '');
 
-        if (empty($nama) || empty($username)) {
-            $user_error = 'Nama staf dan username wajib diisi.';
-        } else {
-            // Cek apakah username sudah dipakai (hindari duplikat)
-            $is_duplicate = false;
-            foreach ($_SESSION['users'] as $u) {
-                if (strcasecmp($u['username'], $username) === 0) {
-                    $is_duplicate = true;
-                    break;
+                if ($name === '' || $username === '' || !in_array($role, ['pemilik', 'kasir'], true)) {
+                    $user_error = 'Nama, username, dan role wajib diisi dengan benar.';
+                } elseif (strlen($password) < 8) {
+                    $user_error = 'Password minimal 8 karakter.';
+                } elseif (one('SELECT id_pengguna FROM pengguna WHERE LOWER(username) = LOWER(?)', [$username])) {
+                    $user_error = 'Username sudah digunakan.';
+                } else {
+                    one(
+                        'INSERT INTO pengguna (nama, username, role, password)
+                         VALUES (?, ?, ?, ?)',
+                        [$name, $username, $role, password_hash($password, PASSWORD_DEFAULT)]
+                    );
+                    header('Location: users.php?toast=saved');
+                    exit;
                 }
-            }
-            if ($is_duplicate) {
-                $user_error = 'Username ' . htmlspecialchars($username) . ' sudah digunakan oleh staf lain.';
-            } else {
-                $_SESSION['users'][] = [
-                    'id' => count($_SESSION['users']) + 1,
-                    'nama' => $nama,
-                    'role' => $role,
-                    'email' => $email ?: strtolower($username) . '@kino.com',
-                    'username' => $username,
-                    'password' => $pass ?: '123456'
-                ];
+            } elseif ($action === 'edit_user') {
+                execute_sql(
+                    'UPDATE pengguna SET nama = ? WHERE id_pengguna = ? AND role <> ?',
+                    [trim($_POST['nama'] ?? ''), (int)($_POST['user_id'] ?? 0), 'pemilik']
+                );
                 header('Location: users.php?toast=saved');
                 exit;
+            } elseif ($action === 'deactivate_user') {
+                $targetId = (int)($_POST['user_id'] ?? 0);
+                if ($targetId === (int)($_SESSION['user_id'] ?? 0)) {
+                    $user_error = 'Akun yang sedang digunakan tidak dapat dinonaktifkan.';
+                } else {
+                    $account = one('SELECT id_pengguna, role FROM pengguna WHERE id_pengguna = ?', [$targetId]);
+                    $hasHistory = one(
+                        'SELECT 1
+                         WHERE EXISTS (SELECT 1 FROM transaksi WHERE id_kasir = ?)
+                            OR EXISTS (SELECT 1 FROM shift_operasional WHERE id_kasir = ?)
+                            OR EXISTS (SELECT 1 FROM jadwal_shift WHERE id_kasir = ?)',
+                        [$targetId, $targetId, $targetId]
+                    );
+                    if (!$account || $account['role'] === 'pemilik') {
+                        $user_error = 'Akun pemilik tidak dapat dinonaktifkan.';
+                    } elseif ($hasHistory) {
+                        $user_error = 'Akun memiliki riwayat operasional dan tidak dapat dihapus.';
+                    } else {
+                        execute_sql('DELETE FROM pengguna WHERE id_pengguna = ?', [$targetId]);
+                        header('Location: users.php?toast=deactivated');
+                        exit;
+                    }
+                }
             }
+        } catch (Throwable $e) {
+            error_log($e->getMessage());
+            $user_error = 'Perubahan akun tidak dapat disimpan ke database.';
         }
-    } elseif ($action === 'edit_user') {
-        $user_id = intval($_POST['user_id'] ?? 0);
-        $nama = trim($_POST['nama'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        
-        foreach ($_SESSION['users'] as &$u) {
-            if ($u['id'] === $user_id) {
-                $u['nama'] = $nama;
-                if ($email) $u['email'] = $email;
-                break;
-            }
-        }
-        header('Location: users.php?toast=saved');
-        exit;
-    } elseif ($action === 'deactivate_user') {
-        $user_id = intval($_POST['user_id'] ?? 0);
-        // Safeguard: Owner cannot be deactivated
-        $_SESSION['users'] = array_values(array_filter($_SESSION['users'], function($u) use ($user_id) {
-            return ($u['id'] !== $user_id) || ($u['role'] === 'Pemilik');
-        }));
-        header('Location: users.php?toast=deactivated');
-        exit;
     }
 }
 
@@ -70,6 +80,7 @@ $app_role = 'pemilik';
 $active_tab = 'user';
 
 require_once __DIR__ . '/../includes/header.php';
+$users = rows('SELECT id_pengguna AS id, nama, username, role FROM pengguna ORDER BY id_pengguna');
 ?>
 
 <?php if (!empty($user_error)): ?>
@@ -80,7 +91,7 @@ require_once __DIR__ . '/../includes/header.php';
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
     <div>
         <h2 style="font-size: 16px; font-weight: 800;">Manajemen Pengguna</h2>
-        <span style="font-size: 11px; color: var(--text-muted);"><?= count($_SESSION['users']) ?> staf &amp; akun terdaftar</span>
+        <span style="font-size: 11px; color: var(--text-muted);"><?= count($users) ?> staf &amp; akun terdaftar</span>
     </div>
     <button type="button" class="btn btn-primary" style="width: auto; padding: 6px 14px; font-size: 12px;" onclick="openModal('modalAddUser')">
         + Tambah
@@ -88,8 +99,8 @@ require_once __DIR__ . '/../includes/header.php';
 </div>
 
 <!-- List of Staff Users (P5) -->
-<?php foreach ($_SESSION['users'] as $u): 
-    $is_owner = ($u['role'] === 'Pemilik');
+<?php foreach ($users as $u):
+    $is_owner = ($u['role'] === 'pemilik');
 ?>
 <div class="card" style="margin-bottom: 10px; padding: 14px;">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
@@ -99,7 +110,7 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
             <div>
                 <strong style="font-size: 14px; color: var(--text-main);"><?= htmlspecialchars($u['nama']) ?></strong>
-                <div style="font-size: 11px; color: var(--text-muted);"><?= htmlspecialchars($u['email']) ?></div>
+                <div style="font-size: 11px; color: var(--text-muted);">@<?= htmlspecialchars($u['username']) ?></div>
             </div>
         </div>
         <span class="badge <?= $is_owner ? 'badge-token' : 'badge-tunai' ?>">
@@ -108,14 +119,17 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 
     <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 8px;">
-        <button type="button" class="btn btn-outline" style="width: auto; padding: 4px 12px; font-size: 11px;" onclick="editUser(<?= htmlspecialchars(json_encode($u)) ?>)">
-            Edit
-        </button>
         <?php if (!$is_owner): ?>
-            <form action="users.php" method="POST" style="margin: 0;" onsubmit="return confirm('Nonaktifkan staf <?= htmlspecialchars($u['nama']) ?>?')">
+            <button type="button" class="btn btn-outline" style="width: auto; padding: 4px 12px; font-size: 11px;" onclick="editUser(<?= htmlspecialchars(json_encode($u)) ?>)">
+                Edit
+            </button>
+        <?php endif; ?>
+        <?php if (!$is_owner): ?>
+            <form action="users.php" method="POST" style="margin: 0;" onsubmit="return confirm('Hapus staf <?= htmlspecialchars($u['nama']) ?>?')">
                 <input type="hidden" name="action" value="deactivate_user">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf'] ?? '') ?>">
                 <input type="hidden" name="user_id" value="<?= $u['id'] ?>">
-                <button type="submit" class="btn btn-outline" style="width: auto; padding: 4px 10px; font-size: 11px; color: #dc2626;" title="Nonaktifkan">
+                <button type="submit" class="btn btn-outline" style="width: auto; padding: 4px 10px; font-size: 11px; color: #dc2626;" title="Hapus">
                     &times;
                 </button>
             </form>
@@ -134,6 +148,7 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
         <form action="users.php" method="POST">
             <input type="hidden" name="action" value="add_user">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf'] ?? '') ?>">
             <div class="form-group">
                 <label class="form-label">Nama Lengkap *</label>
                 <input type="text" name="nama" class="form-control" placeholder="Contoh: Rian Pratama" required>
@@ -143,15 +158,15 @@ require_once __DIR__ . '/../includes/header.php';
                 <input type="text" name="username" class="form-control" placeholder="Contoh: rian" required>
             </div>
             <div class="form-group">
-                <label class="form-label">Email</label>
-                <input type="email" name="email" class="form-control" placeholder="Contoh: rian@kino.com">
-            </div>
-            <div class="form-group">
                 <label class="form-label">Role Akses *</label>
                 <select name="role" class="form-control" required>
-                    <option value="Kasir">Kasir</option>
-                    <option value="Pemilik">Pemilik</option>
+                    <option value="kasir">Kasir</option>
+                    <option value="pemilik">Pemilik</option>
                 </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password awal *</label>
+                <input type="password" name="password" class="form-control" minlength="8" required>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 14px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal('modalAddUser')">Batal</button>
@@ -171,14 +186,11 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
         <form action="users.php" method="POST">
             <input type="hidden" name="action" value="edit_user">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf'] ?? '') ?>">
             <input type="hidden" id="editUserId" name="user_id" value="">
             <div class="form-group">
                 <label class="form-label">Nama Lengkap</label>
                 <input type="text" id="editUserNama" name="nama" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Email</label>
-                <input type="email" id="editUserEmail" name="email" class="form-control">
             </div>
             <div style="display: flex; gap: 10px; margin-top: 14px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal('modalEditUser')">Batal</button>
@@ -192,7 +204,6 @@ require_once __DIR__ . '/../includes/header.php';
 function editUser(u) {
     document.getElementById('editUserId').value = u.id;
     document.getElementById('editUserNama').value = u.nama;
-    document.getElementById('editUserEmail').value = u.email || '';
     openModal('modalEditUser');
 }
 </script>

@@ -32,16 +32,25 @@ class Transaksi extends BaseModel
         int $id_pelanggan,
         int $id_shift,
         string $jenis_pembayaran,
-        int $total_bayar
+        int $total_bayar,
+        int $id_shift_operasional
     ): ?array {
         $remaining = 0;
         $status = 'lunas';
+        $invoice = 'INV-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(4)));
         return $this->fetchOne(
-            'INSERT INTO transaksi (id_kasir, id_pelanggan, id_shift, jenis_pembayaran, total_bayar,
-                                    sisa_bayar, status_pembayaran)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             RETURNING id_transaksi',
-            [$id_kasir, $id_pelanggan, $id_shift, $jenis_pembayaran, $total_bayar, $remaining, $status]
+            'INSERT INTO transaksi (
+                id_kasir, id_pelanggan, id_shift, jenis_pembayaran, total_bayar,
+                sisa_bayar, status_pembayaran, id_shift_operasional,
+                no_invoice, jumlah_dibayar, uang_kembalian
+             )
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0)
+             RETURNING id_transaksi, no_invoice',
+            [
+                $id_kasir, $id_pelanggan, $id_shift, $jenis_pembayaran,
+                $total_bayar, $remaining, $status, $id_shift_operasional,
+                $invoice, $total_bayar
+            ]
         );
     }
 
@@ -49,9 +58,9 @@ class Transaksi extends BaseModel
      * Simpan transaksi + detailnya dalam SATU database transaction.
      * Harga diambil dari tabel layanan (bukan dari klien), total dihitung di server.
      *
-     * Subtotal dihitung sebagai berat (kg) dikali harga layanan per kilogram.
+     * Layanan proses dihitung per berat standar, Lipat per kg, tambahan per pcs.
      *
-     * @param array<int, array{id_layanan:int, berat:?float}> $items
+     * @param array<int, array{id_layanan:int, berat?:?float, jumlah?:int}> $items
      * @return int id_transaksi baru
      */
     public function createWithDetails(
@@ -79,32 +88,69 @@ class Transaksi extends BaseModel
                 throw new InvalidArgumentException('Layanan tidak ditemukan atau tidak aktif: ' . $item['id_layanan']);
             }
 
-            $weight = isset($item['berat']) ? (float)$item['berat'] : 0.0;
-            if (!is_finite($weight) || $weight <= 0 || $weight > 7.5) {
-                throw new InvalidArgumentException('Berat setiap detail harus lebih dari 0 dan maksimal 7,5 kg.');
-            }
             $harga = (int) $layanan['harga'];
-            $subtotal = (int) round($weight * $harga);
+            $coinsPerProcess = (int)($layanan['jumlah_koin'] ?? 0);
+            $standardWeight = (float)($layanan['berat_standar'] ?? 0);
+            if ($coinsPerProcess > 0 || $standardWeight > 0) {
+                $weight = isset($item['berat']) ? (float)$item['berat'] : 0.0;
+                if (!is_finite($weight) || $weight <= 0 || $weight > 999.99) {
+                    throw new InvalidArgumentException('Berat layanan harus lebih dari 0 dan maksimal 999,99 kg.');
+                }
+                $processWeight = $standardWeight > 0 ? $standardWeight : 7.5;
+                $quantity = (int)ceil($weight / $processWeight);
+                $coinCount = $quantity * $coinsPerProcess;
+                $subtotal = $quantity * $harga;
+            } elseif (stripos((string)$layanan['nama_layanan'], 'lipat') !== false) {
+                $weight = isset($item['berat']) ? (float)$item['berat'] : 0.0;
+                if (!is_finite($weight) || $weight <= 0 || $weight > 999.99) {
+                    throw new InvalidArgumentException('Berat Lipat harus lebih dari 0 dan maksimal 999,99 kg.');
+                }
+                $quantity = 1;
+                $coinCount = 0;
+                $subtotal = (int)round($weight * $harga);
+            } else {
+                $weight = null;
+                $quantity = isset($item['jumlah']) ? (int)$item['jumlah'] : 1;
+                if ($quantity < 1) {
+                    throw new InvalidArgumentException('Jumlah layanan harus minimal 1.');
+                }
+                $coinCount = 0;
+                $subtotal = $quantity * $harga;
+            }
             $total += $subtotal;
 
             $details[] = [
                 'id_layanan'   => (int) $item['id_layanan'],
                 'berat'        => $weight,
-                'jumlah_koin'  => (int) ($layanan['jumlah_koin'] ?? 0),
+                'jumlah'       => $quantity,
+                'jumlah_koin'  => $coinCount,
                 'harga_satuan' => $harga,
                 'subtotal'     => $subtotal,
             ];
         }
 
-        $totalWeight = array_sum(array_column($details, 'berat'));
-        if ($totalWeight > 7.5) {
-            throw new InvalidArgumentException('Total berat transaksi maksimal 7,5 kg.');
-        }
-
         $this->run('BEGIN');
 
         try {
-            $header = $this->create($id_kasir, $id_pelanggan, $id_shift, $jenis_pembayaran, $total);
+            $activeShift = $this->fetchOne(
+                'SELECT id_shift_operasional
+                 FROM shift_operasional
+                 WHERE id_kasir = $1 AND id_shift = $2 AND status = $3
+                 FOR UPDATE',
+                [$id_kasir, $id_shift, 'aktif']
+            );
+            if ($activeShift === null) {
+                throw new RuntimeException('Kasir belum memiliki shift operasional aktif.');
+            }
+
+            $header = $this->create(
+                $id_kasir,
+                $id_pelanggan,
+                $id_shift,
+                $jenis_pembayaran,
+                $total,
+                (int)$activeShift['id_shift_operasional']
+            );
             $idTransaksi = (int) $header['id_transaksi'];
 
             $detailModel = new DetailTransaksi($this->conn);
@@ -115,7 +161,8 @@ class Transaksi extends BaseModel
                     $d['berat'],
                     $d['jumlah_koin'],
                     $d['harga_satuan'],
-                    $d['subtotal']
+                    $d['subtotal'],
+                    $d['jumlah']
                 );
             }
 

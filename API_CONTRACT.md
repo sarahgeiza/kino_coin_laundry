@@ -4,6 +4,7 @@ Dokumentasi resmi arsitektur komunikasi data antara **Frontend (Nizar Maulana Ra
 
 - **Router Utama Backend**: `api/index.php?module={module}&action={action}`
 - **Format Header**: `Content-Type: application/json`
+- **Request POST yang dilindungi CSRF**: kirim token sesi pada header `X-CSRF-Token`.
 - **Format Sukses**:
   ```json
   {
@@ -21,7 +22,25 @@ Dokumentasi resmi arsitektur komunikasi data antara **Frontend (Nizar Maulana Ra
 
 ## 1. Modul Autentikasi (`?module=auth`)
 
-### A. Login Staf (`action=login`) - Method: `POST`
+### A. Login Pelanggan (`action=login`) - Method: `POST`
+* Kirim nomor WhatsApp pada `username` dan password yang dibuat saat pendaftaran.
+  Akun pelanggan yang belum memiliki password dapat diaktifkan melalui
+  `action=register` dengan nama dan nomor yang sama seperti catatan transaksi.
+
+### B. Daftar / Aktifkan Akun Pelanggan (`action=register`) - Method: `POST`
+* **Request Body**:
+  ```json
+  {
+    "nama_pelanggan": "Nama sesuai transaksi",
+    "no_hp": "081377889900",
+    "password": "password-baru"
+  }
+  ```
+* Password minimal 8 karakter. Untuk record pelanggan dari transaksi lama yang
+  belum memiliki password, nama dan nomor harus cocok dengan data database;
+  akun lama akan diaktifkan tanpa membuat duplikat pelanggan.
+
+### C. Login Staf (`action=login`) - Method: `POST`
 * **Request Body**:
   ```json
   {
@@ -42,7 +61,7 @@ Dokumentasi resmi arsitektur komunikasi data antara **Frontend (Nizar Maulana Ra
   }
   ```
 
-### B. Cek Sesi (`action=me`) - Method: `GET`
+### D. Cek Sesi (`action=me`) - Method: `GET`
 Mengembalikan data pengguna yang sedang login beserta CSRF token aktif.
 
 ---
@@ -50,7 +69,7 @@ Mengembalikan data pengguna yang sedang login beserta CSRF token aktif.
 ## 2. Modul Pelanggan (`?module=pelanggan`)
 
 ### A. Cari Pelanggan (`action=list`) - Method: `GET`
-* **Query Params**: `q` (nama atau no_hp)
+* **Query Params**: `q` (nama, nomor WhatsApp, atau kode kartu QR)
 * **Response (200)**: Array data pelanggan.
 
 ### B. Tambah Pelanggan Baru (`action=create`) - Method: `POST`
@@ -74,7 +93,17 @@ Mengembalikan data pengguna yang sedang login beserta CSRF token aktif.
 ## 4. Modul Shift (`?module=shift`)
 
 ### Daftar Shift Kerja (`action=list`) - Method: `GET`
-* Mengambil master jadwal shift operasional toko (Pagi, Siang, Malam).
+* Mengambil jadwal empat shift: Pagi (06:00–12:00), Siang (12:00–18:00),
+  Malam (18:00–00:00), dan Midnight (00:00–06:00).
+
+### Operasional Shift (`?module=shift-operasional`)
+* `action=current` (`GET`) mengembalikan shift kasir yang aktif.
+* `action=open` (`POST`) membuka shift yang sedang berjalan; body berisi `id_shift`.
+  Jika ada jadwal kasir untuk hari tersebut, check-in harus sesuai shift jadwal.
+  Jika belum ada jadwal kasir, sistem menggunakan shift yang sedang berjalan.
+* `action=close` (`POST`) menutup shift aktif; body berisi `total_fisik` dan dapat
+  menyertakan `catatan`.
+* Ketiga action memerlukan sesi kasir; `open` dan `close` memerlukan token CSRF.
 
 ---
 
@@ -87,22 +116,43 @@ Mengembalikan data pengguna yang sedang login beserta CSRF token aktif.
   {
     "no_hp": "081377889900",
     "nama_pelanggan": "Zaki Ramadhan",
-    "id_shift": 2,
     "jenis_pembayaran": "cash",
+    "jumlah_dibayar": 7000,
     "detail_transaksi": [
       {
         "id_layanan": 1,
-        "jumlah_koin": 1,
         "berat": 6.5
       }
     ]
   }
   ```
+* `jumlah_dibayar` wajib; nilai 0 atau kurang dari total tidak akan otomatis
+  dianggap lunas. Backend menghitung sisa pembayaran, status, dan kembalian Cash.
+  QRIS tidak menerima pembayaran yang melebihi total.
+* Cuci, Kering, Cuci Kering, Extra Spin, Extra Dry, dan Cuci Kering Drop Off
+  dihitung per proses 7,5 kg dengan pembulatan ke atas. Drop Off tidak
+  menghasilkan koin mesin. Lipat memakai `berat` dan dihitung per kg; Sabun,
+  Softener, dan Kresek memakai `jumlah` pcs. Parfum gratis sudah termasuk dan
+  bukan item berbayar terpisah. Harga selalu diambil dari tabel `layanan`.
+  Kolom jumlah detail tersedia setelah migration
+  `database/05_jumlah_layanan_detail.sql` dijalankan.
+* `id_shift` pada request lama tidak lagi digunakan; transaksi mengikuti shift
+  operasional aktif yang tersimpan untuk kasir.
 * **Response (201)**:
   ```json
   {
-    "id_transaksi": 105,
-    "total_bayar": 7000
+    "message": "Transaksi berhasil disimpan",
+    "data": {
+      "id_transaksi": 105,
+      "no_invoice": "INV-20261104-AB12CD34",
+      "total_bayar": 7000,
+      "jenis_pembayaran": "cash",
+      "jumlah_dibayar": 7000,
+      "sisa_bayar": 0,
+      "uang_kembalian": 0,
+      "status_pembayaran": "lunas",
+      "total_koin_mesin": 1
+    }
   }
   ```
 

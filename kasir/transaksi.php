@@ -1,18 +1,60 @@
 <?php
+require_once __DIR__ . '/../includes/data.php';
+require_once __DIR__ . '/../backend/config/database.php';
+require_once __DIR__ . '/../includes/helpers.php';
+check_auth_guard('kasir');
+
 $page_title = 'Daftar Transaksi - Kino Coin Laundry';
 $app_role = 'kasir';
 $active_tab = 'transaksi';
 
 require_once __DIR__ . '/../includes/header.php';
 
-$filter = $_GET['filter'] ?? 'Semua';
-
-$tx_list = $_SESSION['transactions'];
-if ($filter === 'Self Service') {
-    $tx_list = array_filter($tx_list, fn($t) => ($t['kategori'] ?? '') === 'SELF_SERVICE');
-} elseif ($filter === 'Drop Off') {
-    $tx_list = array_filter($tx_list, fn($t) => ($t['kategori'] ?? '') !== 'SELF_SERVICE');
-}
+$filter = in_array($_GET['filter'] ?? '', ['Self Service', 'Drop Off'], true)
+    ? $_GET['filter']
+    : 'Semua';
+$activeShift = one(
+    "SELECT id_shift_operasional
+     FROM shift_operasional
+     WHERE id_kasir = ? AND status = 'aktif'
+     ORDER BY id_shift_operasional DESC
+     LIMIT 1",
+    [(int)$_SESSION['user_id']]
+);
+$filterCondition = match ($filter) {
+    'Self Service' => 'HAVING BOOL_OR(d.jumlah_koin > 0)',
+    'Drop Off' => 'HAVING NOT BOOL_OR(d.jumlah_koin > 0)',
+    default => '',
+};
+$tx_list = $activeShift ? rows(
+    "SELECT t.no_invoice AS id,
+            p.nama_pelanggan AS pelanggan,
+            p.no_hp AS wa,
+            STRING_AGG(DISTINCT l.nama_layanan, ', ' ORDER BY l.nama_layanan) AS layanan,
+            SUM(COALESCE(d.berat, d.jumlah::numeric))::numeric AS kuantitas,
+            t.total_bayar,
+            t.total_bayar AS total_biaya,
+            CASE WHEN BOOL_OR(d.jumlah_koin > 0) THEN 'Token' ELSE t.jenis_pembayaran END AS metode,
+            INITCAP(REPLACE(t.status_pembayaran, '_', ' ')) AS status,
+            u.nama AS kasir,
+            s.nama_shift AS shift,
+            TO_CHAR(t.tanggal_transaksi, 'DD Mon YYYY') AS tanggal,
+            TO_CHAR(t.tanggal_transaksi, 'HH24:MI') AS waktu,
+            COALESCE(SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%cuci%'), 0)::int AS koin_cuci,
+            COALESCE(SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%kering%'), 0)::int AS koin_kering,
+            CASE WHEN BOOL_OR(d.jumlah_koin > 0) THEN 'SELF_SERVICE' ELSE 'DROP_OFF' END AS kategori
+     FROM transaksi t
+     JOIN pelanggan p USING (id_pelanggan)
+     JOIN pengguna u ON u.id_pengguna = t.id_kasir
+     JOIN shift s USING (id_shift)
+     JOIN detail_transaksi d USING (id_transaksi)
+     JOIN layanan l USING (id_layanan)
+     WHERE t.id_shift_operasional = ?
+     GROUP BY t.id_transaksi, p.id_pelanggan, u.id_pengguna, s.id_shift
+     $filterCondition
+     ORDER BY t.tanggal_transaksi DESC",
+    [(int)$activeShift['id_shift_operasional']]
+) : [];
 ?>
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -77,7 +119,7 @@ if ($filter === 'Self Service') {
         <div class="sheet-handle"></div>
         <div class="sheet-header">
             <div>
-                <span style="font-size: 11px; font-weight: 800; color: var(--primary);" id="detailInvoiceId">INV-2026-001</span>
+                <span style="font-size: 11px; font-weight: 800; color: var(--primary);" id="detailInvoiceId">Invoice</span>
                 <h3 class="sheet-title" id="detailCustomerName">Budi Santoso</h3>
             </div>
             <button type="button" class="sheet-close" onclick="closeModal('modalTrxDetail')">&times;</button>

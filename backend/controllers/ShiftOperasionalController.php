@@ -11,8 +11,9 @@ if ($module === 'shift-operasional') {
             respond(['error' => 'Akses hanya untuk pemilik'], 403);
         }
         $logs = rows(
-            'SELECT so.id_shift_operasional, so.mulai_pada, so.selesai_pada,
-                    so.modal_awal, so.total_uang_fisik, so.selisih, so.status,
+            'SELECT so.id_shift_operasional, so.mulai_pada, so.ditutup_pada,
+                    so.total_sistem, so.total_fisik, so.selisih, so.catatan,
+                    so.status,
                     p.nama AS nama_kasir, s.nama_shift, s.jam_mulai, s.jam_selesai
              FROM shift_operasional so
              JOIN pengguna p ON so.id_kasir = p.id_pengguna
@@ -54,7 +55,7 @@ if ($module === 'shift-operasional') {
                 COUNT(DISTINCT t.id_transaksi)::int AS total_transaksi,
                 COALESCE(SUM(t.total_bayar), 0)::bigint AS total_pendapatan,
                 COALESCE(
-                    SUM(t.total_bayar) FILTER (
+                    SUM(t.jumlah_dibayar - t.uang_kembalian) FILTER (
                         WHERE t.jenis_pembayaran = \'cash\'
                     ), 0
                 )::bigint AS total_cash,
@@ -97,21 +98,49 @@ if ($module === 'shift-operasional') {
             respond(['error' => 'ID shift tidak valid'], 422);
         }
 
-        // Pastikan jenis shift tersedia
-        $shift = one(
-            'SELECT id_shift
-             FROM shift
-             WHERE id_shift = ?',
-            [$shiftId]
+        $scheduled = rows(
+            "SELECT j.id_jadwal, j.id_shift
+             FROM jadwal_shift j
+             JOIN shift s USING (id_shift)
+             WHERE j.id_kasir = ?
+               AND j.tanggal = CURRENT_DATE
+               AND j.status = 'dijadwalkan'
+               AND ((s.jam_mulai < s.jam_selesai
+                     AND CURRENT_TIME >= s.jam_mulai
+                     AND CURRENT_TIME < s.jam_selesai)
+                 OR (s.jam_mulai >= s.jam_selesai
+                     AND (CURRENT_TIME >= s.jam_mulai
+                          OR CURRENT_TIME < s.jam_selesai)))
+             FOR UPDATE OF j",
+            [$kasirId]
         );
 
-        if (!$shift) {
-            respond(['error' => 'Jenis shift tidak ditemukan'], 404);
+        if (count($scheduled) > 1) {
+            respond(['error' => 'Jadwal shift aktif bertabrakan'], 409);
+        }
+        if (count($scheduled) === 1 && (int)$scheduled[0]['id_shift'] !== $shiftId) {
+            respond(['error' => 'Check-in hanya dapat dilakukan untuk shift yang dijadwalkan'], 422);
+        }
+        if (!$scheduled) {
+            $scheduled = rows(
+                'SELECT NULL::bigint AS id_jadwal, id_shift
+                 FROM shift
+                 WHERE (jam_mulai < jam_selesai
+                        AND CURRENT_TIME >= jam_mulai
+                        AND CURRENT_TIME < jam_selesai)
+                    OR (jam_mulai >= jam_selesai
+                        AND (CURRENT_TIME >= jam_mulai
+                             OR CURRENT_TIME < jam_selesai))
+                 ORDER BY id_shift'
+            );
+            if (count($scheduled) !== 1 || (int)$scheduled[0]['id_shift'] !== $shiftId) {
+                respond(['error' => 'Jadwal shift aktif tidak ditemukan atau bertabrakan'], 409);
+            }
         }
 
         // Cek apakah kasir masih memiliki shift aktif
         $active = one(
-            'SELECT id_shift_operasional
+            'SELECT id_shift_operasional, id_jadwal
              FROM shift_operasional
              WHERE id_kasir = ? AND status = ?
              LIMIT 1',
@@ -127,11 +156,17 @@ if ($module === 'shift-operasional') {
         // Simpan shift baru
         $result = one(
             'INSERT INTO shift_operasional
-                (id_kasir, id_shift, status, mulai_pada)
-             VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                (id_kasir, id_shift, id_jadwal, status, mulai_pada)
+             VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
              RETURNING id_shift_operasional, mulai_pada, status',
-            [$kasirId, $shiftId, 'aktif']
+            [$kasirId, $shiftId, (int)$scheduled[0]['id_jadwal'], 'aktif']
         );
+        if (!empty($scheduled[0]['id_jadwal'])) {
+            execute_sql(
+                "UPDATE jadwal_shift SET status = 'dimulai' WHERE id_jadwal = ?",
+                [(int)$scheduled[0]['id_jadwal']]
+            );
+        }
 
         respond([
             'message' => 'Shift berhasil dibuka',
@@ -149,11 +184,7 @@ if ($module === 'shift-operasional') {
         $b = body();
         need($b, ['total_fisik']);
 
-        $physical = integer($b['total_fisik']);
-
-        if ($physical < 0) {
-            respond(['error' => 'Total uang fisik tidak valid'], 422);
-        }
+        $physical = integer($b['total_fisik'], 0);
 
         $conn = getConnection();
 
@@ -166,7 +197,7 @@ if ($module === 'shift-operasional') {
         try {
             // Ambil shift aktif dan kunci barisnya
             $active = one(
-                'SELECT id_shift_operasional
+                'SELECT id_shift_operasional, id_jadwal
                  FROM shift_operasional
                  WHERE id_kasir = ? AND status = ?
                  FOR UPDATE',
@@ -187,7 +218,7 @@ if ($module === 'shift-operasional') {
             $summary = one(
                 'SELECT
                     COALESCE(
-                        SUM(total_bayar) FILTER (
+                        SUM(jumlah_dibayar - uang_kembalian) FILTER (
                             WHERE jenis_pembayaran = \'cash\'
                         ), 0
                     )::bigint AS total_sistem
@@ -222,6 +253,12 @@ if ($module === 'shift-operasional') {
                     $id
                 ]
             );
+            if (!empty($active['id_jadwal'])) {
+                execute_sql(
+                    "UPDATE jadwal_shift SET status = 'selesai' WHERE id_jadwal = ?",
+                    [(int)$active['id_jadwal']]
+                );
+            }
 
             if (!pg_query($conn, 'COMMIT')) {
                 throw new RuntimeException(

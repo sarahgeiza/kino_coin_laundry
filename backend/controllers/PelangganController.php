@@ -5,22 +5,25 @@ if ($module === 'pelanggan') {
     if ($action === 'list') {
         method('GET');
         $q = trim((string)($_GET['q'] ?? ''));
-        $sql = "SELECT id_pelanggan, nama_pelanggan, no_hp, dibuat_pada,
+        $sql = "SELECT id_pelanggan, nama_pelanggan, no_hp,
                        nama_pelanggan AS nama, no_hp AS wa,
-                       CONCAT('KC-P-', LPAD(id_pelanggan::text, 4, '0')) AS kode_kartu
+                       (password_hash IS NOT NULL) AS is_member,
+                       COALESCE(kode_kartu, CONCAT('KC-P-', LPAD(id_pelanggan::text, 4, '0'))) AS kode_kartu
                 FROM pelanggan
                 WHERE nama_pelanggan ILIKE ? OR no_hp ILIKE ?
+                   OR COALESCE(kode_kartu, CONCAT('KC-P-', LPAD(id_pelanggan::text, 4, '0'))) ILIKE ?
                 ORDER BY id_pelanggan DESC
                 LIMIT 100";
-        respond(['data' => rows($sql, ['%' . $q . '%', '%' . $q . '%'])]);
+        respond(['data' => rows($sql, ['%' . $q . '%', '%' . $q . '%', '%' . $q . '%'])]);
     }
 
     if ($action === 'detail') {
         method('GET');
         $p = one(
-            "SELECT id_pelanggan, nama_pelanggan, no_hp, dibuat_pada,
+            "SELECT id_pelanggan, nama_pelanggan, no_hp,
                     nama_pelanggan AS nama, no_hp AS wa,
-                    CONCAT('KC-P-', LPAD(id_pelanggan::text, 4, '0')) AS kode_kartu
+                    (password_hash IS NOT NULL) AS is_member,
+                    COALESCE(kode_kartu, CONCAT('KC-P-', LPAD(id_pelanggan::text, 4, '0'))) AS kode_kartu
              FROM pelanggan WHERE id_pelanggan = ?",
             [idparam()]
         );
@@ -47,11 +50,18 @@ if ($module === 'pelanggan') {
         }
 
         $r = one(
-            "INSERT INTO pelanggan(nama_pelanggan, no_hp)
-             VALUES(?, ?)
-             RETURNING id_pelanggan, nama_pelanggan, no_hp,
-                       nama_pelanggan AS nama, no_hp AS wa,
-                       CONCAT('KC-P-', LPAD(id_pelanggan::text, 4, '0')) AS kode_kartu",
+            "WITH inserted AS (
+                INSERT INTO pelanggan(nama_pelanggan, no_hp)
+                VALUES(?, ?)
+                RETURNING id_pelanggan
+             )
+             UPDATE pelanggan p
+             SET kode_kartu = CONCAT('KC-P-', LPAD(p.id_pelanggan::text, 4, '0'))
+             FROM inserted i
+             WHERE p.id_pelanggan = i.id_pelanggan
+             RETURNING p.id_pelanggan, p.nama_pelanggan, p.no_hp,
+                       p.nama_pelanggan AS nama, p.no_hp AS wa, p.kode_kartu,
+                       (p.password_hash IS NOT NULL) AS is_member",
             [$name, $phone]
         );
         respond(['data' => $r], 201);

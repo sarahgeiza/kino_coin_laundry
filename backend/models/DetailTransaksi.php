@@ -7,7 +7,8 @@ require_once __DIR__ . '/BaseModel.php';
 class DetailTransaksi extends BaseModel
 {
     private const SELECT = 'SELECT d.id_detail, d.id_transaksi, d.id_layanan, l.nama_layanan,
-                                   d.berat, d.jumlah_koin, d.harga_satuan, d.subtotal
+                                   d.berat, d.jumlah, d.jumlah_koin,
+                                   d.harga_satuan, d.subtotal
                             FROM detail_transaksi d
                             JOIN layanan l ON d.id_layanan = l.id_layanan';
 
@@ -35,14 +36,16 @@ class DetailTransaksi extends BaseModel
         ?float $berat,
         int $jumlah_koin,
         int $harga_satuan,
-        int $subtotal
+        int $subtotal,
+        int $jumlah = 1
     ): ?array {
         return $this->fetchOne(
             'INSERT INTO detail_transaksi
-                (id_transaksi, id_layanan, berat, jumlah_koin, harga_satuan, subtotal)
-             VALUES ($1, $2, $3, $4, $5, $6)
+                (id_transaksi, id_layanan, berat, jumlah, jumlah_koin,
+                 harga_satuan, subtotal)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
              RETURNING id_detail',
-            [$id_transaksi, $id_layanan, $berat, $jumlah_koin, $harga_satuan, $subtotal]
+            [$id_transaksi, $id_layanan, $berat, $jumlah, $jumlah_koin, $harga_satuan, $subtotal]
         );
     }
 }

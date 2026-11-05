@@ -1,25 +1,157 @@
 <?php
 require_once __DIR__ . '/../includes/data.php';
+require_once __DIR__ . '/../backend/config/database.php';
+require_once __DIR__ . '/../includes/helpers.php';
 check_auth_guard('kasir');
 
-// Handle Check-in POST BEFORE header output
-$current_kasir_name = $_SESSION['username'] ?? 'Daniel';
-$kasir_shift = get_active_kasir_shift($current_kasir_name);
+$kasirId = (int)$_SESSION['user_id'];
+$current_kasir_name = (string)$_SESSION['username'];
 
 if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
+    if (
+        empty($_SESSION['csrf'])
+        || empty($_POST['csrf_token'])
+        || !hash_equals((string)$_SESSION['csrf'], (string)$_POST['csrf_token'])
+    ) {
+        http_response_code(403);
+        exit('Token CSRF tidak valid');
+    }
+
+    $connection = getConnection();
+    if (!pg_query($connection, 'BEGIN')) {
+        throw new RuntimeException('Gagal memulai check-in shift');
+    }
+
+    try {
+        $active = one(
+            'SELECT id_shift_operasional
+             FROM shift_operasional
+             WHERE id_kasir = ? AND status = ?
+             FOR UPDATE',
+            [$kasirId, 'aktif']
+        );
+
+        if (!$active) {
+            $scheduled = rows(
+                "SELECT j.id_jadwal, j.id_shift
+                 FROM jadwal_shift j
+                 JOIN shift s USING (id_shift)
+                 WHERE j.id_kasir = ?
+                   AND j.tanggal = CURRENT_DATE
+                   AND j.status = 'dijadwalkan'
+                   AND ((s.jam_mulai < s.jam_selesai
+                         AND CURRENT_TIME >= s.jam_mulai
+                         AND CURRENT_TIME < s.jam_selesai)
+                     OR (s.jam_mulai >= s.jam_selesai
+                         AND (CURRENT_TIME >= s.jam_mulai
+                              OR CURRENT_TIME < s.jam_selesai)))
+                 ORDER BY j.id_jadwal",
+                [$kasirId]
+            );
+
+            if (!$scheduled) {
+                $scheduled = rows(
+                    'SELECT NULL::bigint AS id_jadwal, id_shift
+                     FROM shift
+                     WHERE (jam_mulai < jam_selesai
+                            AND CURRENT_TIME >= jam_mulai
+                            AND CURRENT_TIME < jam_selesai)
+                        OR (jam_mulai >= jam_selesai
+                            AND (CURRENT_TIME >= jam_mulai
+                                 OR CURRENT_TIME < jam_selesai))
+                     ORDER BY id_shift'
+                );
+            }
+
+            if (count($scheduled) !== 1) {
+                pg_query($connection, 'ROLLBACK');
+                header('Location: index.php?toast=need_schedule');
+                exit;
+            }
+
+            one(
+                'INSERT INTO shift_operasional
+                    (id_kasir, id_shift, id_jadwal, status, mulai_pada)
+                 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                 RETURNING id_shift_operasional',
+                [$kasirId, (int)$scheduled[0]['id_shift'], (int)$scheduled[0]['id_jadwal'], 'aktif']
+            );
+            if (!empty($scheduled[0]['id_jadwal'])) {
+                execute_sql(
+                    "UPDATE jadwal_shift SET status = 'dimulai' WHERE id_jadwal = ?",
+                    [(int)$scheduled[0]['id_jadwal']]
+                );
+            }
+        }
+
+        if (!pg_query($connection, 'COMMIT')) {
+            throw new RuntimeException('Gagal menyimpan check-in shift');
+        }
+    } catch (Throwable $e) {
+        pg_query($connection, 'ROLLBACK');
+        throw $e;
+    }
+
     $_SESSION['kasir_checked_in'] = true;
-    $_SESSION['presensi'][] = [
-        'id' => count($_SESSION['presensi']) + 1,
-        'kasir' => $current_kasir_name,
-        'shift' => $kasir_shift['nama'],
-        'tanggal' => date('d M Y'),
-        'filter_date' => date('Y-m-d'),
-        'jam_masuk' => date('H:i'),
-        'jam_keluar' => null,
-        'status' => 'Berjalan'
-    ];
     header('Location: index.php?shift_started=1');
     exit;
+}
+
+$activeShift = one(
+    'SELECT so.id_shift_operasional, so.id_shift, s.nama_shift, s.jam_mulai, s.jam_selesai
+     FROM shift_operasional so
+     JOIN shift s USING (id_shift)
+     WHERE so.id_kasir = ? AND so.status = ?
+     ORDER BY so.id_shift_operasional DESC
+     LIMIT 1',
+    [$kasirId, 'aktif']
+);
+
+if ($activeShift) {
+    $_SESSION['kasir_checked_in'] = true;
+    $kasir_shift = [
+        'nama' => $activeShift['nama_shift'],
+        'jam_tampil' => substr((string)$activeShift['jam_mulai'], 0, 5)
+            . ' — ' . substr((string)$activeShift['jam_selesai'], 0, 5)
+    ];
+} else {
+    $_SESSION['kasir_checked_in'] = false;
+    $scheduled = rows(
+        "SELECT s.nama_shift, s.jam_mulai, s.jam_selesai
+         FROM jadwal_shift j
+         JOIN shift s USING (id_shift)
+         WHERE j.id_kasir = ?
+           AND j.tanggal = CURRENT_DATE
+           AND j.status = 'dijadwalkan'
+           AND ((s.jam_mulai < s.jam_selesai
+                 AND CURRENT_TIME >= s.jam_mulai
+                 AND CURRENT_TIME < s.jam_selesai)
+             OR (s.jam_mulai >= s.jam_selesai
+                 AND (CURRENT_TIME >= s.jam_mulai
+                      OR CURRENT_TIME < s.jam_selesai)))
+         ORDER BY j.id_jadwal",
+        [$kasirId]
+    );
+    if (!$scheduled) {
+        $scheduled = rows(
+            'SELECT nama_shift, jam_mulai, jam_selesai
+             FROM shift
+             WHERE (jam_mulai < jam_selesai
+                    AND CURRENT_TIME >= jam_mulai
+                    AND CURRENT_TIME < jam_selesai)
+                OR (jam_mulai >= jam_selesai
+                    AND (CURRENT_TIME >= jam_mulai
+                         OR CURRENT_TIME < jam_selesai))
+             ORDER BY id_shift'
+        );
+    }
+    $kasir_shift = count($scheduled) === 1
+        ? [
+            'nama' => $scheduled[0]['nama_shift'],
+            'jam_tampil' => substr((string)$scheduled[0]['jam_mulai'], 0, 5)
+                . ' — ' . substr((string)$scheduled[0]['jam_selesai'], 0, 5)
+        ]
+        : ['nama' => 'Jadwal tidak tersedia', 'jam_tampil' => '--:-- — --:--'];
 }
 
 $page_title = 'Dashboard Kasir - Kino Coin Laundry';
@@ -29,37 +161,29 @@ $active_tab = 'home';
 require_once __DIR__ . '/../includes/header.php';
 
 // Check if check-in needed (Modal M1)
-$need_checkin = empty($_SESSION['kasir_checked_in']);
+$need_checkin = !$activeShift;
 
-// Calculate metrics dynamically based on shift baseline + real added transactions
-$base_income = 425000;
-$base_tx = 18;
-$base_wash = 24;
-$base_dry = 26;
-
-$initial_count = 4;
-$current_tx_list = $_SESSION['transactions'] ?? [];
-$current_count = count($current_tx_list);
-
-$extra_income = 0;
-$extra_tx = 0;
-$extra_wash = 0;
-$extra_dry = 0;
-
-if ($current_count > $initial_count) {
-    for ($i = $initial_count; $i < $current_count; $i++) {
-        $t = $current_tx_list[$i];
-        $extra_income += ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
-        $extra_tx += 1;
-        $extra_wash += ($t['koin_cuci'] ?? 0);
-        $extra_dry += ($t['koin_kering'] ?? 0);
-    }
-}
-
-$total_live_income = $base_income + $extra_income;
-$total_live_tx = $base_tx + $extra_tx;
-$total_live_wash = $base_wash + $extra_wash;
-$total_live_dry = $base_dry + $extra_dry;
+$summary = $activeShift ? one(
+    "SELECT COUNT(DISTINCT t.id_transaksi)::int AS total_transaksi,
+            COALESCE(SUM(t.total_bayar), 0)::bigint AS total_pendapatan,
+            COALESCE(SUM(d.koin_cuci), 0)::int AS koin_cuci,
+            COALESCE(SUM(d.koin_kering), 0)::int AS koin_kering
+     FROM transaksi t
+     LEFT JOIN (
+        SELECT d.id_transaksi,
+               SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%cuci%') AS koin_cuci,
+               SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%kering%') AS koin_kering
+        FROM detail_transaksi d
+        JOIN layanan l USING (id_layanan)
+        GROUP BY d.id_transaksi
+     ) d USING (id_transaksi)
+     WHERE t.id_shift_operasional = ?",
+    [(int)$activeShift['id_shift_operasional']]
+) : [];
+$total_live_income = (int)($summary['total_pendapatan'] ?? 0);
+$total_live_tx = (int)($summary['total_transaksi'] ?? 0);
+$total_live_wash = (int)($summary['koin_cuci'] ?? 0);
+$total_live_dry = (int)($summary['koin_kering'] ?? 0);
 
 $disp_income = format_rupiah($total_live_income);
 $disp_tx = $total_live_tx . ' transaksi';
@@ -67,6 +191,34 @@ $disp_wash = $total_live_wash . ' pcs';
 $disp_wash_val = format_rupiah($total_live_wash * 7000);
 $disp_dry = $total_live_dry . ' pcs';
 $disp_dry_val = format_rupiah($total_live_dry * 10000);
+$recent_txs = $activeShift ? rows(
+    "SELECT t.no_invoice AS id,
+            p.nama_pelanggan AS pelanggan,
+            p.no_hp AS wa,
+            STRING_AGG(DISTINCT l.nama_layanan, ', ' ORDER BY l.nama_layanan) AS layanan,
+            SUM(COALESCE(d.berat, d.jumlah::numeric))::numeric AS kuantitas,
+            t.total_bayar,
+            t.total_bayar AS total_biaya,
+            CASE WHEN BOOL_OR(d.jumlah_koin > 0) THEN 'Token' ELSE t.jenis_pembayaran END AS metode,
+            INITCAP(REPLACE(t.status_pembayaran, '_', ' ')) AS status,
+            u.nama AS kasir,
+            s.nama_shift AS shift,
+            TO_CHAR(t.tanggal_transaksi, 'DD Mon YYYY') AS tanggal,
+            TO_CHAR(t.tanggal_transaksi, 'HH24:MI') AS waktu,
+            COALESCE(SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%cuci%'), 0)::int AS koin_cuci,
+            COALESCE(SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%kering%'), 0)::int AS koin_kering
+     FROM transaksi t
+     JOIN pelanggan p USING (id_pelanggan)
+     JOIN pengguna u ON u.id_pengguna = t.id_kasir
+     JOIN shift s USING (id_shift)
+     JOIN detail_transaksi d USING (id_transaksi)
+     JOIN layanan l USING (id_layanan)
+     WHERE t.id_shift_operasional = ?
+     GROUP BY t.id_transaksi, p.id_pelanggan, u.id_pengguna, s.id_shift
+     ORDER BY t.tanggal_transaksi DESC
+     LIMIT 4",
+    [(int)$activeShift['id_shift_operasional']]
+) : [];
 ?>
 
 <!-- Tombol Aksi Cepat (Persis Figma K1) -->
@@ -117,9 +269,7 @@ $disp_dry_val = format_rupiah($total_live_dry * 10000);
         <a href="transaksi.php" style="font-size: 12px; color: var(--primary-light); text-decoration: none; font-weight: 700;">Lihat Semua →</a>
     </div>
 
-    <?php 
-    $recent_txs = array_slice(array_reverse($_SESSION['transactions']), 0, 4);
-    foreach ($recent_txs as $trx):
+    <?php foreach ($recent_txs as $trx):
         $is_token = ($trx['metode'] === 'Token');
         $meta_coin = [];
         if (!empty($trx['koin_cuci'])) $meta_coin[] = $trx['koin_cuci'] . ' Coin Cuci';
@@ -184,6 +334,7 @@ $disp_dry_val = format_rupiah($total_live_dry * 10000);
 
         <form action="index.php" method="POST">
             <input type="hidden" name="action" value="mulai_shift">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf'] ?? '') ?>">
             <button type="submit" class="btn btn-primary" style="padding: 14px;">
                 Mulai Shift &amp; Presensi
             </button>
@@ -197,7 +348,7 @@ $disp_dry_val = format_rupiah($total_live_dry * 10000);
         <div class="sheet-handle"></div>
         <div class="sheet-header">
             <div>
-                <span style="font-size: 11px; font-weight: 800; color: var(--primary);" id="detailInvoiceId">INV-2026-001</span>
+                <span style="font-size: 11px; font-weight: 800; color: var(--primary);" id="detailInvoiceId">Invoice</span>
                 <h3 class="sheet-title" id="detailCustomerName">Budi Santoso</h3>
             </div>
             <button type="button" class="sheet-close" onclick="closeModal('modalTrxDetail')">&times;</button>
@@ -230,18 +381,9 @@ $disp_dry_val = format_rupiah($total_live_dry * 10000);
             </div>
         </div>
 
-        <div style="margin-bottom: 12px;">
-            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">Pindai Cepat (Simulasi Kode Member):</div>
-            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                <button type="button" class="chip" style="font-size: 11px; padding: 4px 10px;" onclick="simulateQrScanSuccess('KC-P-0001')">KC-P-0001 (Budi)</button>
-                <button type="button" class="chip" style="font-size: 11px; padding: 4px 10px;" onclick="simulateQrScanSuccess('KC-P-0002')">KC-P-0002 (Sari)</button>
-                <button type="button" class="chip" style="font-size: 11px; padding: 4px 10px;" onclick="simulateQrScanSuccess('KC-P-0003')">KC-P-0003 (Andi)</button>
-            </div>
-        </div>
-
         <div class="form-group">
-            <label class="form-label">Atau ketik kode kartu manual (mis. KC-P-0001):</label>
-            <input type="text" id="qrManualInput" class="form-control" placeholder="Contoh: KC-P-0001" value="">
+            <label class="form-label">Atau ketik kode kartu manual:</label>
+            <input type="text" id="qrManualInput" class="form-control" placeholder="Kode yang tertera pada kartu" value="">
         </div>
 
         <div style="display: flex; gap: 10px; margin-top: 14px;">

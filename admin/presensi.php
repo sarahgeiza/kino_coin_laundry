@@ -6,20 +6,32 @@ $active_tab = 'presensi';
 require_once __DIR__ . '/../includes/header.php';
 
 $filter = $_GET['filter'] ?? 'Hari Ini';
-$raw_logs = array_reverse($_SESSION['presensi'] ?? []);
-
-if ($filter === 'Bulan Lalu') {
-    $logs = []; // Empty state P6b
-} elseif ($filter === 'Hari Ini') {
-    $today = date('Y-m-d');
-    $today_str = date('d M Y');
-    $logs = array_filter($raw_logs, function($p) use ($today, $today_str) {
-        return ($p['filter_date'] ?? '') === $today || ($p['tanggal'] ?? '') === $today_str;
-    });
-} else {
-    $logs = $raw_logs;
-}
+$dateCondition = match ($filter) {
+    '7 Hari' => "so.mulai_pada >= CURRENT_DATE - INTERVAL '6 days'",
+    'Bulan Ini' => "so.mulai_pada >= DATE_TRUNC('month', CURRENT_DATE)",
+    'Bulan Lalu' => "so.mulai_pada >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
+                     AND so.mulai_pada < DATE_TRUNC('month', CURRENT_DATE)",
+    default => 'so.mulai_pada >= CURRENT_DATE',
+};
+$logs = rows(
+    "SELECT so.id_shift_operasional AS id,
+            p.nama AS kasir,
+            s.nama_shift AS shift,
+            TO_CHAR(so.mulai_pada, 'YYYY-MM-DD') AS filter_date,
+            TO_CHAR(so.mulai_pada, 'DD Mon YYYY') AS tanggal,
+            TO_CHAR(so.mulai_pada, 'HH24:MI') AS jam_masuk,
+            CASE WHEN so.ditutup_pada IS NULL THEN NULL
+                 ELSE TO_CHAR(so.ditutup_pada, 'HH24:MI') END AS jam_keluar,
+            CASE WHEN so.status = 'aktif' THEN 'Berjalan' ELSE 'Selesai' END AS status
+     FROM shift_operasional so
+     JOIN pengguna p ON p.id_pengguna = so.id_kasir
+     JOIN shift s USING (id_shift)
+     WHERE $dateCondition
+     ORDER BY so.mulai_pada DESC
+     LIMIT 500"
+);
 ?>
+<script>window.__PRESENSI_LOGS = <?= json_encode($logs, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
     <div>

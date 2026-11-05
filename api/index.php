@@ -21,12 +21,22 @@ try {
     if ($module === 'health' && $action === 'list') { method('GET'); respond(['status'=>'ok','app'=>'Kino Coin Laundry API']); }
     require __DIR__.'/../backend/controllers/AuthController.php';
     require __DIR__.'/../backend/controllers/RiwayatController.php';
-    $u=actor();
+    $publicAuthAction = $module === 'auth' && in_array($action, ['login', 'register'], true);
+    $customerSessionAction = $module === 'auth'
+        && in_array($action, ['me', 'logout'], true)
+        && !empty($_SESSION['customer_id']);
+    $customerHistoryAction = $module === 'riwayat' && in_array($action, ['list', 'detail'], true);
+    if ($customerHistoryAction) {
+        customer_actor();
+    } elseif (!$publicAuthAction && !$customerSessionAction) {
+        actor();
+    }
     if (in_array($module,['pengguna','layanan','shift'],true) && in_array($action,['create','update','delete','password'],true)) owner();
     require __DIR__.'/../backend/controllers/PenggunaController.php';
     require __DIR__.'/../backend/controllers/PelangganController.php';
     require __DIR__.'/../backend/controllers/LayananController.php';
     require __DIR__.'/../backend/controllers/ShiftController.php';
+    require __DIR__.'/../backend/controllers/ShiftOperasionalController.php';
     require __DIR__.'/../backend/controllers/TransaksiController.php';
     require __DIR__.'/../backend/controllers/DetailTransaksiController.php';
     require __DIR__.'/../backend/controllers/DashboardRekapController.php';

@@ -2,21 +2,31 @@
 
 declare(strict_types=1);
 
-$vendorAutoload = dirname(__DIR__, 2) . '/vendor/autoload.php';
+$projectRoot = dirname(__DIR__, 2);
+$vendorAutoload = $projectRoot . '/vendor/autoload.php';
+$dotenvLoaded = false;
 if (file_exists($vendorAutoload)) {
     require_once $vendorAutoload;
     if (class_exists('Dotenv\Dotenv')) {
-        $dotenv = Dotenv\Dotenv::createImmutable(dirname(__DIR__, 2));
+        $dotenv = Dotenv\Dotenv::createImmutable($projectRoot);
         $dotenv->safeLoad();
+        $dotenvLoaded = true;
     }
-} elseif (file_exists(dirname(__DIR__, 2) . '/.env')) {
-    $lines = file(dirname(__DIR__, 2) . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+}
+
+if (!$dotenvLoaded && file_exists($projectRoot . '/.env')) {
+    $lines = file($projectRoot . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         $line = trim($line);
-        if ($line === '' || str_starts_with($line, '#')) continue;
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
+        }
         if (str_contains($line, '=')) {
             [$k, $v] = explode('=', $line, 2);
-            $_ENV[trim($k)] = trim($v, " \t\n\r\0\x0B\"'");
+            $key = trim($k);
+            if (!array_key_exists($key, $_ENV) && getenv($key) === false) {
+                $_ENV[$key] = trim($v, " \t\n\r\0\x0B\"'");
+            }
         }
     }
 }
@@ -36,17 +46,16 @@ function getConnection(): \PgSql\Connection
     $localConfig = __DIR__ . '/database.local.php';
     $cfg = file_exists($localConfig) ? require $localConfig : [];
 
-    $host = $cfg['host'] ?? $_ENV['DB_HOST'] ?? 'localhost';
-    $port = (string)($cfg['port'] ?? $_ENV['DB_PORT'] ?? '5432');
-    $dbname = $cfg['dbname'] ?? $_ENV['DB_DATABASE'] ?? '';
-    $username = $cfg['username'] ?? $_ENV['DB_USERNAME'] ?? '';
-    $password = $cfg['password'] ?? $_ENV['DB_PASSWORD'] ?? '';
+    $env = static function (string $key, string $default = ''): string {
+        $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+        return $value === false || $value === null ? $default : (string) $value;
+    };
 
-    if ($dbname === '' || $username === '') {
-        throw new RuntimeException(
-            'Konfigurasi database belum lengkap.'
-        );
-    }
+    $host = $cfg['host'] ?? $env('DB_HOST', 'localhost');
+    $port = (string) ($cfg['port'] ?? $env('DB_PORT', '5432'));
+    $dbname = $cfg['dbname'] ?? $env('DB_DATABASE', 'kino_coin_laundry2');
+    $username = $cfg['username'] ?? $env('DB_USERNAME', 'postgres');
+    $password = $cfg['password'] ?? $env('DB_PASSWORD', '12345678');
 
     // Mengamankan nilai konfigurasi untuk connection string PostgreSQL.
     $quote = static function (string $value): string {
@@ -61,13 +70,25 @@ function getConnection(): \PgSql\Connection
         'host=' . $quote($host) .
         ' port=' . $quote($port) .
         ' dbname=' . $quote($dbname) .
-        ' user=' . $quote($username) .
-        ' password=' . $quote($password);
+        ' user=' . $quote($username);
 
-    $conn = @pg_connect($connectionString);
+    if ($password !== '') {
+        $connectionString .= ' password=' . $quote($password);
+    }
+
+    $connectionError = '';
+    set_error_handler(static function (int $severity, string $message) use (&$connectionError): bool {
+        $connectionError = $message;
+        return true;
+    });
+    try {
+        $conn = pg_connect($connectionString);
+    } finally {
+        restore_error_handler();
+    }
 
     if ($conn === false) {
-        error_log('Koneksi PostgreSQL gagal.');
+        error_log('Koneksi PostgreSQL gagal: ' . $connectionError);
 
         throw new RuntimeException(
             'Tidak dapat terhubung ke database.'

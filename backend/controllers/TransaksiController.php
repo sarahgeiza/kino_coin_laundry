@@ -212,18 +212,13 @@ if ($module === 'transaksi') {
                     respond(['error' => 'Detail layanan tidak valid'], 422);
                 }
 
-                need($item, ['id_layanan', 'berat']);
+                need($item, ['id_layanan']);
 
                 $serviceId = integer($item['id_layanan']);
-                $weight = (float) positive_weight($item['berat']);
-
-                if ($weight <= 0) {
-                    respond(['error' => 'Berat cucian harus lebih dari 0 kg'], 422);
-                }
 
                 $service = one(
                     'SELECT id_layanan, nama_layanan, harga,
-                            jumlah_koin, aktif
+                            berat_standar, jumlah_koin, aktif
                      FROM layanan
                      WHERE id_layanan = ?
                      FOR SHARE',
@@ -239,34 +234,59 @@ if ($module === 'transaksi') {
 
                 $price = (int) $service['harga'];
                 $coinsPerProcess = (int) $service['jumlah_koin'];
+                $standardWeight = (float) ($service['berat_standar'] ?? 0);
 
                 if ($price <= 0 || $coinsPerProcess < 0) {
                     respond(['error' => 'Konfigurasi harga atau koin layanan tidak valid'], 422);
                 }
 
-                // Satu proses mesin menampung maksimal 7,5 kg.
-                $processCount = (int) ceil($weight / 7.5);
-
-                // Harga dan koin dihitung berdasarkan jumlah proses.
-                $subtotal = $processCount * $price;
-                $machineCoins = $processCount * $coinsPerProcess;
+                if ($coinsPerProcess > 0 || $standardWeight > 0) {
+                    need($item, ['berat']);
+                    $weight = (float) positive_weight($item['berat']);
+                    $processWeight = $standardWeight > 0 ? $standardWeight : 7.5;
+                    $processCount = (int)ceil($weight / $processWeight);
+                    $quantity = $processCount;
+                    $machineCoins = $processCount * $coinsPerProcess;
+                    $subtotal = $processCount * $price;
+                } elseif (stripos((string) $service['nama_layanan'], 'lipat') !== false) {
+                    need($item, ['berat']);
+                    $weight = (float) positive_weight($item['berat']);
+                    $quantity = 1;
+                    $machineCoins = 0;
+                    $subtotal = (int) round($weight * $price);
+                } else {
+                    need($item, ['jumlah']);
+                    $weight = null;
+                    $quantity = integer($item['jumlah']);
+                    $machineCoins = 0;
+                    $subtotal = $quantity * $price;
+                }
 
                 $total += $subtotal;
                 $totalMachineCoins += $machineCoins;
 
                 $details[] = [
-                    $serviceId,
-                    $weight,
-                    $machineCoins,
-                    $price,
-                    $subtotal
+                    'id_layanan' => $serviceId,
+                    'berat' => $weight,
+                    'jumlah' => $quantity,
+                    'jumlah_koin' => $machineCoins,
+                    'harga_satuan' => $price,
+                    'subtotal' => $subtotal
                 ];
             }
 
-            // Pembayaran transaksi dilakukan penuh melalui Cash atau QRIS.
-            $paidAmount = $total;
-            $remaining = 0;
-            $paymentStatus = 'lunas';
+            need($b, ['jumlah_dibayar']);
+            $paidAmount = integer($b['jumlah_dibayar'], 0);
+            if ($paymentType === 'qris' && $paidAmount > $total) {
+                respond(['error' => 'Pembayaran QRIS tidak boleh melebihi total transaksi'], 422);
+            }
+            $remaining = max(0, $total - $paidAmount);
+            $change = $paymentType === 'cash'
+                ? max(0, $paidAmount - $total)
+                : 0;
+            $paymentStatus = $paidAmount >= $total
+                ? 'lunas'
+                : ($paidAmount > 0 ? 'sebagian' : 'belum_lunas');
 
             $customer = one(
                 'SELECT id_pelanggan
@@ -287,9 +307,13 @@ if ($module === 'transaksi') {
                 );
             } else {
                 $customer = one(
-                    'INSERT INTO pelanggan (nama_pelanggan, no_hp)
-                     VALUES (?, ?)
-                     RETURNING id_pelanggan',
+                    "WITH next_id AS (
+                        SELECT nextval(pg_get_serial_sequence('pelanggan', 'id_pelanggan')) AS id
+                     )
+                     INSERT INTO pelanggan (id_pelanggan, nama_pelanggan, no_hp, kode_kartu)
+                     SELECT id, ?, ?, 'KC-P-' || LPAD(id::text, 4, '0')
+                     FROM next_id
+                     RETURNING id_pelanggan",
                     [$name, $phone]
                 );
 
@@ -302,40 +326,44 @@ if ($module === 'transaksi') {
                 'INSERT INTO transaksi (
                     id_kasir, tanggal_transaksi, id_pelanggan, id_shift,
                     jenis_pembayaran, total_bayar, no_invoice, sisa_bayar,
-                    status_pembayaran, status_pengerjaan, id_shift_operasional
+                    status_pembayaran, status_pengerjaan, id_shift_operasional,
+                    jumlah_dibayar, uang_kembalian
                  )
-                 VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                  RETURNING id_transaksi, no_invoice',
                 [
                     (int) $u['id_pengguna'],
                     $customerId,
                     (int) $active['id_shift'],
                     $paymentType,
-                    $paidAmount,
+                    $total,
                     $invoice,
                     $remaining,
                     $paymentStatus,
                     'antri',
-                    (int) $active['id_shift_operasional']
+                    (int) $active['id_shift_operasional'],
+                    $paidAmount,
+                    $change
                 ]
             );
 
             $transactionId = (int) $header['id_transaksi'];
 
-            foreach ($details as [$serviceId, $weight, $machineCoins, $price, $subtotal]) {
+            foreach ($details as $detail) {
                 execute_sql(
                     'INSERT INTO detail_transaksi (
-                        id_transaksi, id_layanan, berat,
+                        id_transaksi, id_layanan, berat, jumlah,
                         jumlah_koin, harga_satuan, subtotal
                      )
-                     VALUES (?, ?, ?, ?, ?, ?)',
+                     VALUES (?, ?, ?, ?, ?, ?, ?)',
                     [
                         $transactionId,
-                        $serviceId,
-                        $weight,
-                        $machineCoins,
-                        $price,
-                        $subtotal
+                        $detail['id_layanan'],
+                        $detail['berat'],
+                        $detail['jumlah'],
+                        $detail['jumlah_koin'],
+                        $detail['harga_satuan'],
+                        $detail['subtotal']
                     ]
                 );
             }
@@ -351,7 +379,9 @@ if ($module === 'transaksi') {
                     'no_invoice' => $invoice,
                     'total_bayar' => $total,
                     'jenis_pembayaran' => $paymentType,
+                    'jumlah_dibayar' => $paidAmount,
                     'sisa_bayar' => $remaining,
+                    'uang_kembalian' => $change,
                     'status_pembayaran' => $paymentStatus,
                     'total_koin_mesin' => $totalMachineCoins
                 ]

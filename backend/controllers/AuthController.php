@@ -14,15 +14,65 @@ if ($module === 'auth') {
             respond(['error' => 'Nomor WhatsApp tidak valid'], 422);
         if (strlen($password) < 8)
             respond(['error' => 'Password minimal 8 karakter'], 422);
-        if (one('SELECT 1 FROM pelanggan WHERE no_hp = ?', [$phone]))
-            respond(['error' => 'Nomor WhatsApp sudah terdaftar'], 409);
-        $customer = one(
-            'INSERT INTO pelanggan(nama_pelanggan,no_hp,password_hash) VALUES(?,?,?) RETURNING id_pelanggan,nama_pelanggan',
-            [$name, $phone, password_hash($password, PASSWORD_DEFAULT)]
-        );
+        $phoneVariants = [$phone];
+        if (str_starts_with($phone, '0')) {
+            $phoneVariants[] = '62' . substr($phone, 1);
+        } elseif (str_starts_with($phone, '62')) {
+            $phoneVariants[] = '0' . substr($phone, 2);
+        }
+
+        $conn = getConnection();
+        if (!pg_query($conn, 'BEGIN')) {
+            throw new RuntimeException('Gagal memulai pendaftaran pelanggan.');
+        }
+        try {
+            $existing = one(
+                'SELECT id_pelanggan, nama_pelanggan, password_hash
+                 FROM pelanggan
+                 WHERE no_hp = ANY($1)
+                 FOR UPDATE',
+                ['{' . implode(',', $phoneVariants) . '}']
+            );
+            if ($existing) {
+                if (!empty($existing['password_hash'])) {
+                    pg_query($conn, 'ROLLBACK');
+                    respond(['error' => 'Nomor WhatsApp sudah memiliki akun'], 409);
+                }
+                if (strcasecmp(trim($existing['nama_pelanggan']), trim($name)) !== 0) {
+                    pg_query($conn, 'ROLLBACK');
+                    respond(['error' => 'Nama tidak cocok dengan data transaksi pelanggan'], 409);
+                }
+                $customer = one(
+                    'UPDATE pelanggan
+                     SET password_hash = ?
+                     WHERE id_pelanggan = ?
+                     RETURNING id_pelanggan, nama_pelanggan',
+                    [password_hash($password, PASSWORD_DEFAULT), (int)$existing['id_pelanggan']]
+                );
+            } else {
+                $nextId = one("SELECT nextval(pg_get_serial_sequence('pelanggan', 'id_pelanggan')) AS id");
+                $customerId = (int)$nextId['id'];
+                $cardCode = 'KC-P-' . str_pad((string)$customerId, 4, '0', STR_PAD_LEFT);
+                $customer = one(
+                    'INSERT INTO pelanggan(id_pelanggan, nama_pelanggan, no_hp, password_hash, kode_kartu)
+                     VALUES(?, ?, ?, ?, ?)
+                     RETURNING id_pelanggan, nama_pelanggan',
+                    [$customerId, $name, $phone, password_hash($password, PASSWORD_DEFAULT), $cardCode]
+                );
+            }
+            if (!pg_query($conn, 'COMMIT')) {
+                throw new RuntimeException('Gagal menyimpan akun pelanggan.');
+            }
+        } catch (Throwable $e) {
+            pg_query($conn, 'ROLLBACK');
+            throw $e;
+        }
+
         session_regenerate_id(true);
         unset($_SESSION['user_id']);
         $_SESSION['customer_id'] = (int) $customer['id_pelanggan'];
+        $_SESSION['username'] = $customer['nama_pelanggan'];
+        $_SESSION['role'] = 'pelanggan';
         $_SESSION['csrf'] = bin2hex(random_bytes(32));
         respond([
             'message' => 'Registrasi berhasil',
@@ -72,11 +122,20 @@ if ($module === 'auth') {
         }
 
         // Pelanggan masuk menggunakan nomor WhatsApp dan password yang terdaftar.
-        $customer = one(
-            'SELECT id_pelanggan AS id, nama_pelanggan AS nama, no_hp, password_hash
-             FROM pelanggan WHERE no_hp = ?',
-            [$username]
-        );
+        $phone = preg_replace('/[\s()-]+/', '', $username);
+        $phoneVariants = [$phone];
+        if (str_starts_with($phone, '0')) {
+            $phoneVariants[] = '62' . substr($phone, 1);
+        } elseif (str_starts_with($phone, '62')) {
+            $phoneVariants[] = '0' . substr($phone, 2);
+        }
+        $customer = preg_match('/^\+?[0-9]{9,15}$/', $phone)
+            ? one(
+                'SELECT id_pelanggan AS id, nama_pelanggan AS nama, no_hp, password_hash
+                 FROM pelanggan WHERE no_hp = ANY($1)',
+                ['{' . implode(',', $phoneVariants) . '}']
+            )
+            : null;
         if (
             $customer && !empty($customer['password_hash']) &&
             password_verify($password, (string) $customer['password_hash'])
@@ -108,13 +167,22 @@ if ($module === 'auth') {
 
     if ($action === 'me') {
         method('GET');
+        if (!empty($_SESSION['customer_id'])) {
+            $customer = one(
+                'SELECT id_pelanggan AS id, nama_pelanggan AS nama, no_hp
+                 FROM pelanggan WHERE id_pelanggan = ?',
+                [(int)$_SESSION['customer_id']]
+            );
+            if (!$customer) respond(['error' => 'Akun pelanggan tidak ditemukan'], 401);
+            respond(['user' => $customer + ['role' => 'pelanggan'], 'csrf_token' => $_SESSION['csrf'] ?? '']);
+        }
         $u = actor();
         respond(['user' => $u, 'csrf_token' => $_SESSION['csrf'] ?? '']);
     }
 
     if ($action === 'logout') {
         method('POST');
-        actor();
+        if (empty($_SESSION['customer_id'])) actor();
         csrf();
         $_SESSION = [];
         if (ini_get('session.use_cookies')) {

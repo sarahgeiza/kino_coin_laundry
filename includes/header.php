@@ -18,7 +18,41 @@ $user_name = $_SESSION['username'] ?? '';
 $user_avatar = strtoupper(substr($user_name, 0, 1));
 
 // Resolusi shift kasir secara dinamis
-$active_shift = ($app_role === 'kasir') ? get_active_kasir_shift($user_name) : null;
+$active_shift = null;
+if ($app_role === 'kasir') {
+    $active = one(
+        'SELECT s.nama_shift, s.jam_mulai, s.jam_selesai
+         FROM shift_operasional so
+         JOIN shift s USING (id_shift)
+         WHERE so.id_kasir = ? AND so.status = ?
+         ORDER BY so.id_shift_operasional DESC
+         LIMIT 1',
+        [(int)$_SESSION['user_id'], 'aktif']
+    );
+
+    if (!$active) {
+        $scheduled = rows(
+            'SELECT nama_shift, jam_mulai, jam_selesai
+             FROM shift
+             WHERE (jam_mulai < jam_selesai
+                    AND CURRENT_TIME >= jam_mulai
+                    AND CURRENT_TIME < jam_selesai)
+                OR (jam_mulai >= jam_selesai
+                    AND (CURRENT_TIME >= jam_mulai
+                         OR CURRENT_TIME < jam_selesai))
+             ORDER BY id_shift'
+        );
+        $active = count($scheduled) === 1 ? $scheduled[0] : null;
+    }
+
+    $active_shift = $active
+        ? [
+            'nama' => $active['nama_shift'],
+            'jam_tampil' => substr((string)$active['jam_mulai'], 0, 5)
+                . ' — ' . substr((string)$active['jam_selesai'], 0, 5)
+        ]
+        : ['nama' => 'Jadwal tidak tersedia', 'jam_tampil' => '--:-- — --:--'];
+}
 $shift_name_badge = $active_shift['nama'] ?? 'Shift Siang';
 $shift_time_label = $active_shift['jam_tampil'] ?? '14:00 — 20:00';
 ?>
@@ -28,13 +62,8 @@ $shift_time_label = $active_shift['jam_tampil'] ?? '14:00 — 20:00';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($page_title) ?></title>
+    <meta name="csrf-token" content="<?= htmlspecialchars($_SESSION['csrf'] ?? '') ?>">
     <link rel="stylesheet" href="../assets/css/style.css">
-    <script>
-        window.__MOCK_SERVICES = <?= json_encode($_SESSION['services'] ?? []) ?>;
-        window.__MOCK_MEMBERS = <?= json_encode($_SESSION['members'] ?? []) ?>;
-        window.__MOCK_TRANSACTIONS = <?= json_encode($_SESSION['transactions'] ?? []) ?>;
-        window.__MOCK_PRESENSI = <?= json_encode($_SESSION['presensi'] ?? []) ?>;
-    </script>
 </head>
 <body>
 

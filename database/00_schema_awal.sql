@@ -48,20 +48,24 @@ CREATE TABLE IF NOT EXISTS detail_transaksi (
     id_transaksi INTEGER NOT NULL REFERENCES transaksi(id_transaksi) ON DELETE CASCADE,
     id_layanan INTEGER NOT NULL REFERENCES layanan(id_layanan),
     berat NUMERIC(5,2),
+    jumlah INTEGER NOT NULL DEFAULT 1 CHECK (jumlah > 0),
     jumlah_koin INTEGER NOT NULL DEFAULT 0 CHECK (jumlah_koin >= 0),
     harga_satuan INTEGER NOT NULL CHECK (harga_satuan >= 0),
     subtotal BIGINT NOT NULL CHECK (subtotal >= 0)
 );
 
 INSERT INTO shift (nama_shift,jam_mulai,jam_selesai)
-SELECT 'Pagi','06:00','14:00'
+SELECT 'Pagi','06:00','12:00'
 WHERE NOT EXISTS (SELECT 1 FROM shift WHERE nama_shift = 'Pagi');
 INSERT INTO shift (nama_shift,jam_mulai,jam_selesai)
-SELECT 'Siang','14:00','22:00'
+SELECT 'Siang','12:00','18:00'
 WHERE NOT EXISTS (SELECT 1 FROM shift WHERE nama_shift = 'Siang');
 INSERT INTO shift (nama_shift,jam_mulai,jam_selesai)
-SELECT 'Malam','22:00','06:00'
+SELECT 'Malam','18:00','00:00'
 WHERE NOT EXISTS (SELECT 1 FROM shift WHERE nama_shift = 'Malam');
+INSERT INTO shift (nama_shift,jam_mulai,jam_selesai)
+SELECT 'Midnight','00:00','06:00'
+WHERE NOT EXISTS (SELECT 1 FROM shift WHERE nama_shift = 'Midnight');
 
 CREATE INDEX IF NOT EXISTS idx_transaksi_tanggal ON transaksi(tanggal_transaksi);
 CREATE INDEX IF NOT EXISTS idx_transaksi_pelanggan ON transaksi(id_pelanggan);

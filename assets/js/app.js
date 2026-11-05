@@ -6,6 +6,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     initModals();
     initTransactionCalculator();
+    initShiftCloseForm();
     initCustomerAutocomplete();
     initUrlToasts();
     initCustomerPageQR();
@@ -28,7 +29,11 @@ function showToast(message, type = 'success', duration = 3000) {
     if (type === 'error') icon = '';
     if (type === 'dark') icon = '';
 
-    toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+    const iconElement = document.createElement('span');
+    iconElement.innerHTML = icon;
+    const messageElement = document.createElement('span');
+    messageElement.textContent = String(message);
+    toast.append(iconElement, messageElement);
     container.appendChild(toast);
 
     setTimeout(() => {
@@ -37,6 +42,15 @@ function showToast(message, type = 'success', duration = 3000) {
         toast.style.transition = 'all 0.3s ease';
         setTimeout(() => toast.remove(), 300);
     }, duration);
+}
+
+function escapeHtmlText(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 function initUrlToasts() {
@@ -58,6 +72,9 @@ function initUrlToasts() {
     }
     if (params.get('toast') === 'need_checkin') {
         showToast('Wajib mulai shift & presensi terlebih dahulu sebelum mencatat transaksi', 'error', 4000);
+    }
+    if (params.get('toast') === 'need_schedule') {
+        showToast('Belum ada jadwal kerja Anda untuk shift yang sedang berjalan. Hubungi pemilik.', 'error', 4500);
     }
 }
 
@@ -117,107 +134,218 @@ function initTransactionCalculator() {
     const form = document.getElementById('formTransaksiBaru');
     if (!form) return;
 
-    const serviceSelect = document.getElementById('serviceSelect');
-    const qtyInput = document.getElementById('qtyInput');
-    const coinWashInput = document.getElementById('coinWashInput');
-    const coinDryInput = document.getElementById('coinDryInput');
-
-    const tokenSection = document.getElementById('tokenInputSection');
-    const tunaiAlertBox = document.getElementById('tunaiAlertBox');
-    
+    const detailContainer = document.getElementById('serviceDetails');
+    const amountInput = document.getElementById('amountPaid');
+    const paymentType = document.getElementById('paymentType');
     const totalBillEl = document.getElementById('totalBillDisplay');
-    const totalPaidEl = document.getElementById('totalPaidDisplay');
+    const amountPaidDisplay = document.getElementById('amountPaidDisplay');
+    const remainingAmountDisplay = document.getElementById('remainingAmountDisplay');
+    const changeAmountDisplay = document.getElementById('changeAmountDisplay');
     const statusBadgeEl = document.getElementById('statusBadgeDisplay');
-    const kuantitasErrorEl = document.getElementById('kuantitasErrorAlert');
+    const totalCoinsEl = document.getElementById('totalMachineCoinsDisplay');
 
     function calculate() {
-        const option = serviceSelect.options[serviceSelect.selectedIndex];
-        if (!option) return;
+        let totalBill = 0;
+        let totalCoins = 0;
 
-        const rate = parseInt(option.getAttribute('data-price') || 0);
-        const category = option.getAttribute('data-category') || 'SELF_SERVICE';
-        const qty = parseInt(qtyInput.value) || 0;
+        const baseRow = detailContainer.querySelector('.service-detail-row');
+        const select = baseRow.querySelector('.service-select');
+        const quantityInput = baseRow.querySelector('.service-quantity');
+        const label = baseRow.querySelector('.detail-quantity-label');
+        const error = baseRow.querySelector('.kuantitas-error-alert');
+        const option = select.options[select.selectedIndex];
+        const unit = option?.dataset.unit || (option?.dataset.machine === 'true' ? 'process' : 'pcs');
+        const baseValue = Number(quantityInput.value);
+        const baseValid = Number.isFinite(baseValue) && baseValue > 0;
 
-        // Validation: Kuantitas > 0
-        if (qty <= 0) {
-            if (kuantitasErrorEl) kuantitasErrorEl.style.display = 'block';
-        } else {
-            if (kuantitasErrorEl) kuantitasErrorEl.style.display = 'none';
+        label.textContent = unit === 'pcs' ? 'Jumlah (pcs) *' : 'Berat (kg) *';
+        quantityInput.min = unit === 'pcs' ? '1' : '0.01';
+        quantityInput.step = unit === 'pcs' ? '1' : '0.01';
+        error.style.display = baseValid ? 'none' : 'block';
+
+        const addLineTotal = (lineUnit, value, price, coins) => {
+            if (lineUnit === 'process') {
+                const processes = Math.ceil(value / 7.5);
+                totalBill += processes * price;
+                totalCoins += processes * coins;
+            } else if (lineUnit === 'kg') {
+                totalBill += Math.round(value * price);
+            } else {
+                totalBill += Math.trunc(value) * price;
+            }
+        };
+
+        if (option && select.value && baseValid) {
+            if (unit === 'pcs' && !Number.isInteger(baseValue)) {
+                quantityInput.value = String(Math.ceil(baseValue));
+            }
+            addLineTotal(unit, baseValue, Number(option.dataset.price), Number(option.dataset.coins));
         }
 
-        const totalBill = rate * qty;
-        if (totalBillEl) {
-            totalBillEl.textContent = 'Rp ' + totalBill.toLocaleString('id-ID');
-            totalBillEl.classList.remove('num-pulse');
-            void totalBillEl.offsetWidth;
-            totalBillEl.classList.add('num-pulse');
-        }
+        document.querySelectorAll('.quick-add-service:checked').forEach(addon => {
+            const addonUnit = addon.dataset.unit;
+            const addonValue = addonUnit === 'process'
+                ? (unit === 'process' ? baseValue : 7.5)
+                : (addonUnit === 'kg' ? (unit === 'process' || unit === 'kg' ? baseValue : 1) : 1);
+            addLineTotal(addonUnit, addonValue, Number(addon.dataset.price), Number(addon.dataset.coins));
+        });
 
-        // Check if Self Service (Token) or Drop Off/Additional (Tunai)
-        if (category === 'SELF_SERVICE') {
-            if (tokenSection) tokenSection.style.display = 'block';
-            if (tunaiAlertBox) tunaiAlertBox.style.display = 'none';
+        const amountPaid = Math.max(0, Number(amountInput.value) || 0);
+        const difference = amountPaid - totalBill;
+        const qrisOverpayment = paymentType.value === 'qris' && difference > 0;
+        const remainingAmount = Math.max(0, totalBill - amountPaid);
+        const changeAmount = paymentType.value === 'cash' ? Math.max(0, difference) : 0;
 
-            const qtyWash = parseInt(coinWashInput ? coinWashInput.value : 0) || 0;
-            const qtyDry = parseInt(coinDryInput ? coinDryInput.value : 0) || 0;
-
-            const valWash = qtyWash * 7000;
-            const valDry = qtyDry * 10000;
-
-            document.getElementById('subtotalWashDisplay').textContent = 'Rp ' + valWash.toLocaleString('id-ID');
-            document.getElementById('subtotalDryDisplay').textContent = 'Rp ' + valDry.toLocaleString('id-ID');
-
-            const totalPaid = valWash + valDry;
-            if (totalPaidEl) totalPaidEl.textContent = 'Rp ' + totalPaid.toLocaleString('id-ID');
-
-            const diff = totalPaid - totalBill;
-            if (statusBadgeEl) {
-                if (totalBill === 0 && totalPaid === 0) {
-                    statusBadgeEl.className = 'badge';
-                    statusBadgeEl.style.background = '#e2e8f0';
-                    statusBadgeEl.style.color = '#475569';
-                    statusBadgeEl.textContent = 'Menunggu input';
-                } else if (diff < 0) {
-                    statusBadgeEl.className = 'badge badge-kurang';
-                    statusBadgeEl.textContent = 'Kurang Rp ' + Math.abs(diff).toLocaleString('id-ID');
-                } else if (diff === 0) {
-                    statusBadgeEl.className = 'badge badge-lunas';
-                    statusBadgeEl.textContent = 'Lunas (pas)';
-                } else {
-                    statusBadgeEl.className = 'badge badge-lunas';
-                    statusBadgeEl.textContent = 'Lunas (lebih Rp ' + diff.toLocaleString('id-ID') + ')';
-                }
-            }
+        totalBillEl.textContent = 'Rp ' + totalBill.toLocaleString('id-ID');
+        totalCoinsEl.textContent = totalCoins.toLocaleString('id-ID');
+        amountPaidDisplay.textContent = 'Rp ' + amountPaid.toLocaleString('id-ID');
+        remainingAmountDisplay.textContent = 'Rp ' + remainingAmount.toLocaleString('id-ID');
+        changeAmountDisplay.textContent = 'Rp ' + changeAmount.toLocaleString('id-ID');
+        if (qrisOverpayment) {
+            statusBadgeEl.className = 'badge badge-kurang';
+            statusBadgeEl.textContent = 'QRIS tidak boleh melebihi tagihan';
+        } else if (difference < 0) {
+            statusBadgeEl.className = 'badge badge-kurang';
+            statusBadgeEl.textContent = amountPaid > 0 ? 'Pembayaran sebagian' : 'Belum lunas';
         } else {
-            // Drop Off or Additional -> Tunai
-            if (tokenSection) tokenSection.style.display = 'none';
-            if (tunaiAlertBox) tunaiAlertBox.style.display = 'block';
-
-            if (totalPaidEl) totalPaidEl.textContent = 'Rp ' + totalBill.toLocaleString('id-ID');
-
-            if (statusBadgeEl) {
-                statusBadgeEl.className = 'badge badge-lunas';
-                statusBadgeEl.textContent = 'Lunas (Tunai)';
-            }
+            statusBadgeEl.className = 'badge badge-lunas';
+            statusBadgeEl.textContent = paymentType.value === 'cash' && difference > 0
+                ? 'Kembalian'
+                : 'Lunas';
         }
     }
 
-    serviceSelect.addEventListener('change', calculate);
-    qtyInput.addEventListener('input', calculate);
-    if (coinWashInput) coinWashInput.addEventListener('input', calculate);
-    if (coinDryInput) coinDryInput.addEventListener('input', calculate);
-
+    detailContainer.addEventListener('change', calculate);
+    detailContainer.addEventListener('input', calculate);
+    document.querySelectorAll('.quick-add-service').forEach(option => {
+        option.addEventListener('change', calculate);
+    });
+    amountInput.addEventListener('input', calculate);
+    paymentType.addEventListener('change', calculate);
     calculate();
 
-    form.addEventListener('submit', function (e) {
-        const qty = parseInt(qtyInput.value) || 0;
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
         const name = document.getElementById('inputPelangganNama').value.trim();
         const wa = document.getElementById('inputPelangganWA').value.trim();
+        const baseRow = detailContainer.querySelector('.service-detail-row');
+        const select = baseRow.querySelector('.service-select');
+        const selectedOption = select.options[select.selectedIndex];
+        let quantity = Number(baseRow.querySelector('.service-quantity').value);
+        const selectedUnit = selectedOption?.dataset.unit || (selectedOption?.dataset.machine === 'true' ? 'process' : 'pcs');
 
-        if (qty <= 0 || !name || !wa) {
-            e.preventDefault();
-            if (qty <= 0 && kuantitasErrorEl) kuantitasErrorEl.style.display = 'block';
-            showToast('Lengkapi nama, WA, dan kuantitas', 'error');
+        if (!name || !/^\+?[0-9]{9,15}$/.test(wa)) {
+            showToast('Lengkapi nama dan nomor WhatsApp pelanggan', 'error');
+            return;
+        }
+        if (!select.value || !Number.isFinite(quantity) || quantity <= 0) {
+            showToast('Berat atau jumlah layanan harus lebih dari 0', 'error');
+            return;
+        }
+        if (selectedUnit === 'pcs' && !Number.isInteger(quantity)) {
+            quantity = Math.ceil(quantity);
+        }
+
+        const details = [];
+        const mainDetail = { id_layanan: Number(select.value) };
+        if (selectedUnit === 'process' || selectedUnit === 'kg') mainDetail.berat = quantity;
+        else mainDetail.jumlah = Math.trunc(quantity);
+        details.push(mainDetail);
+
+        document.querySelectorAll('.quick-add-service:checked').forEach(addon => {
+            const addonUnit = addon.dataset.unit;
+            const addonValue = addonUnit === 'process'
+                ? (selectedUnit === 'process' ? quantity : 7.5)
+                : (addonUnit === 'kg' ? (selectedUnit === 'process' || selectedUnit === 'kg' ? quantity : 1) : 1);
+            const detail = { id_layanan: Number(addon.value) };
+            if (addonUnit === 'process' || addonUnit === 'kg') detail.berat = addonValue;
+            else detail.jumlah = addonValue;
+            details.push(detail);
+        });
+
+        if (details.length > 10) {
+            showToast('Maksimal 10 detail layanan per transaksi', 'error');
+            return;
+        }
+        const amount = Number(amountInput.value);
+        if (!Number.isSafeInteger(amount) || amount < 0) {
+            showToast('Jumlah pembayaran tidak valid', 'error');
+            return;
+        }
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        try {
+            const result = await window.KinoAPI.createTransaction({
+                nama_pelanggan: name,
+                no_hp: wa,
+                jenis_pembayaran: paymentType.value,
+                jumlah_dibayar: amount,
+                detail_transaksi: details
+            }, true);
+            showToast(`Transaksi ${result.data.no_invoice} berhasil disimpan`, 'success');
+            window.location.href = 'index.php?toast=saved';
+        } catch (error) {
+            showToast(error.message || 'Transaksi gagal disimpan', 'error', 4500);
+        } finally {
+            submitButton.disabled = false;
+        }
+    });
+}
+
+function initShiftCloseForm() {
+    const form = document.getElementById('formTutupShift');
+    if (!form) return;
+
+    const totalInput = document.getElementById('totalFisikInput');
+    const noteInput = document.getElementById('catatanShiftInput');
+    const physicalDisplay = document.getElementById('physicalCashDisplay');
+    const differenceDisplay = document.getElementById('cashDifferenceDisplay');
+    const systemTotal = Number(form.dataset.totalSistem);
+
+    function updateDifference() {
+        if (totalInput.value.trim() === '') {
+            physicalDisplay.textContent = 'Belum diinput';
+            differenceDisplay.textContent = 'Belum dihitung';
+            return;
+        }
+        const physical = Number(totalInput.value);
+        if (!Number.isSafeInteger(physical) || physical < 0) {
+            physicalDisplay.textContent = 'Input tidak valid';
+            differenceDisplay.textContent = 'Belum dihitung';
+            return;
+        }
+
+        const difference = physical - systemTotal;
+        physicalDisplay.textContent = 'Rp ' + physical.toLocaleString('id-ID');
+        differenceDisplay.textContent = difference === 0
+            ? 'Rp 0 (Sesuai)'
+            : `${difference > 0 ? 'Lebih ' : 'Kurang '}Rp ${Math.abs(difference).toLocaleString('id-ID')}`;
+    }
+
+    totalInput.addEventListener('input', updateDifference);
+    updateDifference();
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const totalFisik = Number(totalInput.value);
+        if (!Number.isSafeInteger(totalFisik) || totalFisik < 0) {
+            showToast('Total uang fisik tidak valid', 'error');
+            return;
+        }
+
+        const button = form.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+            await window.KinoAPI.closeShift({
+                total_fisik: totalFisik,
+                catatan: noteInput.value.trim()
+            });
+            window.location.href = 'index.php?shift_closed=1';
+        } catch (error) {
+            showToast(error.message || 'Shift gagal ditutup', 'error', 4500);
+        } finally {
+            button.disabled = false;
         }
     });
 }
@@ -240,7 +368,13 @@ function initCustomerAutocomplete() {
             return;
         }
 
-        const matches = await window.KinoAPI.searchMember(val);
+        let matches;
+        try {
+            matches = await window.KinoAPI.searchMember(val, true);
+        } catch (error) {
+            showToast(error.message || 'Pencarian pelanggan gagal', 'error');
+            return;
+        }
         if (matches.length > 0) {
             suggestBox.innerHTML = '';
             matches.forEach(m => {
@@ -248,17 +382,21 @@ function initCustomerAutocomplete() {
                 item.style.padding = '10px 14px';
                 item.style.cursor = 'pointer';
                 item.style.borderBottom = '1px solid #f1f5f9';
-                item.innerHTML = `
-                    <div style="font-weight:700; font-size:13px; color:#0f172a;">${m.nama} <span style="font-size:11px; color:#2563eb;">(${m.kode_kartu})</span></div>
-                    <div style="font-size:11px; color:#64748b;">${m.wa} • ${m.is_member ? 'Member' : 'Non-Member'}</div>
-                `;
+                const title = document.createElement('div');
+                title.style.cssText = 'font-weight:700; font-size:13px; color:#0f172a;';
+                title.textContent = `${m.nama} (${m.kode_kartu})`;
+                const detail = document.createElement('div');
+                detail.style.cssText = 'font-size:11px; color:#64748b;';
+                const isMember = [true, 1, '1', 't', 'true'].includes(m.is_member);
+                detail.textContent = `${m.wa} • ${isMember ? 'Member' : 'Non-Member'}`;
+                item.append(title, detail);
                 item.addEventListener('click', function () {
                     input.value = m.nama;
                     if (waInput) waInput.value = m.wa;
                     suggestBox.style.display = 'none';
                     if (selectedBadge) {
                         selectedBadge.style.display = 'block';
-                        selectedBadge.innerHTML = `Pelanggan Terpilih: <strong>${m.nama}</strong> (${m.kode_kartu})`;
+                        selectedBadge.textContent = `Pelanggan Terpilih: ${m.nama} (${m.kode_kartu})`;
                     }
                 });
                 suggestBox.appendChild(item);
@@ -287,16 +425,19 @@ function selectServiceByCategory(categoryKeyword) {
             break;
         }
     }
-    select.dispatchEvent(new Event('change'));
+    select.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-function changeQty(delta) {
-    const input = document.getElementById('qtyInput');
+function changeQty(delta, button) {
+    const input = button
+        ? button.closest('.service-detail-row').querySelector('.service-quantity')
+        : document.getElementById('qtyInput');
     if (!input) return;
-    let val = (parseInt(input.value) || 0) + delta;
-    if (val < 0) val = 0;
-    input.value = val;
-    input.dispatchEvent(new Event('input'));
+    const step = Number(input.step) || 1;
+    let val = (Number(input.value) || 0) + (delta * step);
+    if (val < Number(input.min || 0)) val = Number(input.min || 0);
+    input.value = String(Number(val.toFixed(2)));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 // ==========================================================================
@@ -433,7 +574,7 @@ function onQrScanSuccess(code) {
     }
     if (statusText) {
         statusText.style.color = '#16a34a';
-        statusText.innerHTML = `Terbaca: <strong>${code}</strong>`;
+        statusText.textContent = `Terbaca: ${code}`;
     }
     if (manualInput) {
         manualInput.value = code;
@@ -445,12 +586,7 @@ function onQrScanSuccess(code) {
     }, 400);
 }
 
-// Quick simulation buttons for demo / testing
-function simulateQrScanSuccess(sampleCode = 'KC-P-0001') {
-    onQrScanSuccess(sampleCode);
-}
-
-function applyScannedCode() {
+async function applyScannedCode() {
     const manualInput = document.getElementById('qrManualInput');
     if (!manualInput || !manualInput.value.trim()) {
         showToast('Belum ada kode barcode/QR', 'error');
@@ -458,9 +594,14 @@ function applyScannedCode() {
     }
     const code = manualInput.value.trim();
     
-    // Find customer by code
-    const members = window.__MOCK_MEMBERS || [];
-    const matched = members.find(m => m.kode_kartu.toLowerCase() === code.toLowerCase());
+    let matched;
+    try {
+        const members = await window.KinoAPI.searchMember(code, true);
+        matched = members.find(m => (m.kode_kartu || '').toLowerCase() === code.toLowerCase());
+    } catch (error) {
+        showToast(error.message || 'Pencarian pelanggan gagal', 'error', 4500);
+        return;
+    }
 
     if (matched) {
         const inputNama = document.getElementById('inputPelangganNama');
@@ -468,18 +609,18 @@ function applyScannedCode() {
         const selectedBadge = document.getElementById('memberSelectedBadge');
 
         if (inputNama && inputWA) {
-            inputNama.value = matched.nama;
-            inputWA.value = matched.wa;
+            inputNama.value = matched.nama || matched.nama_pelanggan;
+            inputWA.value = matched.wa || matched.no_hp;
             if (selectedBadge) {
                 selectedBadge.style.display = 'block';
-                selectedBadge.innerHTML = `Member Terpilih: <strong>${matched.nama}</strong> (${matched.kode_kartu})`;
+                selectedBadge.textContent = `Member Terpilih: ${matched.nama || matched.nama_pelanggan} (${matched.kode_kartu})`;
             }
             closeModal('modalScanQr');
-            showToast(`QR ${code} (${matched.nama}) berhasil digunakan!`, 'success');
+            showToast(`QR ${code} (${matched.nama || matched.nama_pelanggan}) berhasil digunakan!`, 'success');
         } else {
             // Jika discan langsung dari Dashboard Kasir, langsung arahkan ke transaksi baru dengan data member terisi
             closeModal('modalScanQr');
-            showToast(`Member terdeteksi: ${matched.nama}. Mengalihkan ke transaksi...`, 'success');
+            showToast(`Member terdeteksi: ${matched.nama || matched.nama_pelanggan}. Mengalihkan ke transaksi...`, 'success');
             setTimeout(() => {
                 window.location.href = `transaksi-baru.php?scan_member=${encodeURIComponent(matched.kode_kartu)}`;
             }, 600);
@@ -530,7 +671,7 @@ function downloadCSV(filename, rows) {
 }
 
 function exportLaporanTransactionsCSV() {
-    const txs = window.__CURRENT_LAPORAN_TXS || window.__MOCK_TRANSACTIONS || [];
+    const txs = window.__CURRENT_LAPORAN_TXS || [];
     const rows = [
         ['ID Invoice', 'Pelanggan', 'WhatsApp', 'Layanan', 'Kuantitas', 'Total Biaya', 'Total Bayar', 'Metode', 'Status', 'Kasir', 'Shift', 'Tanggal', 'Waktu']
     ];
@@ -544,7 +685,7 @@ function exportLaporanTransactionsCSV() {
 
 
 function exportPresensiCSV() {
-    const logs = window.__MOCK_PRESENSI || [];
+    const logs = window.__PRESENSI_LOGS || [];
     const rows = [
         ['ID Presensi', 'Nama Kasir', 'Shift', 'Tanggal', 'Jam Masuk', 'Jam Keluar', 'Status']
     ];

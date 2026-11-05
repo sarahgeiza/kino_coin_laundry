@@ -5,27 +5,62 @@ $active_tab = 'home';
 
 require_once __DIR__ . '/../includes/header.php';
 
-// Calculate extra metrics from newly added transactions
-$initial_count = 4;
-$current_tx_list = $_SESSION['transactions'] ?? [];
-$current_count = count($current_tx_list);
-
-$extra_income = 0;
-$extra_wash = 0;
-$extra_dry = 0;
-
-if ($current_count > $initial_count) {
-    for ($i = $initial_count; $i < $current_count; $i++) {
-        $t = $current_tx_list[$i];
-        $extra_income += ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
-        $extra_wash += ($t['koin_cuci'] ?? 0);
-        $extra_dry += ($t['koin_kering'] ?? 0);
-    }
-}
-
-$owner_omset = 1250000 + $extra_income;
-$owner_wash = 124 + $extra_wash;
-$owner_dry = 130 + $extra_dry;
+$todaySummary = one(
+    "SELECT COALESCE(SUM(t.total_bayar), 0)::bigint AS pendapatan,
+            COALESCE(SUM(d.koin_cuci), 0)::bigint AS koin_cuci,
+            COALESCE(SUM(d.koin_kering), 0)::bigint AS koin_kering
+     FROM transaksi t
+     LEFT JOIN (
+        SELECT d.id_transaksi,
+               SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%cuci%') AS koin_cuci,
+               SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%kering%') AS koin_kering
+        FROM detail_transaksi d
+        JOIN layanan l USING (id_layanan)
+        GROUP BY d.id_transaksi
+     ) d USING (id_transaksi)
+     WHERE t.tanggal_transaksi >= CURRENT_DATE
+       AND t.tanggal_transaksi < CURRENT_DATE + INTERVAL '1 day'"
+);
+$owner_omset = (int)($todaySummary['pendapatan'] ?? 0);
+$owner_wash = (int)($todaySummary['koin_cuci'] ?? 0);
+$owner_dry = (int)($todaySummary['koin_kering'] ?? 0);
+$yesterdayIncome = (int)(one(
+    "SELECT COALESCE(SUM(total_bayar), 0)::bigint AS pendapatan
+     FROM transaksi
+     WHERE tanggal_transaksi >= CURRENT_DATE - INTERVAL '1 day'
+       AND tanggal_transaksi < CURRENT_DATE"
+)['pendapatan'] ?? 0);
+$incomeComparison = $yesterdayIncome > 0
+    ? sprintf('%s%.1f%% vs kemarin', $owner_omset >= $yesterdayIncome ? '↑ ' : '↓ ', abs(($owner_omset - $yesterdayIncome) / $yesterdayIncome * 100))
+    : 'Belum ada data kemarin';
+$shiftRecaps = rows(
+    "SELECT TO_CHAR(so.mulai_pada, 'DD Mon YYYY') AS tanggal,
+            s.nama_shift AS shift,
+            p.nama AS kasir,
+            COUNT(DISTINCT t.id_transaksi)::int AS trx_count,
+            COALESCE(SUM(d.total_berat), 0)::numeric AS total_kg,
+            COALESCE(SUM(d.koin_cuci), 0)::int AS koin_cuci,
+            COALESCE(SUM(d.koin_kering), 0)::int AS koin_kering,
+            COALESCE(SUM(t.total_bayar), 0)::bigint AS pendapatan,
+            CASE WHEN so.selisih = 0 THEN 'Valid' ELSE 'Review' END AS status
+     FROM shift_operasional so
+     JOIN shift s USING (id_shift)
+     JOIN pengguna p ON p.id_pengguna = so.id_kasir
+     LEFT JOIN transaksi t USING (id_shift_operasional)
+     LEFT JOIN (
+        SELECT d.id_transaksi,
+               SUM(COALESCE(d.berat, 0)) AS total_berat,
+               SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%cuci%') AS koin_cuci,
+               SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%kering%') AS koin_kering
+        FROM detail_transaksi d
+        JOIN layanan l USING (id_layanan)
+        GROUP BY d.id_transaksi
+     ) d USING (id_transaksi)
+     WHERE so.status = 'ditutup'
+     GROUP BY so.id_shift_operasional, s.id_shift, p.id_pengguna
+     ORDER BY so.mulai_pada DESC
+     LIMIT 5"
+);
 ?>
 
 <!-- Section Monitoring Bisnis (Persis Figma P1) -->
@@ -38,7 +73,7 @@ $owner_dry = 130 + $extra_dry;
         <div class="metric-box blue">
             <div class="label">Omset Hari Ini</div>
             <div class="value"><?= format_rupiah($owner_omset) ?></div>
-            <div class="sub" style="color: #86efac; font-weight: 700;">↑ 8% vs kemarin</div>
+            <div class="sub" style="color: #86efac; font-weight: 700;"><?= htmlspecialchars($incomeComparison) ?></div>
         </div>
         <div class="metric-box orange">
             <div class="label">Coin Cuci</div>
@@ -60,7 +95,7 @@ $owner_dry = 130 + $extra_dry;
         <a href="laporan.php" style="font-size: 12px; color: var(--primary-light); text-decoration: none; font-weight: 700;">Lihat Laporan →</a>
     </div>
 
-    <?php foreach (array_reverse($_SESSION['shifts_recap'] ?? []) as $sr): ?>
+    <?php foreach ($shiftRecaps as $sr): ?>
     <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px; margin-bottom: 10px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
             <strong style="font-size: 13px; color: var(--text-main);">

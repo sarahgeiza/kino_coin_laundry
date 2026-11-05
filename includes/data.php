@@ -550,41 +550,71 @@ function check_auth_guard($role) {
         }
     }
     
-    // Verifikasi apakah akun pengguna masih terdaftar dan aktif di sistem (Manajemen Pengguna)
-    if ($role === 'kasir' || $role === 'pemilik') {
-        $db_role = ($role === 'kasir') ? 'Kasir' : 'Pemilik';
-        $user_valid = false;
-        foreach ($_SESSION['users'] as $u) {
-            if (($u['role'] ?? '') === $db_role) {
-                $first_name = explode(' ', trim($u['nama']))[0];
-                if (strcasecmp($u['nama'], $username) === 0 || 
-                    strcasecmp($u['username'], $username) === 0 ||
-                    strcasecmp($first_name, $username) === 0) {
-                    $user_valid = true;
-                    break;
-                }
-            }
-        }
-        if (!$user_valid) {
-            $_SESSION['username'] = null;
-            $_SESSION['role'] = null;
-            $redirect = ($role === 'kasir') ? '../login-kasir.php' : '../login-pemilik.php';
-            header("Location: $redirect");
+    if ($role === 'kasir') {
+        require_once __DIR__ . '/../backend/config/database.php';
+        require_once __DIR__ . '/helpers.php';
+
+        $userId = (int)($_SESSION['user_id'] ?? 0);
+        $account = $userId > 0
+            ? one(
+                'SELECT id_pengguna, nama, role
+                 FROM pengguna
+                 WHERE id_pengguna = ?',
+                [$userId]
+            )
+            : null;
+
+        if (!$account || $account['role'] !== 'kasir') {
+            unset($_SESSION['user_id'], $_SESSION['username'], $_SESSION['role']);
+            header('Location: ../login-kasir.php');
             exit;
         }
-    } elseif ($role === 'pelanggan') {
-        $member_valid = false;
-        foreach ($_SESSION['members'] as $m) {
-            if (strcasecmp($m['nama'], $username) === 0 || ($m['wa'] ?? '') === $username) {
-                $member_valid = true;
-                break;
-            }
+
+        $_SESSION['username'] = $account['nama'];
+        $_SESSION['role'] = $account['role'];
+    } elseif ($role === 'pemilik') {
+        require_once __DIR__ . '/../backend/config/database.php';
+        require_once __DIR__ . '/helpers.php';
+
+        $userId = (int)($_SESSION['user_id'] ?? 0);
+        $account = $userId > 0
+            ? one(
+                'SELECT id_pengguna, nama, role
+                 FROM pengguna
+                 WHERE id_pengguna = ?',
+                [$userId]
+            )
+            : null;
+
+        if (!$account || $account['role'] !== 'pemilik') {
+            unset($_SESSION['user_id'], $_SESSION['username'], $_SESSION['role']);
+            header('Location: ../login-pemilik.php');
+            exit;
         }
-        if (!$member_valid) {
-            $_SESSION['username'] = null;
-            $_SESSION['role'] = null;
+
+        $_SESSION['username'] = $account['nama'];
+        $_SESSION['role'] = $account['role'];
+    } elseif ($role === 'pelanggan') {
+        require_once __DIR__ . '/../backend/config/database.php';
+        require_once __DIR__ . '/helpers.php';
+
+        $customerId = (int)($_SESSION['customer_id'] ?? 0);
+        $customer = $customerId > 0
+            ? one(
+                'SELECT id_pelanggan, nama_pelanggan
+                 FROM pelanggan
+                 WHERE id_pelanggan = ?',
+                [$customerId]
+            )
+            : null;
+
+        if (!$customer) {
+            unset($_SESSION['customer_id'], $_SESSION['username'], $_SESSION['role']);
             header('Location: login.php');
             exit;
         }
+
+        $_SESSION['username'] = $customer['nama_pelanggan'];
+        $_SESSION['role'] = 'pelanggan';
     }
 }

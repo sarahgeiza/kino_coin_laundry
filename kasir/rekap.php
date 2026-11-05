@@ -1,78 +1,59 @@
 <?php
 require_once __DIR__ . '/../includes/data.php';
+require_once __DIR__ . '/../backend/config/database.php';
+require_once __DIR__ . '/../includes/helpers.php';
 check_auth_guard('kasir');
 
-// Calculate totals from session transactions dynamically
-$base_income = 425000;
-$base_tx = 18;
-$base_wash = 24;
-$base_dry = 26;
-$base_kg = 62.5;
-
-$initial_count = 4;
-$current_tx_list = $_SESSION['transactions'] ?? [];
-$current_count = count($current_tx_list);
-
-$extra_income = 0;
-$extra_tx = 0;
-$extra_wash = 0;
-$extra_dry = 0;
-$extra_kg = 0;
-
-if ($current_count > $initial_count) {
-    for ($i = $initial_count; $i < $current_count; $i++) {
-        $t = $current_tx_list[$i];
-        $extra_income += ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
-        $extra_tx += 1;
-        $extra_wash += ($t['koin_cuci'] ?? 0);
-        $extra_dry += ($t['koin_kering'] ?? 0);
-        $extra_kg += floatval($t['qty_num'] ?? 1) * 3.5;
-    }
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    header('Content-Type: application/json; charset=utf-8');
+    respond(['error' => 'Kirim penutupan shift melalui endpoint API.'], 405);
 }
 
-$display_income = $base_income + $extra_income;
-$display_tx = $base_tx + $extra_tx;
-$display_kg = $base_kg + $extra_kg;
-$display_wash = $base_wash + $extra_wash;
-$display_dry = $base_dry + $extra_dry;
+$kasirId = (int)$_SESSION['user_id'];
+$activeShift = one(
+    'SELECT so.id_shift_operasional, s.nama_shift, s.jam_mulai, s.jam_selesai
+     FROM shift_operasional so
+     JOIN shift s USING (id_shift)
+     WHERE so.id_kasir = ? AND so.status = ?
+     ORDER BY so.id_shift_operasional DESC
+     LIMIT 1',
+    [$kasirId, 'aktif']
+);
 
-// Handle Close Shift POST BEFORE header output
-$current_kasir = $_SESSION['username'] ?? 'Daniel';
-$kasir_shift = get_active_kasir_shift($current_kasir);
-
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'tutup_shift') {
+if (!$activeShift) {
     $_SESSION['kasir_checked_in'] = false;
-    $jam_keluar = date('H:i');
-
-    // 1. Update status presensi kasir di dashboard Pemilik menjadi 'Selesai' dengan jam keluar aktual!
-    if (isset($_SESSION['presensi']) && is_array($_SESSION['presensi'])) {
-        for ($i = count($_SESSION['presensi']) - 1; $i >= 0; $i--) {
-            if ($_SESSION['presensi'][$i]['kasir'] === $current_kasir && $_SESSION['presensi'][$i]['status'] === 'Berjalan') {
-                $_SESSION['presensi'][$i]['jam_keluar'] = $jam_keluar;
-                $_SESSION['presensi'][$i]['status'] = 'Selesai';
-                break;
-            }
-        }
-    }
-    
-    // 2. Catat rekonsiliasi ke riwayat rekapitulasi shift pemilik
-    $_SESSION['shifts_recap'][] = [
-        'id' => count($_SESSION['shifts_recap']) + 1,
-        'kasir' => $current_kasir,
-        'shift' => $kasir_shift['nama'],
-        'tanggal' => date('d M Y'),
-        'trx_count' => $display_tx,
-        'total_kg' => $display_kg,
-        'pendapatan' => $display_income,
-        'koin_cuci' => $display_wash,
-        'koin_kering' => $display_dry,
-        'status' => 'Valid',
-        'selisih' => 0
-    ];
-
-    header('Location: index.php?shift_closed=1');
+    header('Location: index.php?toast=need_checkin');
     exit;
 }
+
+$summary = one(
+    'SELECT COUNT(t.id_transaksi)::int AS total_transaksi,
+            COALESCE(SUM(t.jumlah_dibayar - t.uang_kembalian) FILTER (
+                WHERE t.jenis_pembayaran = \'cash\'
+            ), 0)::bigint AS total_sistem,
+            COALESCE(SUM(d.total_berat), 0)::numeric AS total_berat,
+            COALESCE(SUM(d.total_koin), 0)::bigint AS total_koin_mesin
+     FROM transaksi t
+     LEFT JOIN (
+        SELECT id_transaksi,
+               SUM(COALESCE(berat, 0)) AS total_berat,
+               SUM(COALESCE(jumlah_koin, 0)) AS total_koin
+        FROM detail_transaksi
+        GROUP BY id_transaksi
+     ) d USING (id_transaksi)
+     WHERE t.id_shift_operasional = ?',
+    [(int)$activeShift['id_shift_operasional']]
+);
+
+$display_income = (int)($summary['total_sistem'] ?? 0);
+$display_tx = (int)($summary['total_transaksi'] ?? 0);
+$display_kg = (float)($summary['total_berat'] ?? 0);
+$display_coins = (int)($summary['total_koin_mesin'] ?? 0);
+$kasir_shift = [
+    'nama' => $activeShift['nama_shift'],
+    'jam_tampil' => substr((string)$activeShift['jam_mulai'], 0, 5)
+        . ' — ' . substr((string)$activeShift['jam_selesai'], 0, 5)
+];
 
 $page_title = 'Rekapitulasi Operasional - Kino Coin Laundry';
 $app_role = 'kasir';
@@ -99,15 +80,11 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
-    <div class="card-title">Rincian Perolehan Token</div>
+    <div class="card-title">Rincian Koin Mesin</div>
     <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px; font-size: 13px; line-height: 1.8; margin-bottom: 14px;">
         <div style="display: flex; justify-content: space-between;">
-            <span>Coin Cuci (7k):</span>
-            <strong><?= $display_wash ?> pcs = <?= format_rupiah($display_wash * 7000) ?></strong>
-        </div>
-        <div style="display: flex; justify-content: space-between;">
-            <span>Coin Kering (10k):</span>
-            <strong><?= $display_dry ?> pcs = <?= format_rupiah($display_dry * 10000) ?></strong>
+            <span>Total koin mesin:</span>
+            <strong><?= $display_coins ?> pcs</strong>
         </div>
     </div>
 
@@ -120,11 +97,11 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
             <span>Total Fisik Kas:</span>
-            <strong style="font-size: 15px; color: var(--success);"><?= format_rupiah($display_income) ?></strong>
+            <strong id="physicalCashDisplay" style="font-size: 15px; color: var(--success);">Belum diinput</strong>
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 13px; border-top: 1px solid var(--border); padding-top: 6px;">
             <span>Selisih:</span>
-            <strong style="color: var(--success);">Rp 0 (Sesuai)</strong>
+            <strong id="cashDifferenceDisplay" style="color: var(--text-muted);">Belum dihitung</strong>
         </div>
     </div>
 
@@ -144,8 +121,18 @@ require_once __DIR__ . '/../includes/header.php';
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
             Akses input transaksi kasir akan dikunci hingga shift berikutnya dimulai. Konfirmasi penutupan <?= htmlspecialchars($kasir_shift['nama']) ?>?
         </p>
-        <form action="rekap.php" method="POST">
+        <form action="rekap.php" method="POST" id="formTutupShift"
+            data-total-sistem="<?= $display_income ?>">
             <input type="hidden" name="action" value="tutup_shift">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf'] ?? '') ?>">
+            <div class="form-group">
+                <label class="form-label" for="totalFisikInput">Total uang fisik (Rp) *</label>
+                <input type="number" min="0" step="1" id="totalFisikInput" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="catatanShiftInput">Catatan (opsional)</label>
+                <textarea id="catatanShiftInput" class="form-control" maxlength="1000" rows="3"></textarea>
+            </div>
             <div style="display: flex; gap: 10px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal('modalTutupShift')">Batal</button>
                 <button type="submit" class="btn btn-primary" style="background: #1e3a8a;">Ya, Tutup Shift</button>
