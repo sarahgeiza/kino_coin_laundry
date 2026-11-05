@@ -13,12 +13,12 @@ require __DIR__.'/../backend/models/Pelanggan.php';
 require __DIR__.'/../backend/models/Layanan.php';
 require __DIR__.'/../backend/models/Shift.php';
 require_once __DIR__.'/../backend/models/Transaksi.php';
-require_once __DIR__.'/../backend/middleware/session.php';
 
 try {
     $module = (string)($_GET['module'] ?? '');
     $action = (string)($_GET['action'] ?? 'list');
     if ($module === 'health' && $action === 'list') { method('GET'); respond(['status'=>'ok','app'=>'Kino Coin Laundry API']); }
+    require_once __DIR__.'/../backend/middleware/session.php';
     require __DIR__.'/../backend/controllers/AuthController.php';
     require __DIR__.'/../backend/controllers/RiwayatController.php';
     $publicAuthAction = $module === 'auth' && in_array($action, ['login', 'register'], true);

@@ -74,7 +74,14 @@ if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
                     (id_kasir, id_shift, id_jadwal, status, mulai_pada)
                  VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
                  RETURNING id_shift_operasional',
-                [$kasirId, (int)$scheduled[0]['id_shift'], (int)$scheduled[0]['id_jadwal'], 'aktif']
+                [
+                    $kasirId,
+                    (int)$scheduled[0]['id_shift'],
+                    $scheduled[0]['id_jadwal'] !== null
+                        ? (int)$scheduled[0]['id_jadwal']
+                        : null,
+                    'aktif'
+                ]
             );
             if (!empty($scheduled[0]['id_jadwal'])) {
                 execute_sql(
@@ -166,15 +173,12 @@ $need_checkin = !$activeShift;
 $summary = $activeShift ? one(
     "SELECT COUNT(DISTINCT t.id_transaksi)::int AS total_transaksi,
             COALESCE(SUM(t.total_bayar), 0)::bigint AS total_pendapatan,
-            COALESCE(SUM(d.koin_cuci), 0)::int AS koin_cuci,
-            COALESCE(SUM(d.koin_kering), 0)::int AS koin_kering
+            COALESCE(SUM(d.total_koin), 0)::int AS total_koin_mesin
      FROM transaksi t
      LEFT JOIN (
         SELECT d.id_transaksi,
-               SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%cuci%') AS koin_cuci,
-               SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%kering%') AS koin_kering
+               SUM(d.jumlah_koin) AS total_koin
         FROM detail_transaksi d
-        JOIN layanan l USING (id_layanan)
         GROUP BY d.id_transaksi
      ) d USING (id_transaksi)
      WHERE t.id_shift_operasional = ?",
@@ -182,15 +186,10 @@ $summary = $activeShift ? one(
 ) : [];
 $total_live_income = (int)($summary['total_pendapatan'] ?? 0);
 $total_live_tx = (int)($summary['total_transaksi'] ?? 0);
-$total_live_wash = (int)($summary['koin_cuci'] ?? 0);
-$total_live_dry = (int)($summary['koin_kering'] ?? 0);
+$total_live_coins = (int)($summary['total_koin_mesin'] ?? 0);
 
 $disp_income = format_rupiah($total_live_income);
-$disp_tx = $total_live_tx . ' transaksi';
-$disp_wash = $total_live_wash . ' pcs';
-$disp_wash_val = format_rupiah($total_live_wash * 7000);
-$disp_dry = $total_live_dry . ' pcs';
-$disp_dry_val = format_rupiah($total_live_dry * 10000);
+$disp_coins = number_format($total_live_coins, 0, ',', '.') . ' koin';
 $recent_txs = $activeShift ? rows(
     "SELECT t.no_invoice AS id,
             p.nama_pelanggan AS pelanggan,
@@ -199,14 +198,13 @@ $recent_txs = $activeShift ? rows(
             SUM(COALESCE(d.berat, d.jumlah::numeric))::numeric AS kuantitas,
             t.total_bayar,
             t.total_bayar AS total_biaya,
-            CASE WHEN BOOL_OR(d.jumlah_koin > 0) THEN 'Token' ELSE t.jenis_pembayaran END AS metode,
+            t.jenis_pembayaran AS metode,
             INITCAP(REPLACE(t.status_pembayaran, '_', ' ')) AS status,
             u.nama AS kasir,
             s.nama_shift AS shift,
             TO_CHAR(t.tanggal_transaksi, 'DD Mon YYYY') AS tanggal,
             TO_CHAR(t.tanggal_transaksi, 'HH24:MI') AS waktu,
-            COALESCE(SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%cuci%'), 0)::int AS koin_cuci,
-            COALESCE(SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%kering%'), 0)::int AS koin_kering
+            COALESCE(SUM(d.jumlah_koin), 0)::int AS total_koin_mesin
      FROM transaksi t
      JOIN pelanggan p USING (id_pelanggan)
      JOIN pengguna u ON u.id_pengguna = t.id_kasir
@@ -239,27 +237,27 @@ $recent_txs = $activeShift ? rows(
     </div>
     <div class="metrics-row" style="margin-bottom: 0;">
         <div class="metric-box blue">
-            <div class="label">Uang Masuk</div>
+            <div class="label">Pendapatan</div>
             <div class="value"><?= $disp_income ?></div>
-            <div class="sub"><?= $disp_tx ?></div>
+            <div class="sub">Cash dan QRIS tercatat</div>
         </div>
         <div class="metric-box orange">
-            <div class="label">Coin Cuci</div>
-            <div class="value"><?= $disp_wash ?></div>
-            <div class="sub">= <?= $disp_wash_val ?></div>
+            <div class="label">Jumlah Transaksi</div>
+            <div class="value"><?= number_format($total_live_tx, 0, ',', '.') ?></div>
+            <div class="sub">Transaksi pada shift ini</div>
         </div>
         <div class="metric-box amber">
-            <div class="label">Coin Kering</div>
-            <div class="value"><?= $disp_dry ?></div>
-            <div class="sub">= <?= $disp_dry_val ?></div>
+            <div class="label">Koin Mesin</div>
+            <div class="value"><?= $disp_coins ?></div>
+            <div class="sub">Token operasional, bukan pembayaran</div>
         </div>
     </div>
 </div>
 
-<!-- Banner Info Operasional Token vs Tunai -->
+<!-- Informasi metode pembayaran dan token mesin -->
 <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 10px 14px; font-size: 12px; color: #1e40af; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
     <?= get_icon('info', 18, '#1e40af') ?>
-    <span>Pembayaran koin khusus Self Service. Drop off / retail dibayar tunai.</span>
+    <span>Pembayaran menggunakan Cash atau QRIS. Koin hanya token untuk menjalankan mesin.</span>
 </div>
 
 <!-- Daftar Transaksi Terakhir -->
@@ -270,11 +268,7 @@ $recent_txs = $activeShift ? rows(
     </div>
 
     <?php foreach ($recent_txs as $trx):
-        $is_token = ($trx['metode'] === 'Token');
-        $meta_coin = [];
-        if (!empty($trx['koin_cuci'])) $meta_coin[] = $trx['koin_cuci'] . ' Coin Cuci';
-        if (!empty($trx['koin_kering'])) $meta_coin[] = $trx['koin_kering'] . ' Coin Kering';
-        $coin_desc = !empty($meta_coin) ? implode(' + ', $meta_coin) : ($trx['metode'] ?? 'Tunai');
+        $coin_desc = (int)$trx['total_koin_mesin'] . ' koin mesin • ' . strtoupper($trx['metode']);
     ?>
     <div class="trx-item" onclick="showInvoiceDetail(<?= htmlspecialchars(json_encode($trx)) ?>)">
         <div class="trx-top">
@@ -398,33 +392,14 @@ function showInvoiceDetail(trx) {
     document.getElementById('detailInvoiceId').textContent = trx.id;
     document.getElementById('detailCustomerName').textContent = trx.pelanggan;
 
-    const isToken = (trx.metode === 'Token');
-    let paymentDetail = '';
-
-    if (isToken) {
-        paymentDetail = `
-            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
-                <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 6px;">
-                    Rincian Token Dibayar
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                    <span>Coin Cuci (${trx.koin_cuci || 0} pcs):</span>
-                    <strong>Rp ${((trx.koin_cuci || 0) * 7000).toLocaleString('id-ID')}</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between;">
-                    <span>Coin Kering (${trx.koin_kering || 0} pcs):</span>
-                    <strong>Rp ${((trx.koin_kering || 0) * 10000).toLocaleString('id-ID')}</strong>
-                </div>
-            </div>
-        `;
-    } else {
-        paymentDetail = `
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px; margin-bottom: 12px; color: #15803d;">
-                <strong>Metode Bayar: Tunai / Transfer (Non-Token)</strong>
-                <p style="font-size: 11px; margin-top: 2px;">Diterima lunas di meja kasir tanpa penggunaan koin mesin.</p>
-            </div>
-        `;
-    }
+    const paymentMethod = String(trx.metode || '').toLowerCase() === 'qris' ? 'QRIS' : 'Cash';
+    const paymentDetail = `
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px; margin-bottom: 12px; color: #15803d;">
+            <strong>Metode Pembayaran: ${paymentMethod}</strong>
+            <p style="font-size: 11px; margin-top: 2px;">Koin mesin digunakan sebagai token operasional dan tidak dihitung sebagai pembayaran.</p>
+            <p style="font-size: 11px; margin-top: 2px;">Koin mesin digunakan: ${Number(trx.total_koin_mesin || 0).toLocaleString('id-ID')}</p>
+        </div>
+    `;
 
     const html = `
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 12px;">

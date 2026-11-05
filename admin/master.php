@@ -114,8 +114,8 @@ $services = rows(
     "SELECT id_layanan, nama_layanan AS nama, harga AS tarif, berat_standar,
             jumlah_koin, durasi, aktif,
             CASE
-                WHEN jumlah_koin > 0 THEN 'SELF_SERVICE'
-                WHEN LOWER(nama_layanan) LIKE '%drop off%' OR LOWER(nama_layanan) = 'lipat' THEN 'DROP_OFF'
+                WHEN LOWER(BTRIM(nama_layanan)) LIKE '%drop off%' OR LOWER(BTRIM(nama_layanan)) = 'lipat' THEN 'DROP_OFF'
+                WHEN LOWER(BTRIM(nama_layanan)) IN ('cuci', 'kering', 'cuci kering', 'extra spin', 'extra dry') THEN 'SELF_SERVICE'
                 ELSE 'ADDITIONAL'
             END AS kategori
      FROM layanan
@@ -161,11 +161,11 @@ $shifts = rows(
 </div>
 
 <?php if ($subtab === 'layanan'): ?>
-    <!-- 1. Group Self Service (Token) -->
+    <!-- 1. Group Self Service -->
     <div class="card">
         <div class="card-title">
-            <span>SELF SERVICE (TOKEN)</span>
-            <span style="font-size: 11px; color: var(--primary);">Koin Mesin</span>
+            <span>SELF SERVICE</span>
+            <span style="font-size: 11px; color: var(--primary);">Pembayaran Cash / QRIS</span>
         </div>
         <?php foreach ($services as $svc):
             if ($svc['kategori'] !== 'SELF_SERVICE') continue;
@@ -180,11 +180,11 @@ $shifts = rows(
         <?php endforeach; ?>
     </div>
 
-    <!-- 2. Group Drop Off (Tunai) -->
+    <!-- 2. Group Drop Off -->
     <div class="card">
         <div class="card-title">
-            <span>DROP OFF (TUNAI)</span>
-            <span style="font-size: 11px; color: var(--success);">Non-Token</span>
+            <span>DROP OFF</span>
+            <span style="font-size: 11px; color: var(--success);">Pembayaran Cash / QRIS</span>
         </div>
         <?php foreach ($services as $svc):
             if ($svc['kategori'] !== 'DROP_OFF') continue;
@@ -192,17 +192,20 @@ $shifts = rows(
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border);">
             <div>
                 <strong style="font-size: 14px;"><?= htmlspecialchars($svc['nama']) ?></strong>
-                <div style="font-size: 11px; color: var(--text-muted);"><?= $svc['berat_standar'] !== null ? htmlspecialchars((string)$svc['berat_standar']) . ' kg • ' : '' ?><?= htmlspecialchars($svc['durasi']) ?></div>
+                <div style="font-size: 11px; color: var(--text-muted);">
+                    <?= (int)$svc['jumlah_koin'] ?> koin mesin<?= $svc['berat_standar'] !== null ? ' • ' . htmlspecialchars((string)$svc['berat_standar']) . ' kg' : '' ?> • <?= htmlspecialchars($svc['durasi']) ?>
+                    <?= stripos($svc['nama'], 'drop off') !== false ? ' • Mesin dijalankan kasir' : '' ?>
+                </div>
             </div>
             <strong style="font-size: 14px; color: var(--success);"><?= format_rupiah($svc['tarif']) ?></strong>
         </div>
         <?php endforeach; ?>
     </div>
 
-    <!-- 3. Group Additional (Tunai) -->
+    <!-- 3. Group Additional -->
     <div class="card">
         <div class="card-title">
-            <span>ADDITIONAL (TUNAI)</span>
+            <span>ADDITIONAL</span>
             <span style="font-size: 11px; color: var(--warning);">Retail</span>
         </div>
         <?php foreach ($services as $svc):

@@ -7,23 +7,19 @@ require_once __DIR__ . '/../includes/header.php';
 
 $todaySummary = one(
     "SELECT COALESCE(SUM(t.total_bayar), 0)::bigint AS pendapatan,
-            COALESCE(SUM(d.koin_cuci), 0)::bigint AS koin_cuci,
-            COALESCE(SUM(d.koin_kering), 0)::bigint AS koin_kering
+            COALESCE(SUM(d.total_koin), 0)::bigint AS total_koin_mesin
      FROM transaksi t
      LEFT JOIN (
         SELECT d.id_transaksi,
-               SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%cuci%') AS koin_cuci,
-               SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%kering%') AS koin_kering
+               SUM(d.jumlah_koin) AS total_koin
         FROM detail_transaksi d
-        JOIN layanan l USING (id_layanan)
         GROUP BY d.id_transaksi
      ) d USING (id_transaksi)
      WHERE t.tanggal_transaksi >= CURRENT_DATE
        AND t.tanggal_transaksi < CURRENT_DATE + INTERVAL '1 day'"
 );
 $owner_omset = (int)($todaySummary['pendapatan'] ?? 0);
-$owner_wash = (int)($todaySummary['koin_cuci'] ?? 0);
-$owner_dry = (int)($todaySummary['koin_kering'] ?? 0);
+$owner_coins = (int)($todaySummary['total_koin_mesin'] ?? 0);
 $yesterdayIncome = (int)(one(
     "SELECT COALESCE(SUM(total_bayar), 0)::bigint AS pendapatan
      FROM transaksi
@@ -39,8 +35,7 @@ $shiftRecaps = rows(
             p.nama AS kasir,
             COUNT(DISTINCT t.id_transaksi)::int AS trx_count,
             COALESCE(SUM(d.total_berat), 0)::numeric AS total_kg,
-            COALESCE(SUM(d.koin_cuci), 0)::int AS koin_cuci,
-            COALESCE(SUM(d.koin_kering), 0)::int AS koin_kering,
+            COALESCE(SUM(d.total_koin), 0)::int AS total_koin_mesin,
             COALESCE(SUM(t.total_bayar), 0)::bigint AS pendapatan,
             CASE WHEN so.selisih = 0 THEN 'Valid' ELSE 'Review' END AS status
      FROM shift_operasional so
@@ -50,10 +45,8 @@ $shiftRecaps = rows(
      LEFT JOIN (
         SELECT d.id_transaksi,
                SUM(COALESCE(d.berat, 0)) AS total_berat,
-               SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%cuci%') AS koin_cuci,
-               SUM(d.jumlah_koin) FILTER (WHERE LOWER(l.nama_layanan) LIKE '%kering%') AS koin_kering
+               SUM(d.jumlah_koin) AS total_koin
         FROM detail_transaksi d
-        JOIN layanan l USING (id_layanan)
         GROUP BY d.id_transaksi
      ) d USING (id_transaksi)
      WHERE so.status = 'ditutup'
@@ -76,14 +69,14 @@ $shiftRecaps = rows(
             <div class="sub" style="color: #86efac; font-weight: 700;"><?= htmlspecialchars($incomeComparison) ?></div>
         </div>
         <div class="metric-box orange">
-            <div class="label">Coin Cuci</div>
-            <div class="value"><?= $owner_wash ?> pcs</div>
-            <div class="sub">= <?= format_rupiah($owner_wash * 7000) ?></div>
+            <div class="label">Koin Mesin Hari Ini</div>
+            <div class="value"><?= number_format($owner_coins, 0, ',', '.') ?> koin</div>
+            <div class="sub">Token operasional, bukan pembayaran</div>
         </div>
         <div class="metric-box amber">
-            <div class="label">Coin Kering</div>
-            <div class="value"><?= $owner_dry ?> pcs</div>
-            <div class="sub">= <?= format_rupiah($owner_dry * 10000) ?></div>
+            <div class="label">Pembayaran</div>
+            <div class="value">Cash / QRIS</div>
+            <div class="sub">Metode pembayaran transaksi</div>
         </div>
     </div>
 </div>
@@ -109,7 +102,7 @@ $shiftRecaps = rows(
             Kasir: <strong><?= htmlspecialchars($sr['kasir']) ?></strong> • <?= $sr['trx_count'] ?> trx • <?= $sr['total_kg'] ?> kg
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border); padding-top: 6px; font-size: 12px;">
-            <span style="color: var(--text-muted);">Cuci: <?= $sr['koin_cuci'] ?> pcs | Kering: <?= $sr['koin_kering'] ?> pcs</span>
+            <span style="color: var(--text-muted);">Koin mesin: <?= (int)$sr['total_koin_mesin'] ?> koin</span>
             <strong style="font-size: 14px; color: var(--primary-dark);"><?= format_rupiah($sr['pendapatan']) ?></strong>
         </div>
     </div>

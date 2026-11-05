@@ -3,7 +3,7 @@
 return [
     'host'     => 'localhost',
     'port'     => '5432',
-    'dbname'   => 'kino_coin_laundry',
+    'dbname'   => 'kino_coin_laundry2',
     'username' => 'postgres',
-    'password' => 'ISI_PASSWORD_DI_SINI',
+    'password' => '12345678',
 ];

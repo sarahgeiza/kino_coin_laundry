@@ -68,11 +68,11 @@ INSERT INTO layanan (nama_layanan, harga, berat_standar, jumlah_koin, durasi, ak
 SELECT 'Extra Dry', 5000, NULL, 1, '20 menit', TRUE
 WHERE NOT EXISTS (SELECT 1 FROM layanan WHERE LOWER(BTRIM(nama_layanan)) = 'extra dry');
 
-UPDATE layanan SET harga = 20000, berat_standar = 7.5, jumlah_koin = 0,
+UPDATE layanan SET harga = 20000, berat_standar = 7.5, jumlah_koin = 2,
                     durasi = '1 hari', aktif = TRUE
 WHERE LOWER(BTRIM(nama_layanan)) = 'cuci kering drop off';
 INSERT INTO layanan (nama_layanan, harga, berat_standar, jumlah_koin, durasi, aktif)
-SELECT 'Cuci Kering Drop Off', 20000, 7.5, 0, '1 hari', TRUE
+SELECT 'Cuci Kering Drop Off', 20000, 7.5, 2, '1 hari', TRUE
 WHERE NOT EXISTS (SELECT 1 FROM layanan WHERE LOWER(BTRIM(nama_layanan)) = 'cuci kering drop off');
 
 UPDATE layanan SET harga = 1500, berat_standar = NULL, jumlah_koin = 0,

@@ -68,9 +68,10 @@ sudah ada. Migrasi `database/06_kartu_dan_jadwal_shift.sql` menyiapkan kolom kod
 kartu pelanggan serta tabel jadwal kasir yang digunakan aplikasi. Database yang
 sudah memiliki `pelanggan.kode_kartu`, `jadwal_shift`, dan
 `shift_operasional.id_jadwal` tidak perlu menjalankan ulang migrasi tersebut.
-Migrasi lama `03_pemisahan_koin_mesin_dan_pembayaran.sql` menghapus kolom lama,
-sedangkan `04_sinkronisasi_koin_mesin_detail.sql` mengubah data detail historis;
-jangan jalankan keduanya ulang tanpa meninjau dan mencadangkan data terlebih dahulu.
+Migrasi `03_pemisahan_koin_mesin_dan_pembayaran.sql` menghapus kolom pecahan lama.
+Migrasi lama `04_sinkronisasi_koin_mesin_detail.sql` tidak lagi disertakan karena
+akan menimpa snapshot jumlah koin pada detail transaksi historis. Jangan
+mengganti atau mengulang snapshot transaksi dengan nilai layanan saat ini.
 
 Data contoh lama dalam sesi aplikasi tidak disalin ke database. Halaman operasional
 menampilkan data yang benar-benar tersimpan di PostgreSQL.

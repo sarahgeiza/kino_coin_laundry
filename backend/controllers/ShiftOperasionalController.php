@@ -159,7 +159,9 @@ if ($module === 'shift-operasional') {
                 (id_kasir, id_shift, id_jadwal, status, mulai_pada)
              VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
              RETURNING id_shift_operasional, mulai_pada, status',
-            [$kasirId, $shiftId, (int)$scheduled[0]['id_jadwal'], 'aktif']
+            [$kasirId, $shiftId, $scheduled[0]['id_jadwal'] !== null
+                ? (int)$scheduled[0]['id_jadwal']
+                : null, 'aktif']
         );
         if (!empty($scheduled[0]['id_jadwal'])) {
             execute_sql(
