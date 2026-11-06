@@ -143,6 +143,7 @@ function initTransactionCalculator() {
     const changeAmountDisplay = document.getElementById('changeAmountDisplay');
     const statusBadgeEl = document.getElementById('statusBadgeDisplay');
     const totalCoinsEl = document.getElementById('totalMachineCoinsDisplay');
+    let calculatedTotalBill = 0;
 
     function calculate() {
         let totalBill = 0;
@@ -192,7 +193,8 @@ function initTransactionCalculator() {
 
         const amountPaid = Math.max(0, Number(amountInput.value) || 0);
         const difference = amountPaid - totalBill;
-        const qrisOverpayment = paymentType.value === 'qris' && difference > 0;
+        calculatedTotalBill = totalBill;
+        const qrisMismatch = paymentType.value === 'qris' && difference !== 0;
         const remainingAmount = Math.max(0, totalBill - amountPaid);
         const changeAmount = paymentType.value === 'cash' ? Math.max(0, difference) : 0;
 
@@ -201,9 +203,11 @@ function initTransactionCalculator() {
         amountPaidDisplay.textContent = 'Rp ' + amountPaid.toLocaleString('id-ID');
         remainingAmountDisplay.textContent = 'Rp ' + remainingAmount.toLocaleString('id-ID');
         changeAmountDisplay.textContent = 'Rp ' + changeAmount.toLocaleString('id-ID');
-        if (qrisOverpayment) {
+        if (qrisMismatch) {
             statusBadgeEl.className = 'badge badge-kurang';
-            statusBadgeEl.textContent = 'QRIS tidak boleh melebihi tagihan';
+            statusBadgeEl.textContent = difference < 0
+                ? 'QRIS harus sama dengan tagihan'
+                : 'QRIS tidak boleh melebihi tagihan';
         } else if (difference < 0) {
             statusBadgeEl.className = 'badge badge-kurang';
             statusBadgeEl.textContent = amountPaid > 0 ? 'Pembayaran sebagian' : 'Belum lunas';
@@ -272,6 +276,16 @@ function initTransactionCalculator() {
             showToast('Jumlah pembayaran tidak valid', 'error');
             return;
         }
+        if (amount < calculatedTotalBill) {
+            showToast('Pembayaran kurang. Masukkan jumlah minimal sesuai total tagihan.', 'error', 4500);
+            amountInput.focus();
+            return;
+        }
+        if (paymentType.value === 'qris' && amount !== calculatedTotalBill) {
+            showToast('Pembayaran QRIS harus sama persis dengan total tagihan.', 'error', 4500);
+            amountInput.focus();
+            return;
+        }
 
         const submitButton = form.querySelector('button[type="submit"]');
         submitButton.disabled = true;
@@ -302,6 +316,8 @@ function initShiftCloseForm() {
     const physicalDisplay = document.getElementById('physicalCashDisplay');
     const differenceDisplay = document.getElementById('cashDifferenceDisplay');
     const systemTotal = Number(form.dataset.totalSistem);
+    const earlyClose = form.dataset.tutupDini === '1';
+    noteInput.required = earlyClose;
 
     function updateDifference() {
         if (totalInput.value.trim() === '') {
@@ -331,6 +347,11 @@ function initShiftCloseForm() {
         const totalFisik = Number(totalInput.value);
         if (!Number.isSafeInteger(totalFisik) || totalFisik < 0) {
             showToast('Total uang fisik tidak valid', 'error');
+            return;
+        }
+        if (earlyClose && !noteInput.value.trim()) {
+            showToast('Tulis alasan penutupan lebih awal atau pergantian kasir.', 'error', 4500);
+            noteInput.focus();
             return;
         }
 

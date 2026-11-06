@@ -122,6 +122,14 @@ if ($module === 'shift-operasional') {
             respond(['error' => 'Check-in hanya dapat dilakukan untuk shift yang dijadwalkan'], 422);
         }
         if (!$scheduled) {
+            $dayScheduleCount = (int)(one(
+                "SELECT COUNT(*)::int AS total
+                 FROM jadwal_shift
+                 WHERE tanggal = CURRENT_DATE AND status <> 'dibatalkan'"
+            )['total'] ?? 0);
+            if ($dayScheduleCount > 0) {
+                respond(['error' => 'Kamu tidak memiliki jadwal shift hari ini. Minta pemilik menjadwalkan kasir pengganti.'], 409);
+            }
             $scheduled = rows(
                 'SELECT NULL::bigint AS id_jadwal, id_shift
                  FROM shift
@@ -199,10 +207,15 @@ if ($module === 'shift-operasional') {
         try {
             // Ambil shift aktif dan kunci barisnya
             $active = one(
-                'SELECT id_shift_operasional, id_jadwal
-                 FROM shift_operasional
-                 WHERE id_kasir = ? AND status = ?
-                 FOR UPDATE',
+                "SELECT so.id_shift_operasional, so.id_jadwal,
+                        CASE WHEN CURRENT_TIMESTAMP < (
+                            so.mulai_pada::date + s.jam_selesai
+                            + CASE WHEN s.jam_selesai <= s.jam_mulai THEN INTERVAL '1 day' ELSE INTERVAL '0 day' END
+                        ) THEN true ELSE false END AS tutup_dini
+                 FROM shift_operasional so
+                 JOIN shift s USING (id_shift)
+                 WHERE so.id_kasir = ? AND so.status = ?
+                 FOR UPDATE OF so",
                 [$kasirId, 'aktif']
             );
 
@@ -212,6 +225,14 @@ if ($module === 'shift-operasional') {
                 respond([
                     'error' => 'Tidak ada shift aktif untuk ditutup'
                 ], 409);
+            }
+
+            $note = substr(trim((string)($b['catatan'] ?? '')), 0, 1000);
+            if (($active['tutup_dini'] ?? 'f') === 't' && $note === '') {
+                pg_query($conn, 'ROLLBACK');
+                respond([
+                    'error' => 'Alasan wajib diisi saat menutup shift sebelum jam selesai'
+                ], 422);
             }
 
             $id = (int)$active['id_shift_operasional'];
@@ -249,9 +270,7 @@ if ($module === 'shift-operasional') {
                     $system,
                     $physical,
                     $difference,
-                    isset($b['catatan'])
-                        ? substr(trim((string)$b['catatan']), 0, 1000)
-                        : null,
+                    $note !== '' ? $note : null,
                     $id
                 ]
             );

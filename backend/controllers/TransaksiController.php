@@ -277,8 +277,11 @@ if ($module === 'transaksi') {
 
             need($b, ['jumlah_dibayar']);
             $paidAmount = integer($b['jumlah_dibayar'], 0);
-            if ($paymentType === 'qris' && $paidAmount > $total) {
-                respond(['error' => 'Pembayaran QRIS tidak boleh melebihi total transaksi'], 422);
+            if ($paidAmount < $total) {
+                respond(['error' => 'Pembayaran kurang. Transaksi hanya dapat disimpan setelah tagihan lunas.'], 422);
+            }
+            if ($paymentType === 'qris' && $paidAmount !== $total) {
+                respond(['error' => 'Pembayaran QRIS harus sama persis dengan total transaksi'], 422);
             }
             $remaining = max(0, $total - $paidAmount);
             $change = $paymentType === 'cash'

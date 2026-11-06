@@ -99,10 +99,13 @@ Mengembalikan data pengguna yang sedang login beserta CSRF token aktif.
 ### Operasional Shift (`?module=shift-operasional`)
 * `action=current` (`GET`) mengembalikan shift kasir yang aktif.
 * `action=open` (`POST`) membuka shift yang sedang berjalan; body berisi `id_shift`.
-  Jika ada jadwal kasir untuk hari tersebut, check-in harus sesuai shift jadwal.
-  Jika belum ada jadwal kasir, sistem menggunakan shift yang sedang berjalan.
+  Jika ada jadwal pada hari tersebut, kasir harus memiliki jadwal sendiri yang
+  sedang berlangsung. Fallback ke shift yang sedang berjalan hanya berlaku jika
+  belum ada jadwal yang dibuat untuk hari itu.
 * `action=close` (`POST`) menutup shift aktif; body berisi `total_fisik` dan dapat
-  menyertakan `catatan`.
+  menyertakan `catatan`. Penutupan sebelum waktu selesai diperbolehkan, tetapi
+  wajib menyertakan alasan. Backend menyimpan kas cash menurut sistem, kas fisik,
+  dan selisihnya; QRIS tidak dihitung sebagai uang fisik.
 * Ketiga action memerlukan sesi kasir; `open` dan `close` memerlukan token CSRF.
 
 ---
@@ -126,9 +129,9 @@ Mengembalikan data pengguna yang sedang login beserta CSRF token aktif.
     ]
   }
   ```
-* `jumlah_dibayar` wajib; nilai 0 atau kurang dari total tidak akan otomatis
-  dianggap lunas. Backend menghitung sisa pembayaran, status, dan kembalian Cash.
-  QRIS tidak menerima pembayaran yang melebihi total.
+* `jumlah_dibayar` wajib dan harus minimal sama dengan total tagihan; pembayaran
+  kurang ditolak (HTTP 422), sehingga transaksi baru selalu lunas. Cash boleh
+  lebih dan backend menghitung kembalian. QRIS harus sama persis dengan total.
 * Cuci, Kering, Cuci Kering, Extra Spin, Extra Dry, dan Cuci Kering Drop Off
   dihitung per proses 7,5 kg dengan pembulatan ke atas. Drop Off tidak
   menghasilkan koin mesin. Lipat memakai `berat` dan dihitung per kg; Sabun,

@@ -11,12 +11,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
 $kasirId = (int)$_SESSION['user_id'];
 $activeShift = one(
-    'SELECT so.id_shift_operasional, s.nama_shift, s.jam_mulai, s.jam_selesai
+    "SELECT so.id_shift_operasional, s.nama_shift, s.jam_mulai, s.jam_selesai,
+            CASE WHEN CURRENT_TIMESTAMP < (
+                so.mulai_pada::date + s.jam_selesai
+                + CASE WHEN s.jam_selesai <= s.jam_mulai THEN INTERVAL '1 day' ELSE INTERVAL '0 day' END
+            ) THEN 't' ELSE 'f' END AS tutup_dini
      FROM shift_operasional so
      JOIN shift s USING (id_shift)
      WHERE so.id_kasir = ? AND so.status = ?
      ORDER BY so.id_shift_operasional DESC
-     LIMIT 1',
+     LIMIT 1",
     [$kasirId, 'aktif']
 );
 
@@ -49,6 +53,7 @@ $display_income = (int)($summary['total_sistem'] ?? 0);
 $display_tx = (int)($summary['total_transaksi'] ?? 0);
 $display_kg = (float)($summary['total_berat'] ?? 0);
 $display_coins = (int)($summary['total_koin_mesin'] ?? 0);
+$isEarlyClose = ($activeShift['tutup_dini'] ?? 'f') === 't';
 $kasir_shift = [
     'nama' => $activeShift['nama_shift'],
     'jam_tampil' => substr((string)$activeShift['jam_mulai'], 0, 5)
@@ -92,13 +97,14 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="card-title">Rekonsiliasi Kas Operasional</div>
     <div style="background: #f8fafc; border: 1.5px dashed var(--border); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;">
         <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
-            <span>Total Sistem:</span>
+            <span>Kas cash menurut sistem:</span>
             <strong style="font-size: 15px; color: var(--primary-dark);"><?= format_rupiah($display_income) ?></strong>
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
             <span>Total Fisik Kas:</span>
             <strong id="physicalCashDisplay" style="font-size: 15px; color: var(--success);">Belum diinput</strong>
         </div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">Perhitungan berdasarkan pembayaran cash bersih setelah kembalian; QRIS tidak masuk kas fisik.</div>
         <div style="display: flex; justify-content: space-between; font-size: 13px; border-top: 1px solid var(--border); padding-top: 6px;">
             <span>Selisih:</span>
             <strong id="cashDifferenceDisplay" style="color: var(--text-muted);">Belum dihitung</strong>
@@ -119,18 +125,20 @@ require_once __DIR__ . '/../includes/header.php';
             <button type="button" class="sheet-close" onclick="closeModal('modalTutupShift')">&times;</button>
         </div>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
-            Akses input transaksi kasir akan dikunci hingga shift berikutnya dimulai. Konfirmasi penutupan <?= htmlspecialchars($kasir_shift['nama']) ?>?
+            Shift boleh ditutup sebelum jam selesai jika ada pergantian atau keadaan darurat. Kasir pengganti harus login dengan akunnya sendiri dan melakukan presensi pada jadwal yang berlaku.
         </p>
         <form action="rekap.php" method="POST" id="formTutupShift"
-            data-total-sistem="<?= $display_income ?>">
+            data-total-sistem="<?= $display_income ?>"
+            data-tutup-dini="<?= $isEarlyClose ? '1' : '0' ?>">
             <input type="hidden" name="action" value="tutup_shift">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf'] ?? '') ?>">
             <div class="form-group">
                 <label class="form-label" for="totalFisikInput">Total uang fisik (Rp) *</label>
                 <input type="number" min="0" step="1" id="totalFisikInput" class="form-control" required>
+                <span style="font-size:11px; color:var(--text-muted); display:block; margin-top:4px;">Hitung uang di laci lalu masukkan jumlahnya. Selisih akan dibandingkan dengan kas cash menurut sistem; nilai minus berarti uang kurang.</span>
             </div>
             <div class="form-group">
-                <label class="form-label" for="catatanShiftInput">Catatan (opsional)</label>
+                <label class="form-label" for="catatanShiftInput">Catatan pergantian/penutupan (wajib jika tutup lebih awal)</label>
                 <textarea id="catatanShiftInput" class="form-control" maxlength="1000" rows="3"></textarea>
             </div>
             <div style="display: flex; gap: 10px;">

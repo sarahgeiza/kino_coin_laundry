@@ -50,6 +50,16 @@ if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
             );
 
             if (!$scheduled) {
+                $dayScheduleCount = (int)(one(
+                    "SELECT COUNT(*)::int AS total
+                     FROM jadwal_shift
+                     WHERE tanggal = CURRENT_DATE AND status <> 'dibatalkan'"
+                )['total'] ?? 0);
+                if ($dayScheduleCount > 0) {
+                    pg_query($connection, 'ROLLBACK');
+                    header('Location: index.php?toast=need_schedule');
+                    exit;
+                }
                 $scheduled = rows(
                     'SELECT NULL::bigint AS id_jadwal, id_shift
                      FROM shift
@@ -140,7 +150,12 @@ if ($activeShift) {
         [$kasirId]
     );
     if (!$scheduled) {
-        $scheduled = rows(
+        $dayScheduleCount = (int)(one(
+            "SELECT COUNT(*)::int AS total
+             FROM jadwal_shift
+             WHERE tanggal = CURRENT_DATE AND status <> 'dibatalkan'"
+        )['total'] ?? 0);
+        $scheduled = $dayScheduleCount === 0 ? rows(
             'SELECT nama_shift, jam_mulai, jam_selesai
              FROM shift
              WHERE (jam_mulai < jam_selesai
@@ -150,7 +165,7 @@ if ($activeShift) {
                     AND (CURRENT_TIME >= jam_mulai
                          OR CURRENT_TIME < jam_selesai))
              ORDER BY id_shift'
-        );
+        ) : [];
     }
     $kasir_shift = count($scheduled) === 1
         ? [
