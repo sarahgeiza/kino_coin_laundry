@@ -1,4 +1,5 @@
 # Konfigurasi database (berisi password)
+.env
 backend/config/database.local.php
 
 # File debug
