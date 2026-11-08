@@ -186,14 +186,14 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
 
         <div style="position: relative;">
-            <input type="text" id="inputPelangganNama" name="nama_pelanggan" class="form-control" placeholder="Ketik nama / WA / scan kartu..." value="Budi Santoso" autocomplete="off" required>
+            <input type="text" id="inputPelangganNama" name="nama_pelanggan" class="form-control" placeholder="Ketik nama / WA / scan kartu..." value="<?= htmlspecialchars($prefilled_member['nama'] ?? ($_POST['nama_pelanggan'] ?? '')) ?>" autocomplete="off" required>
             <!-- Dropdown Autocomplete (K2b) -->
             <div id="customerSuggestBox" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1.5px solid var(--primary-light); border-radius: 8px; box-shadow: var(--shadow-lg); z-index: 30; max-height: 180px; overflow-y: auto;"></div>
         </div>
 
         <div class="form-group" style="margin-top: 10px; margin-bottom: 0;">
             <label class="form-label">Nomor WhatsApp *</label>
-            <input type="text" id="inputPelangganWA" name="wa_pelanggan" class="form-control" value="08123456789" placeholder="08123456789" inputmode="numeric" pattern="[0-9]+" title="Nomor WhatsApp hanya boleh berisi angka" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+            <input type="text" id="inputPelangganWA" name="wa_pelanggan" class="form-control" value="<?= htmlspecialchars($prefilled_member['wa'] ?? ($_POST['wa_pelanggan'] ?? '')) ?>" placeholder="08123456789" inputmode="numeric" pattern="[0-9]+" title="Nomor WhatsApp hanya boleh berisi angka" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
         </div>
     </div>
 

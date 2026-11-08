@@ -450,7 +450,7 @@ function simulateQrScanSuccess(sampleCode = 'KC-P-0001') {
     onQrScanSuccess(sampleCode);
 }
 
-function applyScannedCode() {
+async function applyScannedCode() {
     const manualInput = document.getElementById('qrManualInput');
     if (!manualInput || !manualInput.value.trim()) {
         showToast('Belum ada kode barcode/QR', 'error');
@@ -458,31 +458,45 @@ function applyScannedCode() {
     }
     const code = manualInput.value.trim();
     
-    // Find customer by code
-    const members = window.__MOCK_MEMBERS || [];
-    const matched = members.find(m => m.kode_kartu.toLowerCase() === code.toLowerCase());
+    // Find customer by code from live session or live Supabase API
+    const members = window.__LIVE_MEMBERS || window.__MOCK_MEMBERS || [];
+    let matched = members.find(m => (m.kode_kartu && m.kode_kartu.toLowerCase() === code.toLowerCase()) || (m.wa && m.wa === code));
+
+    if (!matched && window.KinoAPI) {
+        try {
+            const apiResults = await window.KinoAPI.searchMember(code);
+            if (apiResults && apiResults.length > 0) {
+                matched = apiResults[0];
+            }
+        } catch (e) {
+            console.warn('API member search fallback', e);
+        }
+    }
 
     if (matched) {
         const inputNama = document.getElementById('inputPelangganNama');
         const inputWA = document.getElementById('inputPelangganWA');
         const selectedBadge = document.getElementById('memberSelectedBadge');
+        const namaMember = matched.nama || matched.nama_pelanggan || '';
+        const waMember = matched.wa || matched.no_hp || '';
+        const kodeMember = matched.kode_kartu || code;
 
         if (inputNama && inputWA) {
-            inputNama.value = matched.nama;
-            inputWA.value = matched.wa;
+            inputNama.value = namaMember;
+            inputWA.value = waMember;
             if (selectedBadge) {
                 selectedBadge.style.display = 'block';
-                selectedBadge.innerHTML = `Member Terpilih: <strong>${matched.nama}</strong> (${matched.kode_kartu})`;
+                selectedBadge.innerHTML = `Member Terpilih: <strong>${namaMember}</strong> (${kodeMember})`;
             }
             closeModal('modalScanQr');
-            showToast(`QR ${code} (${matched.nama}) berhasil digunakan!`, 'success');
+            showToast(`QR ${kodeMember} (${namaMember}) berhasil diverifikasi!`, 'success');
         } else {
             // Jika discan langsung dari Dashboard Kasir, langsung arahkan ke transaksi baru dengan data member terisi
             closeModal('modalScanQr');
-            showToast(`Member terdeteksi: ${matched.nama}. Mengalihkan ke transaksi...`, 'success');
+            showToast(`Member terdeteksi: ${namaMember}. Membuka transaksi...`, 'success');
             setTimeout(() => {
-                window.location.href = `transaksi-baru.php?scan_member=${encodeURIComponent(matched.kode_kartu)}`;
-            }, 600);
+                window.location.href = `transaksi-baru.php?scan_member=${encodeURIComponent(kodeMember)}`;
+            }, 500);
         }
     } else {
         showToast(`Kode ${code} tidak terdaftar di sistem`, 'error');
