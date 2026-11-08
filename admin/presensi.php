@@ -16,6 +16,9 @@ if ($filter === 'Bulan Lalu') {
     $logs = array_filter($raw_logs, function($p) use ($today, $today_str) {
         return ($p['status'] ?? '') === 'Berjalan' || ($p['filter_date'] ?? '') === $today || ($p['tanggal'] ?? '') === $today_str;
     });
+    if (empty($logs) && !empty($raw_logs)) {
+        $logs = array_slice($raw_logs, 0, 5);
+    }
 } else {
     $logs = $raw_logs;
 }

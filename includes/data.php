@@ -185,6 +185,7 @@ function sync_live_database(): bool
             $recaps = [];
             $presensi = [];
             while ($row = pg_fetch_assoc($res_recap)) {
+                $is_active = ($row['status'] === 'aktif' && empty($row['ditutup_pada']));
                 $recaps[] = [
                     'id' => (int) $row['id_shift_operasional'],
                     'kasir' => $row['nama_kasir'],
@@ -195,7 +196,7 @@ function sync_live_database(): bool
                     'pendapatan' => (int) $row['total_omzet'],
                     'koin_cuci' => (int) $row['total_koin_mesin'],
                     'koin_kering' => 0,
-                    'status' => $row['status'] === 'aktif' ? 'Aktif' : 'Valid',
+                    'status' => $is_active ? 'Aktif' : 'Valid',
                     'selisih' => (int) ($row['selisih'] ?? 0)
                 ];
                 $presensi[] = [
@@ -206,7 +207,7 @@ function sync_live_database(): bool
                     'filter_date' => date('Y-m-d', strtotime($row['mulai_pada'])),
                     'jam_masuk' => date('H:i', strtotime($row['mulai_pada'])),
                     'jam_keluar' => $row['ditutup_pada'] ? date('H:i', strtotime($row['ditutup_pada'])) : null,
-                    'status' => $row['status'] === 'aktif' ? 'Berjalan' : 'Selesai'
+                    'status' => $is_active ? 'Berjalan' : 'Selesai'
                 ];
             }
             $_SESSION['shifts_recap'] = $recaps;
@@ -374,8 +375,8 @@ function db_start_shift(string $kasir_name, int $shift_id = 2): bool
         $u_res = @pg_query_params($conn, "SELECT id_pengguna FROM pengguna WHERE nama ILIKE $1 OR username ILIKE $1", ["%$kasir_name%"]);
         $id_kasir = ($u_res && pg_num_rows($u_res) > 0) ? (int)pg_fetch_result($u_res, 0, 'id_pengguna') : 3;
 
-        // Tutup shift aktif sebelumnya jika ada yang tertinggal
-        @pg_query_params($conn, "UPDATE shift_operasional SET status = 'selesai', ditutup_pada = NOW() WHERE id_kasir = $1 AND status = 'aktif'", [$id_kasir]);
+        // Tutup shift aktif sebelumnya jika ada yang tertinggal (status valid: 'ditutup')
+        @pg_query_params($conn, "UPDATE shift_operasional SET status = 'ditutup', ditutup_pada = NOW() WHERE id_kasir = $1 AND status = 'aktif'", [$id_kasir]);
 
         $res = @pg_query_params($conn, "
             INSERT INTO shift_operasional (id_kasir, id_shift, mulai_pada, total_sistem, status)
@@ -392,6 +393,7 @@ function db_start_shift(string $kasir_name, int $shift_id = 2): bool
 
 /**
  * Tutup shift kasir & audit selisih kas fisik di Supabase
+ * Mematuhi check constraint PostgreSQL: status IN ('aktif', 'ditutup')
  */
 function db_close_shift(string $kasir_name, int $total_fisik = 0, int $selisih = 0): bool
 {
@@ -400,16 +402,35 @@ function db_close_shift(string $kasir_name, int $total_fisik = 0, int $selisih =
         if (!$conn) return false;
 
         $u_res = @pg_query_params($conn, "SELECT id_pengguna FROM pengguna WHERE nama ILIKE $1 OR username ILIKE $1", ["%$kasir_name%"]);
-        $id_kasir = ($u_res && pg_num_rows($u_res) > 0) ? (int)pg_fetch_result($u_res, 0, 'id_pengguna') : 3;
+        $id_kasir = ($u_res && pg_num_rows($u_res) > 0) ? (int)pg_fetch_result($u_res, 0, 'id_pengguna') : null;
 
-        $res = @pg_query_params($conn, "
-            UPDATE shift_operasional 
-            SET status = 'selesai', ditutup_pada = NOW(), total_fisik = $2, selisih = $3 
-            WHERE id_kasir = $1 AND status = 'aktif'
-        ", [$id_kasir, $total_fisik, $selisih]);
+        $affected = 0;
+        // 1. Coba tutup shift aktif milik kasir yang sedang login
+        if ($id_kasir) {
+            $res = @pg_query_params($conn, "
+                UPDATE shift_operasional 
+                SET status = 'ditutup', ditutup_pada = NOW(), total_fisik = $2, selisih = $3 
+                WHERE id_kasir = $1 AND status = 'aktif'
+            ", [$id_kasir, $total_fisik, $selisih]);
+            $affected = $res ? pg_affected_rows($res) : 0;
+        }
+
+        // 2. Jika kasir ini bukan pembuka shift tapi ada shift toko yang sedang aktif, tutup shift aktif toko
+        if ($affected === 0) {
+            $res2 = @pg_query_params($conn, "
+                UPDATE shift_operasional 
+                SET status = 'ditutup', ditutup_pada = NOW(), total_fisik = $1, selisih = $2 
+                WHERE id_shift_operasional = (
+                    SELECT id_shift_operasional FROM shift_operasional 
+                    WHERE status = 'aktif' 
+                    ORDER BY id_shift_operasional DESC LIMIT 1
+                )
+            ", [$total_fisik, $selisih]);
+            $affected = $res2 ? pg_affected_rows($res2) : 0;
+        }
 
         sync_live_database();
-        return $res !== false;
+        return $affected > 0;
     } catch (Throwable $e) {
         return false;
     }
