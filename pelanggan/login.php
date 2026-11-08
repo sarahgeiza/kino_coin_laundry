@@ -25,13 +25,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             }
         }
 
+        $pass_valid = false;
+        if ($matched) {
+            $db_pass = (string)($matched['password'] ?? '');
+            if (empty($db_pass) || password_verify($pass, $db_pass) || $db_pass === $pass) {
+                $pass_valid = true;
+            }
+        }
+
         if (!$matched) {
             $login_error = 'Nomor WhatsApp ' . htmlspecialchars($wa) . ' belum terdaftar. Silakan daftar akun baru terlebih dahulu.';
-        } elseif (!empty($matched['password']) && $matched['password'] !== $pass) {
+        } elseif (!$pass_valid) {
             $login_error = 'Password salah. Silakan periksa kembali kata sandi Anda.';
         } else {
+            $_SESSION['customer_id'] = $matched['id'];
             $_SESSION['username'] = $matched['nama'];
             $_SESSION['role'] = 'pelanggan';
+            $_SESSION['csrf'] = bin2hex(random_bytes(32));
             header('Location: index.php');
             exit;
         }
@@ -101,7 +111,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             <form action="login.php" method="POST">
                 <div class="form-group">
                     <label class="form-label">Nomor WhatsApp</label>
-                    <input type="text" id="custLoginWa" name="wa" class="form-control" value="<?= htmlspecialchars($_POST['wa'] ?? '08123456789') ?>" placeholder="Contoh: 08123456789" inputmode="numeric" pattern="[0-9]+" title="Nomor WhatsApp hanya boleh berisi angka" aria-describedby="custLoginWaWarning" oninput="validateCustLoginWa(this)" required>
+                    <input type="text" id="custLoginWa" name="wa" class="form-control" value="<?= htmlspecialchars($_POST['wa'] ?? '0899887766') ?>" placeholder="Contoh: 0899887766" inputmode="numeric" pattern="[0-9]+" title="Nomor WhatsApp hanya boleh berisi angka" aria-describedby="custLoginWaWarning" oninput="validateCustLoginWa(this)" required>
                     <small id="custLoginWaWarning" role="alert" aria-live="polite" style="display:none; color:#dc2626; font-size:12px; margin-top:5px;">
                         Nomor WhatsApp hanya boleh berisi angka.
                     </small>

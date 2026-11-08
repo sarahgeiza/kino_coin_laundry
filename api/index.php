@@ -30,6 +30,8 @@ try {
     require __DIR__.'/../backend/controllers/TransaksiController.php';
     require __DIR__.'/../backend/controllers/DetailTransaksiController.php';
     require __DIR__.'/../backend/controllers/DashboardRekapController.php';
+    require __DIR__.'/../backend/controllers/ShiftOperasionalController.php';
+    require __DIR__.'/../backend/controllers/PelangganSelfController.php';
     respond(['error'=>'Endpoint tidak ditemukan'],404);
 } catch (PDOException $e) {
     error_log($e->getMessage());

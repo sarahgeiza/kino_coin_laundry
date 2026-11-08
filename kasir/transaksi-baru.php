@@ -54,67 +54,82 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
         $status = 'Lunas';
     }
 
-    // Match or create member record
-    $member_code = null;
-    $member_idx = -1;
-    foreach ($_SESSION['members'] as $idx => $m) {
-        if (strcasecmp($m['nama'], $nama) === 0 || $m['wa'] === $wa) {
-            $member_code = $m['kode_kartu'];
-            $member_idx = $idx;
-            break;
-        }
-    }
-
-    if (!$member_code) {
-        $new_m_id = count($_SESSION['members']) + 1;
-        $member_code = 'KC-P-' . str_pad($new_m_id, 4, '0', STR_PAD_LEFT);
-        $member_idx = count($_SESSION['members']);
-        $_SESSION['members'][] = [
-            'id' => $new_m_id,
-            'nama' => $nama,
-            'wa' => $wa,
-            'kode_kartu' => $member_code,
-            'is_member' => true,
-            'tx_count' => 0,
-            'coin_cuci' => 0,
-            'coin_kering' => 0,
-            'password' => 'password123'
-        ];
-    }
-
-    // Update customer stats
-    if ($member_idx >= 0 && isset($_SESSION['members'][$member_idx])) {
-        $_SESSION['members'][$member_idx]['tx_count'] += 1;
-        $_SESSION['members'][$member_idx]['coin_cuci'] += $koin_cuci;
-        $_SESSION['members'][$member_idx]['coin_kering'] += $koin_kering;
-    }
-
-    $new_id = 'INV-2026-' . str_pad(count($_SESSION['transactions']) + 1, 3, '0', STR_PAD_LEFT);
-
-    $_SESSION['transactions'][] = [
-        'id' => $new_id,
-        'pelanggan' => $nama,
+        // 1. Simpan langsung ke Supabase PostgreSQL
+    $tx_data = [
+        'nama' => $nama,
         'wa' => $wa,
-        'kode_kartu' => $member_code,
-        'layanan' => $selected_service['nama'],
-        'layanan_tipe' => $selected_service['kategori_label'],
-        'kategori' => $selected_service['kategori'],
-        'kuantitas' => $qty . ' ' . $selected_service['satuan'],
-        'qty_num' => $qty,
-        'total_biaya' => $total_biaya,
-        'metode' => $metode,
+        'service_id' => $service_id,
+        'qty' => $qty,
         'koin_cuci' => $koin_cuci,
         'koin_kering' => $koin_kering,
+        'tarif' => $selected_service['tarif'] ?? 7000,
+        'total_biaya' => $total_biaya,
         'total_bayar' => $total_bayar,
-        'status' => $status,
-        'kasir' => $_SESSION['username'] ?? 'Daniel',
-        'shift' => (get_active_kasir_shift($_SESSION['username'] ?? 'Daniel'))['nama'],
-        'waktu' => date('H:i') . ' WIB',
-        'tanggal' => date('d M Y'),
-        'filter_date' => date('Y-m-d')
+        'metode' => 'cash'
     ];
+    $saved_inv = db_save_transaction($tx_data);
 
-    header('Location: index.php?toast=saved');
+    // 2. Fallback sesi jika database offline
+    if (!$saved_inv) {
+        $member_code = null;
+        $member_idx = -1;
+        foreach ($_SESSION['members'] as $idx => $m) {
+            if (strcasecmp($m['nama'], $nama) === 0 || $m['wa'] === $wa) {
+                $member_code = $m['kode_kartu'];
+                $member_idx = $idx;
+                break;
+            }
+        }
+
+        if (!$member_code) {
+            $new_m_id = count($_SESSION['members']) + 1;
+            $member_code = 'KC-P-' . str_pad($new_m_id, 4, '0', STR_PAD_LEFT);
+            $member_idx = count($_SESSION['members']);
+            $_SESSION['members'][] = [
+                'id' => $new_m_id,
+                'nama' => $nama,
+                'wa' => $wa,
+                'kode_kartu' => $member_code,
+                'is_member' => true,
+                'tx_count' => 0,
+                'coin_cuci' => 0,
+                'coin_kering' => 0,
+                'password' => 'password123'
+            ];
+        }
+
+        if ($member_idx >= 0 && isset($_SESSION['members'][$member_idx])) {
+            $_SESSION['members'][$member_idx]['tx_count'] += 1;
+            $_SESSION['members'][$member_idx]['coin_cuci'] += $koin_cuci;
+            $_SESSION['members'][$member_idx]['coin_kering'] += $koin_kering;
+        }
+
+        $new_id = 'INV-2026-' . str_pad(count($_SESSION['transactions']) + 1, 3, '0', STR_PAD_LEFT);
+
+        $_SESSION['transactions'][] = [
+            'id' => $new_id,
+            'pelanggan' => $nama,
+            'wa' => $wa,
+            'kode_kartu' => $member_code,
+            'layanan' => $selected_service['nama'],
+            'layanan_tipe' => $selected_service['kategori_label'],
+            'kategori' => $selected_service['kategori'],
+            'kuantitas' => $qty . ' ' . $selected_service['satuan'],
+            'qty_num' => $qty,
+            'total_biaya' => $total_biaya,
+            'metode' => $metode,
+            'koin_cuci' => $koin_cuci,
+            'koin_kering' => $koin_kering,
+            'total_bayar' => $total_bayar,
+            'status' => $status,
+            'kasir' => $_SESSION['username'] ?? 'Sarah',
+            'shift' => (get_active_kasir_shift($_SESSION['username'] ?? 'Sarah'))['nama'],
+            'waktu' => date('H:i') . ' WIB',
+            'tanggal' => date('d M Y'),
+            'filter_date' => date('Y-m-d')
+        ];
+    }
+header('Location: index.php?toast=saved');
     exit;
     }
 }

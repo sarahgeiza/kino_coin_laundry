@@ -26,15 +26,34 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             }
         }
 
+        $pass_valid = false;
+        if ($matched_user) {
+            $db_pass = (string)($matched_user['password'] ?? '');
+            if (password_verify($password, $db_pass) || $db_pass === $password) {
+                $pass_valid = true;
+            }
+        }
+
         if (!$matched_user) {
             $login_error = 'Akun kasir tidak terdaftar di sistem. Hubungi Pemilik toko untuk mendaftarkan akun Anda di Manajemen Pengguna.';
-        } elseif ($matched_user['password'] !== $password) {
+        } elseif (!$pass_valid) {
             $login_error = 'Password salah. Silakan periksa kembali kata sandi Anda.';
         } else {
             $_SESSION['user_id'] = $matched_user['id'];
             $_SESSION['username'] = $matched_user['nama'];
             $_SESSION['role'] = 'kasir';
-            $_SESSION['kasir_checked_in'] = false;
+            $_SESSION['csrf'] = bin2hex(random_bytes(32));
+
+            // Cek apakah kasir sudah memiliki shift aktif di database Supabase
+            $so_active = false;
+            foreach ($_SESSION['presensi'] ?? [] as $pr) {
+                if ($pr['kasir'] === $matched_user['nama'] && $pr['status'] === 'Berjalan') {
+                    $so_active = true;
+                    break;
+                }
+            }
+            $_SESSION['kasir_checked_in'] = $so_active;
+
             header('Location: kasir/index.php');
             exit;
         }
@@ -107,13 +126,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             <form action="login-kasir.php" method="POST">
                 <div class="form-group">
                     <label class="form-label">Username / Email</label>
-                    <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($_POST['username'] ?? 'daniel') ?>" placeholder="Contoh: daniel" required>
+                    <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($_POST['username'] ?? 'sarah') ?>" placeholder="Contoh: sarah atau ramzy" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Password</label>
                     <div style="position: relative;">
-                        <input type="password" id="inputPassKasir" name="password" class="form-control" value="<?= htmlspecialchars($_POST['password'] ?? '123456') ?>" style="padding-right: 80px;" required>
+                        <input type="password" id="inputPassKasir" name="password" class="form-control" value="<?= htmlspecialchars($_POST['password'] ?? 'kasir123') ?>" style="padding-right: 80px;" required>
                         <button type="button" class="btn-toggle-pass" onclick="togglePassword('inputPassKasir', this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 12px; font-weight: 700; color: #2563eb; cursor: pointer;">
                             Lihat
                         </button>

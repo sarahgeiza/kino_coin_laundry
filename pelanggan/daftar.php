@@ -35,22 +35,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         if ($is_already_registered) {
             $reg_error = 'Nomor WhatsApp ' . htmlspecialchars($wa) . ' sudah terdaftar. Silakan masuk menggunakan akun Anda di halaman login.';
         } else {
-            $new_id = count($_SESSION['members']) + 1;
-            $new_code = 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT);
-            $_SESSION['members'][] = [
-                'id' => $new_id,
-                'nama' => $nama,
-                'wa' => $wa,
-                'kode_kartu' => $new_code,
-                'is_member' => true,
-                'tx_count' => 0,
-                'coin_cuci' => 0,
-                'coin_kering' => 0,
-                'password' => $pass
-            ];
-
+            $saved = db_save_member($nama, $wa, $pass);
+            $new_id = $saved ? $saved['id'] : (count($_SESSION['members']) + 1);
+            $_SESSION['customer_id'] = $new_id;
             $_SESSION['username'] = $nama;
             $_SESSION['role'] = 'pelanggan';
+            $_SESSION['csrf'] = bin2hex(random_bytes(32));
             header('Location: index.php?toast=registered');
             exit;
         }

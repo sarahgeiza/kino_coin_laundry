@@ -30,10 +30,15 @@ $shift_time_label = $active_shift['jam_tampil'] ?? '14:00 — 20:00';
     <title><?= htmlspecialchars($page_title) ?></title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <script>
-        window.__MOCK_SERVICES = <?= json_encode($_SESSION['services'] ?? []) ?>;
-        window.__MOCK_MEMBERS = <?= json_encode($_SESSION['members'] ?? []) ?>;
-        window.__MOCK_TRANSACTIONS = <?= json_encode($_SESSION['transactions'] ?? []) ?>;
-        window.__MOCK_PRESENSI = <?= json_encode($_SESSION['presensi'] ?? []) ?>;
+        window.__LIVE_SERVICES = <?= json_encode($_SESSION['services'] ?? []) ?>;
+        window.__LIVE_MEMBERS = <?= json_encode($_SESSION['members'] ?? []) ?>;
+        window.__LIVE_TRANSACTIONS = <?= json_encode($_SESSION['transactions'] ?? []) ?>;
+        window.__LIVE_PRESENSI = <?= json_encode($_SESSION['presensi'] ?? []) ?>;
+        window.__MOCK_SERVICES = window.__LIVE_SERVICES;
+        window.__MOCK_MEMBERS = window.__LIVE_MEMBERS;
+        window.__MOCK_TRANSACTIONS = window.__LIVE_TRANSACTIONS;
+        window.__MOCK_PRESENSI = window.__LIVE_PRESENSI;
+        window.__CSRF_TOKEN = "<?= htmlspecialchars($_SESSION['csrf'] ?? '') ?>";
     </script>
 </head>
 <body>

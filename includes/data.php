@@ -1,505 +1,463 @@
 <?php
 // Output buffering to prevent headers already sent
 if (ob_get_level() === 0) ob_start();
-// Kino Coin Laundry - State & Data Store
-// Aligned 100% with Figma Page 2 Design Overhaul
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Reset or init database mock in session
-if (!isset($_SESSION['kino_initialized'])) {
-    // 1. Master Layanan (Self Service Token, Drop Off Tunai, Additional Tunai)
-    $_SESSION['services'] = [
-        // Self Service (Token)
-        [
-            'id' => 1,
-            'kategori' => 'SELF_SERVICE',
-            'kategori_label' => 'Self Service (Token)',
-            'nama' => 'Cuci',
-            'deskripsi' => '1 Coin Cuci (Rp 7.000)',
-            'tarif' => 7000,
-            'koin_cuci_req' => 1,
-            'koin_kering_req' => 0,
-            'satuan' => 'putaran',
-            'durasi' => '45 menit',
-            'status' => 'Aktif',
-            'icon' => ''
-        ],
-        [
-            'id' => 2,
-            'kategori' => 'SELF_SERVICE',
-            'kategori_label' => 'Self Service (Token)',
-            'nama' => 'Kering',
-            'deskripsi' => '1 Coin Kering (Rp 10.000)',
-            'tarif' => 10000,
-            'koin_cuci_req' => 0,
-            'koin_kering_req' => 1,
-            'satuan' => 'putaran',
-            'durasi' => '45 menit',
-            'status' => 'Aktif',
-            'icon' => ''
-        ],
-        [
-            'id' => 3,
-            'kategori' => 'SELF_SERVICE',
-            'kategori_label' => 'Self Service (Token)',
-            'nama' => 'Cuci Kering',
-            'deskripsi' => 'Cuci Kering — Rp 16.000 / 7kg (Hemat Rp 1.000)',
-            'tarif' => 16000,
-            'koin_cuci_req' => 1,
-            'koin_kering_req' => 1,
-            'satuan' => 'putaran',
-            'durasi' => '90 menit',
-            'status' => 'Aktif',
-            'icon' => ''
-        ],
-        [
-            'id' => 4,
-            'kategori' => 'SELF_SERVICE',
-            'kategori_label' => 'Self Service (Token)',
-            'nama' => 'Extra Spin',
-            'deskripsi' => 'Peras tambahan kecepatan tinggi',
-            'tarif' => 4000,
-            'koin_cuci_req' => 0,
-            'koin_kering_req' => 0,
-            'satuan' => 'putaran',
-            'durasi' => '15 menit',
-            'status' => 'Aktif',
-            'icon' => ''
-        ],
-        [
-            'id' => 5,
-            'kategori' => 'SELF_SERVICE',
-            'kategori_label' => 'Self Service (Token)',
-            'nama' => 'Extra Dry',
-            'deskripsi' => 'Kering ekstra / 20 menit',
-            'tarif' => 5000,
-            'koin_cuci_req' => 0,
-            'koin_kering_req' => 1,
-            'satuan' => '20 menit',
-            'durasi' => '20 menit',
-            'status' => 'Aktif',
-            'icon' => ''
-        ],
-        // Drop Off (Tunai)
-        [
-            'id' => 6,
-            'kategori' => 'DROP_OFF',
-            'kategori_label' => 'Drop Off (Tunai)',
-            'nama' => 'Cuci Kering (Drop Off)',
-            'deskripsi' => 'Cuci Kering — Rp 20.000 / 7kg',
-            'tarif' => 20000,
-            'koin_cuci_req' => 0,
-            'koin_kering_req' => 0,
-            'satuan' => '7 kg',
-            'durasi' => '1 hari',
-            'status' => 'Aktif',
-            'icon' => ''
-        ],
-        [
-            'id' => 7,
-            'kategori' => 'DROP_OFF',
-            'kategori_label' => 'Drop Off (Tunai)',
-            'nama' => 'Lipat',
-            'deskripsi' => 'Jasa lipat rapi — Rp 1.500 / kg',
-            'tarif' => 1500,
-            'koin_cuci_req' => 0,
-            'koin_kering_req' => 0,
-            'satuan' => 'kg',
-            'durasi' => '1 hari',
-            'status' => 'Aktif',
-            'icon' => ''
-        ],
-        // Additional (Tunai)
-        [
-            'id' => 8,
-            'kategori' => 'ADDITIONAL',
-            'kategori_label' => 'Additional (Tunai)',
-            'nama' => 'Sabun Deterjen',
-            'deskripsi' => 'Deterjen cair konsentrat — Rp 1.500 / Pcs',
-            'tarif' => 1500,
-            'koin_cuci_req' => 0,
-            'koin_kering_req' => 0,
-            'satuan' => 'pcs',
-            'durasi' => 'Langsung',
-            'status' => 'Aktif',
-            'icon' => ''
-        ],
-        [
-            'id' => 9,
-            'kategori' => 'ADDITIONAL',
-            'kategori_label' => 'Additional (Tunai)',
-            'nama' => 'Softener Pewangi',
-            'deskripsi' => 'Pewangi & pelembut — Rp 1.500 / Pcs',
-            'tarif' => 1500,
-            'koin_cuci_req' => 0,
-            'koin_kering_req' => 0,
-            'satuan' => 'pcs',
-            'durasi' => 'Langsung',
-            'status' => 'Aktif',
-            'icon' => ''
-        ],
-        [
-            'id' => 10,
-            'kategori' => 'ADDITIONAL',
-            'kategori_label' => 'Additional (Tunai)',
-            'nama' => 'Kresek Laundry',
-            'deskripsi' => 'Kantong kresek tebal — Rp 2.000 / Pcs',
-            'tarif' => 2000,
-            'koin_cuci_req' => 0,
-            'koin_kering_req' => 0,
-            'satuan' => 'pcs',
-            'durasi' => 'Langsung',
-            'status' => 'Aktif',
-            'icon' => ''
-        ]
-    ];
+require_once __DIR__ . '/../backend/config/database.php';
 
-    // 2. Data Pelanggan & Member
-    $_SESSION['members'] = [
-        [
-            'id' => 1,
-            'nama' => 'Budi Santoso',
-            'wa' => '08123456789',
-            'kode_kartu' => 'KC-P-0001',
-            'is_member' => true,
-            'tx_count' => 4,
-            'coin_cuci' => 3,
-            'coin_kering' => 1,
-            'password' => 'password123'
-        ],
-        [
-            'id' => 2,
-            'nama' => 'Sari Dewi',
-            'wa' => '08129876543',
-            'kode_kartu' => 'KC-P-0002',
-            'is_member' => true,
-            'tx_count' => 2,
-            'coin_cuci' => 2,
-            'coin_kering' => 1,
-            'password' => 'password123'
-        ],
-        [
-            'id' => 3,
-            'nama' => 'Andi Pratama',
-            'wa' => '08131112222',
-            'kode_kartu' => 'KC-P-0003',
-            'is_member' => true,
-            'tx_count' => 3,
-            'coin_cuci' => 1,
-            'coin_kering' => 2,
-            'password' => 'password123'
-        ],
-        [
-            'id' => 4,
-            'nama' => 'Rina Marlina',
-            'wa' => '08155556666',
-            'kode_kartu' => 'KC-P-0004',
-            'is_member' => false, // Non-member
-            'tx_count' => 1,
-            'coin_cuci' => 0,
-            'coin_kering' => 0,
-            'password' => 'password123'
-        ],
-        [
-            'id' => 5,
-            'nama' => 'Dewi Lestari',
-            'wa' => '08177778888',
-            'kode_kartu' => 'KC-P-0005',
-            'is_member' => true,
-            'tx_count' => 0,
-            'coin_cuci' => 0,
-            'coin_kering' => 0,
-            'password' => 'password123'
-        ]
-    ];
-
-    // 3. Shift Kerja
-    $_SESSION['shifts'] = [
-        [
-            'id' => 1,
-            'nama' => 'Shift Pagi',
-            'mulai' => '08:00',
-            'selesai' => '14:00',
-            'jam_tampil' => '08:00 — 14:00',
-            'staff' => 'Sarah, Daniel'
-        ],
-        [
-            'id' => 2,
-            'nama' => 'Shift Siang',
-            'mulai' => '14:00',
-            'selesai' => '20:00',
-            'jam_tampil' => '14:00 — 20:00',
-            'staff' => 'Daniel, Nizar'
-        ],
-        [
-            'id' => 3,
-            'nama' => 'Shift Malam',
-            'mulai' => '20:00',
-            'selesai' => '02:00',
-            'jam_tampil' => '20:00 — 02:00',
-            'staff' => 'Nizar, Adittya'
-        ],
-        [
-            'id' => 4,
-            'nama' => 'Shift Midnight',
-            'mulai' => '00:00',
-            'selesai' => '08:00',
-            'jam_tampil' => '00:00 — 08:00',
-            'staff' => 'Adittya'
-        ]
-    ];
-
-    // 4. Staf & Manajemen Pengguna
-    $_SESSION['users'] = [
-        [
-            'id' => 1,
-            'nama' => 'Andrey Shevchenko',
-            'role' => 'Pemilik',
-            'email' => 'andrey@kino.com',
-            'username' => 'pemilik',
-            'password' => 'password123'
-        ],
-        [
-            'id' => 2,
-            'nama' => 'Daniel Afifi',
-            'role' => 'Kasir',
-            'email' => 'daniel@kino.com',
-            'username' => 'daniel',
-            'password' => '123456'
-        ],
-        [
-            'id' => 3,
-            'nama' => 'Sarah Geiza',
-            'role' => 'Kasir',
-            'email' => 'sarah@kino.com',
-            'username' => 'sarah',
-            'password' => '123456'
-        ],
-        [
-            'id' => 4,
-            'nama' => 'Nizar Maulana',
-            'role' => 'Kasir',
-            'email' => 'nizar@kino.com',
-            'username' => 'nizar',
-            'password' => '123456'
-        ],
-        [
-            'id' => 5,
-            'nama' => 'Adittya',
-            'role' => 'Kasir',
-            'email' => 'adittya@kino.com',
-            'username' => 'adittya',
-            'password' => '123456'
-        ]
-    ];
-
-    // 5. Presensi Kasir
-    $_SESSION['presensi'] = [
-        [
-            'id' => 1,
-            'kasir' => 'Daniel',
-            'shift' => 'Shift Siang',
-            'tanggal' => '31 Okt 2026',
-            'filter_date' => date('Y-m-d'),
-            'jam_masuk' => '13:55',
-            'jam_keluar' => null,
-            'status' => 'Berjalan'
-        ],
-        [
-            'id' => 2,
-            'kasir' => 'Sarah',
-            'shift' => 'Shift Pagi',
-            'tanggal' => '31 Okt 2026',
-            'filter_date' => date('Y-m-d'),
-            'jam_masuk' => '07:58',
-            'jam_keluar' => '14:05',
-            'status' => 'Selesai'
-        ],
-        [
-            'id' => 3,
-            'kasir' => 'Nizar',
-            'shift' => 'Shift Malam',
-            'tanggal' => '30 Okt 2026',
-            'filter_date' => date('Y-m-d', strtotime('-1 day')),
-            'jam_masuk' => '19:58',
-            'jam_keluar' => '02:03',
-            'status' => 'Selesai'
-        ]
-    ];
-
-    // 6. Transaksi
-    $_SESSION['transactions'] = [
-        [
-            'id' => 'INV-2026-001',
-            'pelanggan' => 'Budi Santoso',
-            'wa' => '08123456789',
-            'kode_kartu' => 'KC-P-0001',
-            'layanan' => 'Cuci Kering (Self)',
-            'layanan_tipe' => 'Self Service',
-            'kategori' => 'SELF_SERVICE',
-            'kuantitas' => '1 putaran',
-            'qty_num' => 1,
-            'total_biaya' => 16000,
-            'metode' => 'Token',
-            'koin_cuci' => 1,
-            'koin_kering' => 1,
-            'total_bayar' => 17000,
-            'status' => 'Lunas',
-            'kasir' => 'Daniel',
-            'shift' => 'Shift Siang',
-            'waktu' => '14:30 WIB',
-            'tanggal' => '31 Okt 2026',
-            'filter_date' => date('Y-m-d')
-        ],
-        [
-            'id' => 'INV-2026-002',
-            'pelanggan' => 'Sari Dewi',
-            'wa' => '08129876543',
-            'kode_kartu' => 'KC-P-0002',
-            'layanan' => 'Cuci + Kering (Self)',
-            'layanan_tipe' => 'Self Service',
-            'kategori' => 'SELF_SERVICE',
-            'kuantitas' => '2 putaran',
-            'qty_num' => 2,
-            'total_biaya' => 17000,
-            'metode' => 'Token',
-            'koin_cuci' => 1,
-            'koin_kering' => 1,
-            'total_bayar' => 17000,
-            'status' => 'Lunas',
-            'kasir' => 'Daniel',
-            'shift' => 'Shift Siang',
-            'waktu' => '14:52 WIB',
-            'tanggal' => '31 Okt 2026',
-            'filter_date' => date('Y-m-d')
-        ],
-        [
-            'id' => 'INV-2026-003',
-            'pelanggan' => 'Andi Pratama',
-            'wa' => '08131112222',
-            'kode_kartu' => 'KC-P-0003',
-            'layanan' => 'Cuci Kering (Drop Off)',
-            'layanan_tipe' => 'Drop Off',
-            'kategori' => 'DROP_OFF',
-            'kuantitas' => '7 kg',
-            'qty_num' => 1,
-            'total_biaya' => 20000,
-            'metode' => 'Tunai',
-            'koin_cuci' => 0,
-            'koin_kering' => 0,
-            'total_bayar' => 20000,
-            'status' => 'Lunas',
-            'kasir' => 'Daniel',
-            'shift' => 'Shift Siang',
-            'waktu' => '15:10 WIB',
-            'tanggal' => '31 Okt 2026',
-            'filter_date' => date('Y-m-d')
-        ],
-        [
-            'id' => 'INV-2026-004',
-            'pelanggan' => 'Rina Marlina',
-            'wa' => '08155556666',
-            'kode_kartu' => 'KC-P-0004',
-            'layanan' => 'Sabun + Softener',
-            'layanan_tipe' => 'Drop Off',
-            'kategori' => 'ADDITIONAL',
-            'kuantitas' => '2 pcs',
-            'qty_num' => 2,
-            'total_biaya' => 3000,
-            'metode' => 'Tunai',
-            'koin_cuci' => 0,
-            'koin_kering' => 0,
-            'total_bayar' => 3000,
-            'status' => 'Lunas',
-            'kasir' => 'Daniel',
-            'shift' => 'Shift Siang',
-            'waktu' => '15:35 WIB',
-            'tanggal' => '31 Okt 2026',
-            'filter_date' => date('Y-m-d')
-        ]
-    ];
-
-    // 7. Rekapitulasi Shift (untuk Pemilik & Kasir)
-    $_SESSION['shifts_recap'] = [
-        [
-            'id' => 1,
-            'kasir' => 'Sarah',
-            'shift' => 'Pagi',
-            'tanggal' => '31 Okt 2026',
-            'trx_count' => 22,
-            'total_kg' => 78.0,
-            'pendapatan' => 512000,
-            'koin_cuci' => 28,
-            'koin_kering' => 37,
-            'status' => 'Valid',
-            'selisih' => 0
-        ],
-        [
-            'id' => 2,
-            'kasir' => 'Daniel',
-            'shift' => 'Siang',
-            'tanggal' => '31 Okt 2026',
-            'trx_count' => 18,
-            'total_kg' => 62.5,
-            'pendapatan' => 425000,
-            'koin_cuci' => 24,
-            'koin_kering' => 26,
-            'status' => 'Valid',
-            'selisih' => 0
-        ],
-        [
-            'id' => 3,
-            'kasir' => 'Nizar',
-            'shift' => 'Malam',
-            'tanggal' => '30 Okt 2026',
-            'trx_count' => 15,
-            'total_kg' => 55.0,
-            'pendapatan' => 380000,
-            'koin_cuci' => 20,
-            'koin_kering' => 25,
-            'status' => 'Review',
-            'selisih' => -5000
-        ]
-    ];
-
-    // Status presensi aktif sesi kasir saat ini
-    $_SESSION['kasir_checked_in'] = true;
-    $_SESSION['kino_initialized'] = true;
+// Inisialisasi token CSRF jika belum ada di sesi
+if (empty($_SESSION['csrf'])) {
+    $_SESSION['csrf'] = bin2hex(random_bytes(32));
 }
 
-// Helpers
-function format_rupiah($angka) {
+/**
+ * Sinkronisasi data real-time langsung dari Supabase PostgreSQL.
+ * Mengambil katalog layanan, data member, transaksi, pengguna, dan shift riil.
+ */
+function sync_live_database(): bool
+{
+    try {
+        $conn = getConnection();
+        if (!$conn) {
+            return false;
+        }
+
+        // 1. Katalog Layanan Riil dari Supabase
+        $res_l = @pg_query($conn, "SELECT * FROM layanan ORDER BY id_layanan");
+        if ($res_l) {
+            $services = [];
+            while ($row = pg_fetch_assoc($res_l)) {
+                $nama = $row['nama_layanan'];
+                $kategori = 'SELF_SERVICE';
+                $label = 'Self Service (Token)';
+                if (stripos($nama, 'Drop Off') !== false || stripos($nama, 'Lipat') !== false) {
+                    $kategori = 'DROP_OFF';
+                    $label = 'Drop Off (Tunai)';
+                } elseif (in_array(strtolower($nama), ['sabun', 'softener', 'kresek'])) {
+                    $kategori = 'ADDITIONAL';
+                    $label = 'Additional (Tunai)';
+                }
+
+                $services[] = [
+                    'id' => (int) $row['id_layanan'],
+                    'kategori' => $kategori,
+                    'kategori_label' => $label,
+                    'nama' => $nama,
+                    'deskripsi' => $row['durasi'] . ($row['berat_standar'] ? " • {$row['berat_standar']} kg" : ""),
+                    'tarif' => (int) $row['harga'],
+                    'koin_cuci_req' => (stripos($nama, 'cuci') !== false ? 1 : 0),
+                    'koin_kering_req' => (stripos($nama, 'kering') !== false ? 1 : 0),
+                    'satuan' => $row['berat_standar'] ? '7.5 kg' : ($kategori === 'ADDITIONAL' ? 'pcs' : 'putaran'),
+                    'durasi' => $row['durasi'],
+                    'status' => in_array($row['aktif'], ['t', true, 1, '1']) ? 'Aktif' : 'Nonaktif',
+                    'icon' => ''
+                ];
+            }
+            if (!empty($services)) {
+                $_SESSION['services'] = $services;
+            }
+        }
+
+        // 2. Akun Staf & Pemilik Riil dari Supabase
+        $res_u = @pg_query($conn, "SELECT id_pengguna, nama, username, role, password FROM pengguna ORDER BY id_pengguna");
+        if ($res_u) {
+            $users = [];
+            while ($row = pg_fetch_assoc($res_u)) {
+                $users[] = [
+                    'id' => (int) $row['id_pengguna'],
+                    'nama' => $row['nama'],
+                    'username' => $row['username'],
+                    'role' => ucfirst($row['role']),
+                    'email' => $row['username'] . '@kino.com',
+                    'password' => $row['password']
+                ];
+            }
+            if (!empty($users)) {
+                $_SESSION['users'] = $users;
+            }
+        }
+
+        // 3. Pelanggan & Kartu Member Riil dari Supabase
+        $res_p = @pg_query($conn, "
+            SELECT p.*,
+                   COUNT(t.id_transaksi) as tx_count,
+                   COALESCE(SUM(d.jumlah_koin), 0) as total_koin
+            FROM pelanggan p
+            LEFT JOIN transaksi t ON t.id_pelanggan = p.id_pelanggan
+            LEFT JOIN detail_transaksi d ON d.id_transaksi = t.id_transaksi
+            GROUP BY p.id_pelanggan
+            ORDER BY p.id_pelanggan
+        ");
+        if ($res_p) {
+            $members = [];
+            while ($row = pg_fetch_assoc($res_p)) {
+                $members[] = [
+                    'id' => (int) $row['id_pelanggan'],
+                    'nama' => $row['nama_pelanggan'],
+                    'wa' => $row['no_hp'],
+                    'kode_kartu' => $row['kode_kartu'] ?: ('KC-P-' . str_pad((string)$row['id_pelanggan'], 4, '0', STR_PAD_LEFT)),
+                    'is_member' => !empty($row['password_hash']),
+                    'tx_count' => (int) $row['tx_count'],
+                    'coin_cuci' => (int) $row['total_koin'],
+                    'coin_kering' => 0,
+                    'password' => $row['password_hash']
+                ];
+            }
+            $_SESSION['members'] = $members;
+        }
+
+        // 4. Master Shift Operasional Toko
+        $res_sh = @pg_query($conn, "SELECT * FROM shift ORDER BY id_shift");
+        if ($res_sh) {
+            $shifts = [];
+            while ($row = pg_fetch_assoc($res_sh)) {
+                $m = substr($row['jam_mulai'], 0, 5);
+                $s = substr($row['jam_selesai'], 0, 5);
+                $shifts[] = [
+                    'id' => (int) $row['id_shift'],
+                    'nama' => (str_starts_with($row['nama_shift'], 'Shift') ? '' : 'Shift ') . $row['nama_shift'],
+                    'mulai' => $m,
+                    'selesai' => $s,
+                    'jam_tampil' => "$m — $s",
+                    'staff' => 'Sarah, Ramzy'
+                ];
+            }
+            if (!empty($shifts)) {
+                $_SESSION['shifts'] = $shifts;
+            }
+        }
+
+        // 5. Transaksi Riil & Detail Item dari Supabase
+        $sql_t = "
+            SELECT t.*, 
+                   p.nama_pelanggan, p.no_hp, p.kode_kartu,
+                   u.nama as nama_kasir,
+                   s.nama_shift,
+                   STRING_AGG(l.nama_layanan, ', ') as layanan_names,
+                   COALESCE(SUM(d.jumlah_koin), 0) as total_koin,
+                   COALESCE(SUM(d.berat), 0) as total_berat,
+                   COUNT(d.id_detail) as qty_count
+            FROM transaksi t
+            JOIN pelanggan p ON p.id_pelanggan = t.id_pelanggan
+            JOIN pengguna u ON u.id_pengguna = t.id_kasir
+            JOIN shift s ON s.id_shift = t.id_shift
+            LEFT JOIN detail_transaksi d ON d.id_transaksi = t.id_transaksi
+            LEFT JOIN layanan l ON l.id_layanan = d.id_layanan
+            GROUP BY t.id_transaksi, p.nama_pelanggan, p.no_hp, p.kode_kartu, u.nama, s.nama_shift
+            ORDER BY t.id_transaksi DESC
+        ";
+        $res_t = @pg_query($conn, $sql_t);
+        if ($res_t) {
+            $txs = [];
+            while ($row = pg_fetch_assoc($res_t)) {
+                $txs[] = [
+                    'id' => $row['no_invoice'] ?: ('INV-' . str_pad((string)$row['id_transaksi'], 3, '0', STR_PAD_LEFT)),
+                    'pelanggan' => $row['nama_pelanggan'],
+                    'wa' => $row['no_hp'],
+                    'kode_kartu' => $row['kode_kartu'] ?: ('KC-P-' . str_pad((string)$row['id_pelanggan'], 4, '0', STR_PAD_LEFT)),
+                    'layanan' => $row['layanan_names'] ?: 'Cuci Kering',
+                    'layanan_tipe' => 'Layanan Mesin',
+                    'kategori' => 'SELF_SERVICE',
+                    'kuantitas' => ($row['total_berat'] > 0 ? $row['total_berat'] . ' kg' : $row['qty_count'] . ' item'),
+                    'qty_num' => (int) $row['qty_count'],
+                    'total_biaya' => (int) $row['total_bayar'],
+                    'metode' => ucfirst($row['jenis_pembayaran']),
+                    'koin_cuci' => (int) $row['total_koin'],
+                    'koin_kering' => 0,
+                    'total_bayar' => (int) $row['total_bayar'],
+                    'status' => ucfirst($row['status_pembayaran'] ?: 'Lunas'),
+                    'kasir' => $row['nama_kasir'],
+                    'shift' => 'Shift ' . $row['nama_shift'],
+                    'waktu' => date('H:i WIB', strtotime($row['tanggal_transaksi'])),
+                    'tanggal' => date('d M Y', strtotime($row['tanggal_transaksi'])),
+                    'filter_date' => date('Y-m-d', strtotime($row['tanggal_transaksi']))
+                ];
+            }
+            $_SESSION['transactions'] = $txs;
+        }
+
+        // 6. Rekapitulasi Shift & Presensi Staf Kasir
+        $res_recap = @pg_query($conn, "SELECT * FROM v_rekap_shift_operasional ORDER BY id_shift_operasional DESC");
+        if ($res_recap) {
+            $recaps = [];
+            $presensi = [];
+            while ($row = pg_fetch_assoc($res_recap)) {
+                $recaps[] = [
+                    'id' => (int) $row['id_shift_operasional'],
+                    'kasir' => $row['nama_kasir'],
+                    'shift' => 'Shift ' . $row['nama_shift'],
+                    'tanggal' => date('d M Y', strtotime($row['mulai_pada'])),
+                    'trx_count' => (int) $row['jumlah_transaksi'],
+                    'total_kg' => (float) $row['total_berat_kg'],
+                    'pendapatan' => (int) $row['total_omzet'],
+                    'koin_cuci' => (int) $row['total_koin_mesin'],
+                    'koin_kering' => 0,
+                    'status' => $row['status'] === 'aktif' ? 'Aktif' : 'Valid',
+                    'selisih' => (int) ($row['selisih'] ?? 0)
+                ];
+                $presensi[] = [
+                    'id' => (int) $row['id_shift_operasional'],
+                    'kasir' => $row['nama_kasir'],
+                    'shift' => 'Shift ' . $row['nama_shift'],
+                    'tanggal' => date('d M Y', strtotime($row['mulai_pada'])),
+                    'filter_date' => date('Y-m-d', strtotime($row['mulai_pada'])),
+                    'jam_masuk' => date('H:i', strtotime($row['mulai_pada'])),
+                    'jam_keluar' => $row['ditutup_pada'] ? date('H:i', strtotime($row['ditutup_pada'])) : null,
+                    'status' => $row['status'] === 'aktif' ? 'Berjalan' : 'Selesai'
+                ];
+            }
+            $_SESSION['shifts_recap'] = $recaps;
+            $_SESSION['presensi'] = $presensi;
+        }
+
+        return true;
+    } catch (Throwable $e) {
+        error_log('Supabase sync error: ' . $e->getMessage());
+        return false;
+    }
+}
+
+// Jalankan sinkronisasi database setiap halaman dimuat
+sync_live_database();
+
+/**
+ * Menyimpan transaksi baru langsung ke Supabase PostgreSQL
+ */
+function db_save_transaction(array $data): ?string
+{
+    try {
+        $conn = getConnection();
+        if (!$conn) return null;
+
+        @pg_query($conn, "BEGIN");
+
+        // 1. Cari atau buat pelanggan di DB
+        $wa = $data['wa'];
+        $nama = $data['nama'];
+        $p_res = @pg_query_params($conn, "SELECT id_pelanggan, kode_kartu FROM pelanggan WHERE no_hp = $1", [$wa]);
+        $p_row = $p_res ? pg_fetch_assoc($p_res) : null;
+        if ($p_row) {
+            $id_pelanggan = (int)$p_row['id_pelanggan'];
+            $kode_kartu = $p_row['kode_kartu'];
+        } else {
+            $ins_p = @pg_query_params($conn, "
+                INSERT INTO pelanggan (nama_pelanggan, no_hp)
+                VALUES ($1, $2)
+                RETURNING id_pelanggan
+            ", [$nama, $wa]);
+            if (!$ins_p) {
+                @pg_query($conn, "ROLLBACK");
+                return null;
+            }
+            $id_pelanggan = (int)pg_fetch_result($ins_p, 0, 'id_pelanggan');
+            $kode_kartu = 'KC-P-' . str_pad((string)$id_pelanggan, 4, '0', STR_PAD_LEFT);
+            @pg_query_params($conn, "UPDATE pelanggan SET kode_kartu = $1 WHERE id_pelanggan = $2", [$kode_kartu, $id_pelanggan]);
+        }
+
+        // 2. Resolve kasir & shift_operasional aktif
+        $kasir_name = $_SESSION['username'] ?? 'Sarah';
+        $u_res = @pg_query_params($conn, "SELECT id_pengguna FROM pengguna WHERE nama ILIKE $1 OR username ILIKE $1", ["%$kasir_name%"]);
+        $id_kasir = ($u_res && pg_num_rows($u_res) > 0) ? (int)pg_fetch_result($u_res, 0, 'id_pengguna') : 3;
+
+        $so_res = @pg_query_params($conn, "
+            SELECT id_shift_operasional, id_shift 
+            FROM shift_operasional 
+            WHERE id_kasir = $1 AND status = 'aktif' 
+            ORDER BY id_shift_operasional DESC LIMIT 1
+        ", [$id_kasir]);
+        $id_so = null;
+        $id_shift = 2; // Default siang
+        if ($so_res && pg_num_rows($so_res) > 0) {
+            $id_so = (int)pg_fetch_result($so_res, 0, 'id_shift_operasional');
+            $id_shift = (int)pg_fetch_result($so_res, 0, 'id_shift');
+        }
+
+        // 3. Insert transaksi
+        $no_invoice = 'INV-' . date('Ymd') . '-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+        $total_bayar = (int)$data['total_bayar'];
+        $metode = strtolower($data['metode'] ?? 'cash');
+        if (!in_array($metode, ['cash', 'qris'])) $metode = 'cash';
+
+        $ins_t = @pg_query_params($conn, "
+            INSERT INTO transaksi (
+                id_kasir, tanggal_transaksi, id_pelanggan, id_shift, id_shift_operasional,
+                jenis_pembayaran, total_bayar, jumlah_dibayar, sisa_bayar, uang_kembalian,
+                status_pembayaran, status_pengerjaan, no_invoice
+            ) VALUES (
+                $1, NOW(), $2, $3, $4,
+                $5, $6, $7, 0, 0,
+                'lunas', 'antri', $8
+            ) RETURNING id_transaksi
+        ", [
+            $id_kasir, $id_pelanggan, $id_shift, $id_so,
+            $metode, $total_bayar, $total_bayar, $no_invoice
+        ]);
+
+        if (!$ins_t) {
+            @pg_query($conn, "ROLLBACK");
+            return null;
+        }
+        $id_transaksi = (int)pg_fetch_result($ins_t, 0, 'id_transaksi');
+
+        // 4. Insert detail transaksi
+        $id_layanan = (int)($data['service_id'] ?? 1);
+        $qty = (int)($data['qty'] ?? 1);
+        $koin_total = (int)(($data['koin_cuci'] ?? 0) + ($data['koin_kering'] ?? 0));
+        $harga_satuan = (int)($data['tarif'] ?? $total_bayar);
+
+        $ins_d = @pg_query_params($conn, "
+            INSERT INTO detail_transaksi (
+                id_transaksi, id_layanan, berat, jumlah, jumlah_koin, harga_satuan, subtotal
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7
+            )
+        ", [
+            $id_transaksi, $id_layanan, 7.5, $qty, $koin_total, $harga_satuan, $total_bayar
+        ]);
+
+        if (!$ins_d) {
+            @pg_query($conn, "ROLLBACK");
+            return null;
+        }
+
+        @pg_query($conn, "COMMIT");
+
+        // Sync ulang sesi
+        sync_live_database();
+        return $no_invoice;
+    } catch (Throwable $e) {
+        if (isset($conn) && $conn) @pg_query($conn, "ROLLBACK");
+        return null;
+    }
+}
+
+/**
+ * Mendaftarkan pelanggan baru langsung ke Supabase PostgreSQL
+ */
+function db_save_member(string $nama, string $wa, ?string $password = null): ?array
+{
+    try {
+        $conn = getConnection();
+        if (!$conn) return null;
+
+        $hash = $password ? password_hash($password, PASSWORD_DEFAULT) : null;
+        $res = @pg_query_params($conn, "
+            INSERT INTO pelanggan (nama_pelanggan, no_hp, password_hash)
+            VALUES ($1, $2, $3)
+            RETURNING id_pelanggan
+        ", [$nama, $wa, $hash]);
+
+        if (!$res) return null;
+        $id = (int)pg_fetch_result($res, 0, 'id_pelanggan');
+        $card = 'KC-P-' . str_pad((string)$id, 4, '0', STR_PAD_LEFT);
+        @pg_query_params($conn, "UPDATE pelanggan SET kode_kartu = $1 WHERE id_pelanggan = $2", [$card, $id]);
+
+        sync_live_database();
+        return ['id' => $id, 'nama' => $nama, 'wa' => $wa, 'kode_kartu' => $card];
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+/**
+ * Mulai shift kasir & simpan presensi ke Supabase
+ */
+function db_start_shift(string $kasir_name, int $shift_id = 2): bool
+{
+    try {
+        $conn = getConnection();
+        if (!$conn) return false;
+
+        $u_res = @pg_query_params($conn, "SELECT id_pengguna FROM pengguna WHERE nama ILIKE $1 OR username ILIKE $1", ["%$kasir_name%"]);
+        $id_kasir = ($u_res && pg_num_rows($u_res) > 0) ? (int)pg_fetch_result($u_res, 0, 'id_pengguna') : 3;
+
+        // Tutup shift aktif sebelumnya jika ada yang tertinggal
+        @pg_query_params($conn, "UPDATE shift_operasional SET status = 'selesai', ditutup_pada = NOW() WHERE id_kasir = $1 AND status = 'aktif'", [$id_kasir]);
+
+        $res = @pg_query_params($conn, "
+            INSERT INTO shift_operasional (id_kasir, id_shift, mulai_pada, total_sistem, status)
+            VALUES ($1, $2, NOW(), 0, 'aktif')
+            RETURNING id_shift_operasional
+        ", [$id_kasir, $shift_id]);
+
+        sync_live_database();
+        return $res !== false;
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+/**
+ * Tutup shift kasir & audit selisih kas fisik di Supabase
+ */
+function db_close_shift(string $kasir_name, int $total_fisik = 0, int $selisih = 0): bool
+{
+    try {
+        $conn = getConnection();
+        if (!$conn) return false;
+
+        $u_res = @pg_query_params($conn, "SELECT id_pengguna FROM pengguna WHERE nama ILIKE $1 OR username ILIKE $1", ["%$kasir_name%"]);
+        $id_kasir = ($u_res && pg_num_rows($u_res) > 0) ? (int)pg_fetch_result($u_res, 0, 'id_pengguna') : 3;
+
+        $res = @pg_query_params($conn, "
+            UPDATE shift_operasional 
+            SET status = 'selesai', ditutup_pada = NOW(), total_fisik = $2, selisih = $3 
+            WHERE id_kasir = $1 AND status = 'aktif'
+        ", [$id_kasir, $total_fisik, $selisih]);
+
+        sync_live_database();
+        return $res !== false;
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function format_rupiah(int $angka): string
+{
     return 'Rp ' . number_format($angka, 0, ',', '.');
 }
 
-// Helper untuk mendeteksi shift aktif kasir secara dinamis dan real-time
-function get_active_kasir_shift($kasir_name = null) {
-    if (!$kasir_name) {
-        $kasir_name = $_SESSION['username'] ?? 'Daniel';
-    }
-    
+/**
+ * Mencari shift aktif kasir berdasarkan penugasan staf dan jam berjalan
+ */
+function get_active_kasir_shift(string $kasir_name): array
+{
     $all_shifts = $_SESSION['shifts'] ?? [];
-    $shifts_reversed = array_reverse($all_shifts); // shift terbaru / custom diutamakan
-    $candidate_by_name = null;
-    $now_time = date('H:i');
+    if (empty($all_shifts)) {
+        return [
+            'id' => 2,
+            'nama' => 'Shift Siang',
+            'mulai' => '12:00',
+            'selesai' => '18:00',
+            'jam_tampil' => '12:00 — 18:00',
+            'staff' => 'Sarah, Ramzy'
+        ];
+    }
 
-    // 1. Cek shift yang cocok dengan nama kasir DAN jam saat ini
-    foreach ($shifts_reversed as $s) {
+    $now_time = date('H:i');
+    $candidate_by_name = null;
+
+    foreach (array_reverse($all_shifts) as $s) {
         $staff_list = array_map('trim', explode(',', $s['staff'] ?? ''));
+        $matched_name = false;
         foreach ($staff_list as $st) {
-            $is_match = (strcasecmp($st, $kasir_name) === 0) || 
-                            (stripos($st, $kasir_name) !== false) || 
-                            (stripos($kasir_name, $st) !== false);
-                if ($is_match) {
-                if (!$candidate_by_name) {
-                    $candidate_by_name = $s;
-                }
-                $start = $s['mulai'];
-                $end = $s['selesai'];
-                if ($start < $end) {
+            if (stripos($st, $kasir_name) !== false || stripos($kasir_name, $st) !== false) {
+                $matched_name = true;
+                break;
+            }
+        }
+
+        if ($matched_name) {
+            if (!$candidate_by_name) {
+                $candidate_by_name = $s;
+            }
+            $start = $s['mulai'];
+            $end = $s['selesai'];
+            if ($start && $end) {
+                if ($start <= $end) {
                     if ($now_time >= $start && $now_time <= $end) {
                         return $s;
                     }
@@ -512,31 +470,25 @@ function get_active_kasir_shift($kasir_name = null) {
         }
     }
 
-    // 2. Jika kasir ditugaskan di suatu shift, gunakan penugasan terbarunya
     if ($candidate_by_name) {
         return $candidate_by_name;
     }
 
-    return $all_shifts[1] ?? ($all_shifts[0] ?? [
-        'id' => 2,
-        'nama' => 'Shift Siang',
-        'mulai' => '14:00',
-        'selesai' => '20:00',
-        'jam_tampil' => '14:00 — 20:00',
-        'staff' => 'Daniel, Nizar'
-    ]);
+    return $all_shifts[1] ?? $all_shifts[0];
 }
 
-
-// Helper untuk validasi autentikasi & otorisasi pengguna secara ketat
-function check_auth_guard($role) {
+/**
+ * Validasi hak akses pengguna & status akun di Supabase
+ */
+function check_auth_guard(string $role): void
+{
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-    
+
     $username = $_SESSION['username'] ?? '';
     $sess_role = $_SESSION['role'] ?? '';
-    
+
     if (empty($username) || $sess_role !== $role) {
         if ($role === 'kasir') {
             header('Location: ../login-kasir.php');
@@ -549,15 +501,16 @@ function check_auth_guard($role) {
             exit;
         }
     }
-    
-    // Verifikasi apakah akun pengguna masih terdaftar dan aktif di sistem (Manajemen Pengguna)
+
+    // Verifikasi keaslian akun di tabel pengguna / pelanggan
+    $users = $_SESSION['users'] ?? [];
     if ($role === 'kasir' || $role === 'pemilik') {
         $db_role = ($role === 'kasir') ? 'Kasir' : 'Pemilik';
         $user_valid = false;
-        foreach ($_SESSION['users'] as $u) {
+        foreach ($users as $u) {
             if (($u['role'] ?? '') === $db_role) {
                 $first_name = explode(' ', trim($u['nama']))[0];
-                if (strcasecmp($u['nama'], $username) === 0 || 
+                if (strcasecmp($u['nama'], $username) === 0 ||
                     strcasecmp($u['username'], $username) === 0 ||
                     strcasecmp($first_name, $username) === 0) {
                     $user_valid = true;
@@ -568,13 +521,15 @@ function check_auth_guard($role) {
         if (!$user_valid) {
             $_SESSION['username'] = null;
             $_SESSION['role'] = null;
+            $_SESSION['user_id'] = null;
             $redirect = ($role === 'kasir') ? '../login-kasir.php' : '../login-pemilik.php';
             header("Location: $redirect");
             exit;
         }
     } elseif ($role === 'pelanggan') {
+        $members = $_SESSION['members'] ?? [];
         $member_valid = false;
-        foreach ($_SESSION['members'] as $m) {
+        foreach ($members as $m) {
             if (strcasecmp($m['nama'], $username) === 0 || ($m['wa'] ?? '') === $username) {
                 $member_valid = true;
                 break;
@@ -583,6 +538,7 @@ function check_auth_guard($role) {
         if (!$member_valid) {
             $_SESSION['username'] = null;
             $_SESSION['role'] = null;
+            $_SESSION['customer_id'] = null;
             header('Location: login.php');
             exit;
         }

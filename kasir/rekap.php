@@ -2,39 +2,20 @@
 require_once __DIR__ . '/../includes/data.php';
 check_auth_guard('kasir');
 
-// Calculate totals from session transactions dynamically
-$base_income = 425000;
-$base_tx = 18;
-$base_wash = 24;
-$base_dry = 26;
-$base_kg = 62.5;
-
-$initial_count = 4;
+// Hitung total dari transaksi riil database Supabase
 $current_tx_list = $_SESSION['transactions'] ?? [];
-$current_count = count($current_tx_list);
+$display_income = 0;
+$display_tx = count($current_tx_list);
+$display_wash = 0;
+$display_dry = 0;
+$display_kg = 0;
 
-$extra_income = 0;
-$extra_tx = 0;
-$extra_wash = 0;
-$extra_dry = 0;
-$extra_kg = 0;
-
-if ($current_count > $initial_count) {
-    for ($i = $initial_count; $i < $current_count; $i++) {
-        $t = $current_tx_list[$i];
-        $extra_income += ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
-        $extra_tx += 1;
-        $extra_wash += ($t['koin_cuci'] ?? 0);
-        $extra_dry += ($t['koin_kering'] ?? 0);
-        $extra_kg += floatval($t['qty_num'] ?? 1) * 3.5;
-    }
+foreach ($current_tx_list as $t) {
+    $display_income += ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
+    $display_wash += ($t['koin_cuci'] ?? 0);
+    $display_dry += ($t['koin_kering'] ?? 0);
+    $display_kg += floatval($t['qty_num'] ?? 1) * 7.5;
 }
-
-$display_income = $base_income + $extra_income;
-$display_tx = $base_tx + $extra_tx;
-$display_kg = $base_kg + $extra_kg;
-$display_wash = $base_wash + $extra_wash;
-$display_dry = $base_dry + $extra_dry;
 
 // Handle Close Shift POST BEFORE header output
 $current_kasir = $_SESSION['username'] ?? 'Daniel';
@@ -42,34 +23,7 @@ $kasir_shift = get_active_kasir_shift($current_kasir);
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'tutup_shift') {
     $_SESSION['kasir_checked_in'] = false;
-    $jam_keluar = date('H:i');
-
-    // 1. Update status presensi kasir di dashboard Pemilik menjadi 'Selesai' dengan jam keluar aktual!
-    if (isset($_SESSION['presensi']) && is_array($_SESSION['presensi'])) {
-        for ($i = count($_SESSION['presensi']) - 1; $i >= 0; $i--) {
-            if ($_SESSION['presensi'][$i]['kasir'] === $current_kasir && $_SESSION['presensi'][$i]['status'] === 'Berjalan') {
-                $_SESSION['presensi'][$i]['jam_keluar'] = $jam_keluar;
-                $_SESSION['presensi'][$i]['status'] = 'Selesai';
-                break;
-            }
-        }
-    }
-    
-    // 2. Catat rekonsiliasi ke riwayat rekapitulasi shift pemilik
-    $_SESSION['shifts_recap'][] = [
-        'id' => count($_SESSION['shifts_recap']) + 1,
-        'kasir' => $current_kasir,
-        'shift' => $kasir_shift['nama'],
-        'tanggal' => date('d M Y'),
-        'trx_count' => $display_tx,
-        'total_kg' => $display_kg,
-        'pendapatan' => $display_income,
-        'koin_cuci' => $display_wash,
-        'koin_kering' => $display_dry,
-        'status' => 'Valid',
-        'selisih' => 0
-    ];
-
+    db_close_shift($current_kasir, $display_income, 0);
     header('Location: index.php?shift_closed=1');
     exit;
 }

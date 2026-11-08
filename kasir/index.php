@@ -8,16 +8,7 @@ $kasir_shift = get_active_kasir_shift($current_kasir_name);
 
 if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
     $_SESSION['kasir_checked_in'] = true;
-    $_SESSION['presensi'][] = [
-        'id' => count($_SESSION['presensi']) + 1,
-        'kasir' => $current_kasir_name,
-        'shift' => $kasir_shift['nama'],
-        'tanggal' => date('d M Y'),
-        'filter_date' => date('Y-m-d'),
-        'jam_masuk' => date('H:i'),
-        'jam_keluar' => null,
-        'status' => 'Berjalan'
-    ];
+    db_start_shift($current_kasir_name, $kasir_shift['id'] ?? 2);
     header('Location: index.php?shift_started=1');
     exit;
 }
@@ -31,35 +22,18 @@ require_once __DIR__ . '/../includes/header.php';
 // Check if check-in needed (Modal M1)
 $need_checkin = empty($_SESSION['kasir_checked_in']);
 
-// Calculate metrics dynamically based on shift baseline + real added transactions
-$base_income = 425000;
-$base_tx = 18;
-$base_wash = 24;
-$base_dry = 26;
-
-$initial_count = 4;
+// Hitung metrik shift kasir langsung dari transaksi riil database Supabase
 $current_tx_list = $_SESSION['transactions'] ?? [];
-$current_count = count($current_tx_list);
+$total_live_income = 0;
+$total_live_tx = count($current_tx_list);
+$total_live_wash = 0;
+$total_live_dry = 0;
 
-$extra_income = 0;
-$extra_tx = 0;
-$extra_wash = 0;
-$extra_dry = 0;
-
-if ($current_count > $initial_count) {
-    for ($i = $initial_count; $i < $current_count; $i++) {
-        $t = $current_tx_list[$i];
-        $extra_income += ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
-        $extra_tx += 1;
-        $extra_wash += ($t['koin_cuci'] ?? 0);
-        $extra_dry += ($t['koin_kering'] ?? 0);
-    }
+foreach ($current_tx_list as $t) {
+    $total_live_income += ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
+    $total_live_wash += ($t['koin_cuci'] ?? 0);
+    $total_live_dry += ($t['koin_kering'] ?? 0);
 }
-
-$total_live_income = $base_income + $extra_income;
-$total_live_tx = $base_tx + $extra_tx;
-$total_live_wash = $base_wash + $extra_wash;
-$total_live_dry = $base_dry + $extra_dry;
 
 $disp_income = format_rupiah($total_live_income);
 $disp_tx = $total_live_tx . ' transaksi';

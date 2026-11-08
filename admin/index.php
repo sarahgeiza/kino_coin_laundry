@@ -5,27 +5,21 @@ $active_tab = 'home';
 
 require_once __DIR__ . '/../includes/header.php';
 
-// Calculate extra metrics from newly added transactions
-$initial_count = 4;
+// Hitung metrik omset & koin langsung dari transaksi riil database Supabase
 $current_tx_list = $_SESSION['transactions'] ?? [];
-$current_count = count($current_tx_list);
+$db_omset = 0;
+$db_wash = 0;
+$db_dry = 0;
 
-$extra_income = 0;
-$extra_wash = 0;
-$extra_dry = 0;
-
-if ($current_count > $initial_count) {
-    for ($i = $initial_count; $i < $current_count; $i++) {
-        $t = $current_tx_list[$i];
-        $extra_income += ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
-        $extra_wash += ($t['koin_cuci'] ?? 0);
-        $extra_dry += ($t['koin_kering'] ?? 0);
-    }
+foreach ($current_tx_list as $t) {
+    $db_omset += ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
+    $db_wash += ($t['koin_cuci'] ?? 0);
+    $db_dry += ($t['koin_kering'] ?? 0);
 }
 
-$owner_omset = 1250000 + $extra_income;
-$owner_wash = 124 + $extra_wash;
-$owner_dry = 130 + $extra_dry;
+$owner_omset = $db_omset;
+$owner_wash = $db_wash;
+$owner_dry = $db_dry;
 ?>
 
 <!-- Section Monitoring Bisnis (Persis Figma P1) -->

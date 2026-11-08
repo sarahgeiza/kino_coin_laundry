@@ -32,19 +32,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         if ($is_duplicate) {
             $member_error = 'Nomor WhatsApp ' . htmlspecialchars($wa) . ' sudah terdaftar atas nama pelanggan lain.';
         } else {
-            $new_id = count($_SESSION['members']) + 1;
-            $new_code = 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT);
-            $_SESSION['members'][] = [
-                'id' => $new_id,
-                'nama' => $nama,
-                'wa' => $wa,
-                'kode_kartu' => $new_code,
-                'is_member' => $is_member,
-                'tx_count' => 0,
-                'coin_cuci' => 0,
-                'coin_kering' => 0,
-                'password' => 'password123'
-            ];
+            db_save_member($nama, $wa);
             header('Location: pelanggan.php?toast=saved');
             exit;
         }
