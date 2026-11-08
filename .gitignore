@@ -3,3 +3,6 @@ backend/config/database.local.php
 
 # File debug
 backend/phpinfo.php
+
+# Environment variables (secrets)
+.env
