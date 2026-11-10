@@ -3,26 +3,16 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require_once __DIR__ . '/../includes/data.php';
-require_once __DIR__ . '/../backend/config/database.php';
-require_once __DIR__ . '/../includes/helpers.php';
 
 $reg_error = '';
 $wa_invalid = false;
-if (empty($_SESSION['customer_register_csrf'])) {
-    $_SESSION['customer_register_csrf'] = bin2hex(random_bytes(32));
-}
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $nama = trim($_POST['nama'] ?? '');
     $wa = trim($_POST['wa'] ?? '');
     $pass = $_POST['password'] ?? '';
     $confirm = $_POST['confirm_password'] ?? '';
 
-    if (
-        empty($_POST['csrf_token'])
-        || !hash_equals($_SESSION['customer_register_csrf'], (string)$_POST['csrf_token'])
-    ) {
-        $reg_error = 'Sesi pendaftaran tidak valid. Muat ulang halaman dan coba kembali.';
-    } elseif (empty($nama) || empty($wa) || empty($pass)) {
+    if (empty($nama) || empty($wa) || empty($pass)) {
         $reg_error = 'Seluruh kolom pendaftaran wajib diisi.';
     } elseif (!preg_match('/^[0-9]+$/', $wa)) {
         $wa_invalid = true;
@@ -30,84 +20,29 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     } elseif (strlen($wa) < 10 || strlen($wa) > 15) {
         $wa_invalid = true;
         $reg_error = 'Nomor WhatsApp tidak valid (minimal 10 digit, maksimal 15 digit).';
-    } elseif (strlen($pass) < 8) {
-        $reg_error = 'Password minimal 8 karakter.';
     } elseif ($pass !== $confirm) {
         $reg_error = 'Konfirmasi password tidak cocok. Silakan ulangi.';
     } else {
-        try {
-            $phone = preg_replace('/[\s()-]+/', '', $wa);
-            $phoneVariants = [$phone];
-            if (str_starts_with($phone, '0')) {
-                $phoneVariants[] = '62' . substr($phone, 1);
-            } elseif (str_starts_with($phone, '62')) {
-                $phoneVariants[] = '0' . substr($phone, 2);
+        // Check if WhatsApp already registered
+        $is_already_registered = false;
+        foreach ($_SESSION['members'] as $m) {
+            if ($m['wa'] === $wa) {
+                $is_already_registered = true;
+                break;
             }
+        }
 
-            $conn = getConnection();
-            if (!pg_query($conn, 'BEGIN')) {
-                throw new RuntimeException('Gagal memulai pendaftaran pelanggan.');
-            }
-
-            try {
-                $existing = one(
-                    'SELECT id_pelanggan, nama_pelanggan, password_hash
-                     FROM pelanggan
-                     WHERE no_hp = ANY($1)
-                     FOR UPDATE',
-                    ['{' . implode(',', $phoneVariants) . '}']
-                );
-
-                if ($existing) {
-                    if (!empty($existing['password_hash'])) {
-                        pg_query($conn, 'ROLLBACK');
-                        $reg_error = 'Nomor WhatsApp sudah memiliki akun. Silakan masuk melalui halaman login.';
-                    } elseif (strcasecmp(trim($existing['nama_pelanggan']), trim($nama)) !== 0) {
-                        pg_query($conn, 'ROLLBACK');
-                        $reg_error = 'Nama tidak cocok dengan data pelanggan saat transaksi. Periksa nama dan nomor WhatsApp yang digunakan kasir.';
-                    } else {
-                        execute_sql(
-                            'UPDATE pelanggan SET password_hash = ? WHERE id_pelanggan = ?',
-                            [password_hash($pass, PASSWORD_DEFAULT), (int)$existing['id_pelanggan']]
-                        );
-                        if (!pg_query($conn, 'COMMIT')) {
-                            throw new RuntimeException('Gagal menyimpan password pelanggan.');
-                        }
-                        $customerId = (int)$existing['id_pelanggan'];
-                        $customerName = $existing['nama_pelanggan'];
-                    }
-                } else {
-                    $nextId = one("SELECT nextval(pg_get_serial_sequence('pelanggan', 'id_pelanggan')) AS id");
-                    $customerId = (int)$nextId['id'];
-                    $customerName = $nama;
-                    $newCode = 'KC-P-' . str_pad((string)$customerId, 4, '0', STR_PAD_LEFT);
-                    one(
-                        'INSERT INTO pelanggan (id_pelanggan, nama_pelanggan, no_hp, password_hash, kode_kartu)
-                         VALUES (?, ?, ?, ?, ?)',
-                        [$customerId, $nama, $phone, password_hash($pass, PASSWORD_DEFAULT), $newCode]
-                    );
-                    if (!pg_query($conn, 'COMMIT')) {
-                        throw new RuntimeException('Gagal menyimpan pendaftaran pelanggan.');
-                    }
-                }
-
-                if (empty($reg_error)) {
-                    session_regenerate_id(true);
-                    unset($_SESSION['user_id']);
-                    $_SESSION['customer_id'] = $customerId;
-                    $_SESSION['username'] = $customerName;
-                    $_SESSION['role'] = 'pelanggan';
-                    $_SESSION['csrf'] = bin2hex(random_bytes(32));
-                    header('Location: index.php?toast=registered');
-                    exit;
-                }
-            } catch (Throwable $e) {
-                pg_query($conn, 'ROLLBACK');
-                throw $e;
-            }
-        } catch (Throwable $e) {
-            error_log($e->getMessage());
-            $reg_error = 'Pendaftaran tidak dapat disimpan. Periksa kembali nomor WhatsApp atau hubungi kasir.';
+        if ($is_already_registered) {
+            $reg_error = 'Nomor WhatsApp ' . htmlspecialchars($wa) . ' sudah terdaftar. Silakan masuk menggunakan akun Anda di halaman login.';
+        } else {
+            $saved = db_save_member($nama, $wa, $pass);
+            $new_id = $saved ? $saved['id'] : (count($_SESSION['members']) + 1);
+            $_SESSION['customer_id'] = $new_id;
+            $_SESSION['username'] = $nama;
+            $_SESSION['role'] = 'pelanggan';
+            $_SESSION['csrf'] = bin2hex(random_bytes(32));
+            header('Location: index.php?toast=registered');
+            exit;
         }
     }
 }
@@ -173,7 +108,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             <?php endif; ?>
 
             <form action="daftar.php" method="POST">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['customer_register_csrf']) ?>">
                 <div class="form-group">
                     <label class="form-label">Nama Lengkap</label>
                     <input type="text" name="nama" class="form-control" placeholder="Nama lengkap Anda" value="<?= htmlspecialchars($_POST['nama'] ?? '') ?>" required>
@@ -190,7 +124,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 <div class="form-group">
                     <label class="form-label">Password</label>
                     <div style="position: relative;">
-                        <input type="password" id="passDaftar" name="password" class="form-control" placeholder="Buat password (minimal 8 karakter)" style="padding-right: 80px;" required>
+                        <input type="password" id="passDaftar" name="password" class="form-control" placeholder="Buat password" style="padding-right: 80px;" required>
                         <button type="button" onclick="togglePassword('passDaftar', this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 12px; font-weight: 700; color: #ea580c; cursor: pointer;">
                             Lihat
                         </button>

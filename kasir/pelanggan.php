@@ -1,7 +1,5 @@
 <?php
 require_once __DIR__ . '/../includes/data.php';
-require_once __DIR__ . '/../backend/config/database.php';
-require_once __DIR__ . '/../includes/helpers.php';
 
 check_auth_guard('kasir');
 
@@ -11,6 +9,7 @@ $member_error = '';
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $nama = trim($_POST['nama'] ?? '');
     $wa = trim($_POST['wa'] ?? '');
+    $is_member = isset($_POST['is_member']);
 
     if (empty($nama)) {
         $member_error = 'Nama pelanggan wajib diisi.';
@@ -20,36 +19,22 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $member_error = 'Nomor WhatsApp hanya boleh berisi angka.';
     } elseif (strlen($wa) < 10 || strlen($wa) > 15) {
         $member_error = 'Nomor WhatsApp tidak valid (minimal 10 digit, maksimal 15 digit).';
-    } elseif (
-        empty($_SESSION['csrf'])
-        || empty($_POST['csrf_token'])
-        || !hash_equals((string)$_SESSION['csrf'], (string)$_POST['csrf_token'])
-    ) {
-        $member_error = 'Sesi tidak valid. Muat ulang halaman dan coba kembali.';
     } else {
-        $existing = one('SELECT id_pelanggan FROM pelanggan WHERE no_hp = ?', [$wa]);
-        if ($existing) {
+        // Cek duplikasi nomor WhatsApp pelanggan
+        $is_duplicate = false;
+        foreach ($_SESSION['members'] as $m) {
+            if ($m['wa'] === $wa) {
+                $is_duplicate = true;
+                break;
+            }
+        }
+
+        if ($is_duplicate) {
             $member_error = 'Nomor WhatsApp ' . htmlspecialchars($wa) . ' sudah terdaftar atas nama pelanggan lain.';
         } else {
-            try {
-                $customer = one(
-                    'INSERT INTO pelanggan (nama_pelanggan, no_hp)
-                     VALUES (?, ?)
-                     RETURNING id_pelanggan',
-                    [$nama, $wa]
-                );
-                $customerId = (int)$customer['id_pelanggan'];
-                $code = 'KC-P-' . str_pad((string)$customerId, 4, '0', STR_PAD_LEFT);
-                execute_sql(
-                    'UPDATE pelanggan SET kode_kartu = ? WHERE id_pelanggan = ?',
-                    [$code, $customerId]
-                );
-                header('Location: pelanggan.php?toast=saved');
-                exit;
-            } catch (Throwable $e) {
-                error_log($e->getMessage());
-                $member_error = 'Pelanggan tidak dapat disimpan ke database.';
-            }
+            db_save_member($nama, $wa);
+            header('Location: pelanggan.php?toast=saved');
+            exit;
         }
     }
 }
@@ -61,23 +46,15 @@ $active_tab = 'pelanggan';
 require_once __DIR__ . '/../includes/header.php';
 
 $search = trim($_GET['q'] ?? '');
-$members = rows(
-    "SELECT p.id_pelanggan AS id,
-            p.nama_pelanggan AS nama,
-            p.no_hp AS wa,
-            COALESCE(p.kode_kartu, CONCAT('KC-P-', LPAD(p.id_pelanggan::text, 4, '0'))) AS kode_kartu,
-            (p.password_hash IS NOT NULL) AS is_member,
-            COUNT(t.id_transaksi)::int AS tx_count
-     FROM pelanggan p
-     LEFT JOIN transaksi t USING (id_pelanggan)
-     WHERE p.nama_pelanggan ILIKE ?
-        OR p.no_hp ILIKE ?
-        OR COALESCE(p.kode_kartu, CONCAT('KC-P-', LPAD(p.id_pelanggan::text, 4, '0'))) ILIKE ?
-     GROUP BY p.id_pelanggan
-     ORDER BY p.id_pelanggan DESC
-     LIMIT 100",
-    ['%' . $search . '%', '%' . $search . '%', '%' . $search . '%']
-);
+$members = $_SESSION['members'];
+
+if (!empty($search)) {
+    $members = array_filter($members, function($m) use ($search) {
+        return (stripos($m['nama'], $search) !== false) || 
+            (stripos($m['wa'], $search) !== false) || 
+            (stripos($m['kode_kartu'], $search) !== false);
+    });
+}
 ?>
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -114,8 +91,8 @@ $members = rows(
                 <strong style="font-size: 14px; color: var(--text-main);"><?= htmlspecialchars($m['nama']) ?></strong>
                 <span style="font-size: 11px; color: var(--primary); font-weight: 800; margin-left: 6px;"><?= $m['kode_kartu'] ?></span>
             </div>
-            <span class="badge <?= in_array($m['is_member'], [true, 't', '1', 1], true) ? 'badge-token' : 'badge-tunai' ?>">
-                <?= in_array($m['is_member'], [true, 't', '1', 1], true) ? 'Akun Aktif' : 'Pelanggan' ?>
+            <span class="badge <?= $m['is_member'] ? 'badge-token' : 'badge-tunai' ?>">
+                <?= $m['is_member'] ? 'Member Aktif' : 'Reguler' ?>
             </span>
         </div>
         
@@ -167,7 +144,6 @@ $members = rows(
         </div>
 
         <form method="POST" action="pelanggan.php">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf'] ?? '') ?>">
             <div class="form-group">
                 <label class="form-label">Nama Lengkap *</label>
                 <input type="text" name="nama" class="form-control" placeholder="Contoh: Dewi Lestari" required>
@@ -179,7 +155,12 @@ $members = rows(
                     Nomor WhatsApp hanya boleh berisi angka.
                 </small>
             </div>
-            <p style="font-size: 11px; color: var(--text-muted);">Kode kartu QR akan dibuat otomatis setelah pelanggan tersimpan.</p>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                    <input type="checkbox" name="is_member" value="1" checked>
+                    <span>Jadikan Member &amp; buat kartu barcode</span>
+                </label>
+            </div>
             <div style="display: flex; gap: 10px; margin-top: 18px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal('modalAddMember')">Batal</button>
                 <button type="submit" class="btn btn-primary">Simpan</button>

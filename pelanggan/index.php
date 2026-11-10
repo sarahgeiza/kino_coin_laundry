@@ -4,75 +4,77 @@ $app_role = 'pelanggan';
 $active_tab = 'riwayat';
 
 require_once __DIR__ . '/../includes/header.php';
-require_once __DIR__ . '/../backend/config/database.php';
-require_once __DIR__ . '/../includes/helpers.php';
 
 $filter = $_GET['filter'] ?? 'Semua';
-$customerId = (int)$_SESSION['customer_id'];
-$current_member = one(
-    'SELECT id_pelanggan AS id, nama_pelanggan AS nama, no_hp AS wa, kode_kartu
-     FROM pelanggan
-     WHERE id_pelanggan = ?',
-    [$customerId]
-);
-if (!$current_member) {
-    session_destroy();
-    header('Location: login.php');
-    exit;
+
+// 1. Resolve logged-in customer data dynamically from session
+$login_user_name = $_SESSION['username'] ?? 'Budi';
+
+$current_member = null;
+foreach ($_SESSION['members'] as $m) {
+    if (strcasecmp($m['nama'], $login_user_name) === 0) {
+        $current_member = $m;
+        break;
+    }
 }
 
-$filterSql = $filter === '7 Hari'
-    ? ' AND t.tanggal_transaksi >= CURRENT_DATE - INTERVAL \'7 days\''
-    : '';
-$customer_txs = rows(
-    'SELECT t.id_transaksi,
-            COALESCE(t.no_invoice, \'INV-\' || t.id_transaksi::text) AS id,
-            t.tanggal_transaksi,
-            t.total_bayar,
-            t.jenis_pembayaran,
-            t.status_pembayaran,
-            COALESCE(STRING_AGG(l.nama_layanan, \' + \' ORDER BY d.id_detail), \'Transaksi laundry\') AS layanan,
-            COALESCE(SUM(d.berat), 0) AS total_berat,
-            COALESCE(SUM(d.jumlah), 0) AS total_jumlah,
-            COALESCE(SUM(d.jumlah_koin), 0) AS total_koin,
-            COALESCE(SUM(CASE
-                WHEN LOWER(l.nama_layanan) = \'cuci\' THEN d.jumlah_koin
-                WHEN LOWER(l.nama_layanan) LIKE \'%cuci kering%\' AND LOWER(l.nama_layanan) NOT LIKE \'%drop off%\' THEN d.jumlah
-                ELSE 0
-            END), 0) AS koin_cuci,
-            COALESCE(SUM(CASE
-                WHEN LOWER(l.nama_layanan) = \'kering\' THEN d.jumlah_koin
-                WHEN LOWER(l.nama_layanan) LIKE \'%cuci kering%\' AND LOWER(l.nama_layanan) NOT LIKE \'%drop off%\' THEN d.jumlah
-                ELSE 0
-            END), 0) AS koin_kering
-     FROM transaksi t
-     LEFT JOIN detail_transaksi d ON d.id_transaksi = t.id_transaksi
-     LEFT JOIN layanan l ON l.id_layanan = d.id_layanan
-     WHERE t.id_pelanggan = ?' . $filterSql . '
-     GROUP BY t.id_transaksi
-     ORDER BY t.tanggal_transaksi DESC, t.id_transaksi DESC',
-    [$customerId]
-);
+// Fallback auto-registration if newly logged in
+if (!$current_member) {
+    $new_id = count($_SESSION['members']) + 1;
+    $new_code = 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT);
+    $current_member = [
+        'id' => $new_id,
+        'nama' => $login_user_name,
+        'wa' => '0812' . rand(10000000, 99999999),
+        'kode_kartu' => $new_code,
+        'is_member' => true,
+        'tx_count' => 0,
+        'coin_cuci' => 0,
+        'coin_kering' => 0,
+        'password' => 'password123'
+    ];
+    $_SESSION['members'][] = $current_member;
+}
+
+// 2. Filter customer transactions specifically for this user
+$customer_txs = array_filter($_SESSION['transactions'], function($t) use ($current_member) {
+    return (stripos($t['pelanggan'], $current_member['nama']) !== false) ||
+           (isset($t['kode_kartu']) && $t['kode_kartu'] === $current_member['kode_kartu']);
+});
 
 $total_tx_count = count($customer_txs);
 $total_wash_count = 0;
 $total_dry_count = 0;
-foreach ($customer_txs as &$transaction) {
-    $total_wash_count += (int)$transaction['koin_cuci'];
-    $total_dry_count += (int)$transaction['koin_kering'];
-    $transaction['status'] = ucwords(str_replace('_', ' ', $transaction['status_pembayaran']));
-    $transaction['kuantitas'] = (float)$transaction['total_berat'] > 0
-        ? rtrim(rtrim(number_format((float)$transaction['total_berat'], 2, '.', ''), '0'), '.') . ' kg'
-        : (int)$transaction['total_jumlah'] . ' pcs';
-    $transaction['metode'] = strtoupper($transaction['jenis_pembayaran']);
-    $transaction['tanggal'] = date('d M Y', strtotime($transaction['tanggal_transaksi']));
-    $transaction['waktu'] = date('H:i', strtotime($transaction['tanggal_transaksi']));
-    $transaction['total_bayar'] = (int)$transaction['total_bayar'];
+
+foreach ($customer_txs as $t) {
+    $total_wash_count += ($t['koin_cuci'] ?? 0);
+    $total_dry_count += ($t['koin_kering'] ?? 0);
 }
-unset($transaction);
+
+// If it is Budi and transaction array is empty in filter, use default member stats
+if ($total_tx_count === 0 && !empty($current_member['tx_count'])) {
+    $total_tx_count = $current_member['tx_count'];
+    $total_wash_count = $current_member['coin_cuci'];
+    $total_dry_count = $current_member['coin_kering'];
+}
+
+if ($filter === '7 Hari') {
+    $seven_days_ago = date('Y-m-d', strtotime('-7 days'));
+    $customer_txs = array_filter($customer_txs, function($t) use ($seven_days_ago) {
+        $fdate = $t['filter_date'] ?? date('Y-m-d');
+        return $fdate >= $seven_days_ago;
+    });
+    $total_tx_count = count($customer_txs);
+    $total_wash_count = 0;
+    $total_dry_count = 0;
+    foreach ($customer_txs as $t) {
+        $total_wash_count += ($t['koin_cuci'] ?? 0);
+        $total_dry_count += ($t['koin_kering'] ?? 0);
+    }
+}
 $disp_tx = $total_tx_count . 'x';
 $disp_wash = $total_wash_count . ' pcs';
-$disp_dry = $total_dry_count . ' pcs';
+$disp_dry = $total_dry_count . ' pc';
 ?>
 
 <script>
@@ -137,13 +139,11 @@ $disp_dry = $total_dry_count . ' pcs';
         <div class="trx-item" style="cursor: default;">
             <div class="trx-top">
                 <span class="trx-id"><?= htmlspecialchars($ctx['id']) ?></span>
-                <span class="badge <?= $ctx['status_pembayaran'] === 'lunas' ? 'badge-lunas' : 'badge-kurang' ?>">
-                    <?= htmlspecialchars($ctx['status']) ?>
-                </span>
+                <span class="badge badge-lunas"><?= $ctx['status'] ?></span>
             </div>
             <div class="trx-name" style="font-size: 13px; margin: 2px 0;"><?= htmlspecialchars($ctx['layanan']) ?></div>
             <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">
-                <?= htmlspecialchars($ctx['kuantitas']) ?> • <?= htmlspecialchars($ctx['metode']) ?>
+                <?= $ctx['kuantitas'] ?> • <?= $ctx['metode'] === 'Token' ? 'Pembayaran Token' : 'Tunai' ?>
             </div>
             <div class="trx-bottom" style="padding-top: 6px;">
                 <span style="font-size: 11px; color: var(--text-muted);"><?= $ctx['tanggal'] ?> • <?= $ctx['waktu'] ?></span>

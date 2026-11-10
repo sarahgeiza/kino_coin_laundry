@@ -1,6 +1,6 @@
 # Kino Coin Laundry - Sistem Informasi Manajemen Operasional (PBL TI Polinema)
 
-Aplikasi manajemen operasional laundry koin mandiri 24 jam berbasis web PHP Native dengan arsitektur modular, responsive mobile/desktop, dan integrasi PostgreSQL serta REST API.
+Aplikasi manajemen operasional laundry koin mandiri 24 jam berbasis web PHP Native dengan arsitektur modular, responsive mobile/desktop, dan siap integrasi REST API backend.
 
 ## Struktur Direktori
 
@@ -57,21 +57,3 @@ Buka terminal pada folder proyek, lalu jalankan server lokal:
 php -S localhost:8000
 ```
 Akses melalui browser di: `http://localhost:8000`
-
-## Database PostgreSQL
-Aplikasi membaca dan menyimpan data operasional melalui PostgreSQL. Atur koneksi
-lokal di `backend/config/database.local.php` atau variabel lingkungan yang dibaca
-oleh `backend/config/database.php`; jangan menyimpan kredensial database ke Git.
-
-Jalankan migrasi hanya setelah mencadangkan database dan memeriksa skema yang
-sudah ada. Migrasi `database/06_kartu_dan_jadwal_shift.sql` menyiapkan kolom kode
-kartu pelanggan serta tabel jadwal kasir yang digunakan aplikasi. Database yang
-sudah memiliki `pelanggan.kode_kartu`, `jadwal_shift`, dan
-`shift_operasional.id_jadwal` tidak perlu menjalankan ulang migrasi tersebut.
-Migrasi `03_pemisahan_koin_mesin_dan_pembayaran.sql` menghapus kolom pecahan lama.
-Migrasi lama `04_sinkronisasi_koin_mesin_detail.sql` tidak lagi disertakan karena
-akan menimpa snapshot jumlah koin pada detail transaksi historis. Jangan
-mengganti atau mengulang snapshot transaksi dengan nilai layanan saat ini.
-
-Data contoh lama dalam sesi aplikasi tidak disalin ke database. Halaman operasional
-menampilkan data yang benar-benar tersimpan di PostgreSQL.

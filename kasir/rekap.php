@@ -1,64 +1,32 @@
 <?php
 require_once __DIR__ . '/../includes/data.php';
-require_once __DIR__ . '/../backend/config/database.php';
-require_once __DIR__ . '/../includes/helpers.php';
 check_auth_guard('kasir');
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
-    header('Content-Type: application/json; charset=utf-8');
-    respond(['error' => 'Kirim penutupan shift melalui endpoint API.'], 405);
+// Hitung total dari transaksi riil database Supabase
+$current_tx_list = $_SESSION['transactions'] ?? [];
+$display_income = 0;
+$display_tx = count($current_tx_list);
+$display_wash = 0;
+$display_dry = 0;
+$display_kg = 0;
+
+foreach ($current_tx_list as $t) {
+    $display_income += ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
+    $display_wash += ($t['koin_cuci'] ?? 0);
+    $display_dry += ($t['koin_kering'] ?? 0);
+    $display_kg += floatval($t['qty_num'] ?? 1) * 7.5;
 }
 
-$kasirId = (int)$_SESSION['user_id'];
-$activeShift = one(
-    "SELECT so.id_shift_operasional, s.nama_shift, s.jam_mulai, s.jam_selesai,
-            CASE WHEN CURRENT_TIMESTAMP < (
-                so.mulai_pada::date + s.jam_selesai
-                + CASE WHEN s.jam_selesai <= s.jam_mulai THEN INTERVAL '1 day' ELSE INTERVAL '0 day' END
-            ) THEN 't' ELSE 'f' END AS tutup_dini
-     FROM shift_operasional so
-     JOIN shift s USING (id_shift)
-     WHERE so.id_kasir = ? AND so.status = ?
-     ORDER BY so.id_shift_operasional DESC
-     LIMIT 1",
-    [$kasirId, 'aktif']
-);
+// Handle Close Shift POST BEFORE header output
+$current_kasir = $_SESSION['username'] ?? 'Daniel';
+$kasir_shift = get_active_kasir_shift($current_kasir);
 
-if (!$activeShift) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'tutup_shift') {
     $_SESSION['kasir_checked_in'] = false;
-    header('Location: index.php?toast=need_checkin');
+    db_close_shift($current_kasir, $display_income, 0);
+    header('Location: index.php?shift_closed=1');
     exit;
 }
-
-$summary = one(
-    'SELECT COUNT(t.id_transaksi)::int AS total_transaksi,
-            COALESCE(SUM(t.jumlah_dibayar - t.uang_kembalian) FILTER (
-                WHERE t.jenis_pembayaran = \'cash\'
-            ), 0)::bigint AS total_sistem,
-            COALESCE(SUM(d.total_berat), 0)::numeric AS total_berat,
-            COALESCE(SUM(d.total_koin), 0)::bigint AS total_koin_mesin
-     FROM transaksi t
-     LEFT JOIN (
-        SELECT id_transaksi,
-               SUM(COALESCE(berat, 0)) AS total_berat,
-               SUM(COALESCE(jumlah_koin, 0)) AS total_koin
-        FROM detail_transaksi
-        GROUP BY id_transaksi
-     ) d USING (id_transaksi)
-     WHERE t.id_shift_operasional = ?',
-    [(int)$activeShift['id_shift_operasional']]
-);
-
-$display_income = (int)($summary['total_sistem'] ?? 0);
-$display_tx = (int)($summary['total_transaksi'] ?? 0);
-$display_kg = (float)($summary['total_berat'] ?? 0);
-$display_coins = (int)($summary['total_koin_mesin'] ?? 0);
-$isEarlyClose = ($activeShift['tutup_dini'] ?? 'f') === 't';
-$kasir_shift = [
-    'nama' => $activeShift['nama_shift'],
-    'jam_tampil' => substr((string)$activeShift['jam_mulai'], 0, 5)
-        . ' — ' . substr((string)$activeShift['jam_selesai'], 0, 5)
-];
 
 $page_title = 'Rekapitulasi Operasional - Kino Coin Laundry';
 $app_role = 'kasir';
@@ -85,11 +53,15 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
-    <div class="card-title">Rincian Koin Mesin</div>
+    <div class="card-title">Rincian Perolehan Token</div>
     <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px; font-size: 13px; line-height: 1.8; margin-bottom: 14px;">
         <div style="display: flex; justify-content: space-between;">
-            <span>Total koin mesin:</span>
-            <strong><?= $display_coins ?> pcs</strong>
+            <span>Coin Cuci (7k):</span>
+            <strong><?= $display_wash ?> pcs = <?= format_rupiah($display_wash * 7000) ?></strong>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>Coin Kering (10k):</span>
+            <strong><?= $display_dry ?> pcs = <?= format_rupiah($display_dry * 10000) ?></strong>
         </div>
     </div>
 
@@ -97,17 +69,16 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="card-title">Rekonsiliasi Kas Operasional</div>
     <div style="background: #f8fafc; border: 1.5px dashed var(--border); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;">
         <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
-            <span>Kas cash menurut sistem:</span>
+            <span>Total Sistem:</span>
             <strong style="font-size: 15px; color: var(--primary-dark);"><?= format_rupiah($display_income) ?></strong>
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
             <span>Total Fisik Kas:</span>
-            <strong id="physicalCashDisplay" style="font-size: 15px; color: var(--success);">Belum diinput</strong>
+            <strong style="font-size: 15px; color: var(--success);"><?= format_rupiah($display_income) ?></strong>
         </div>
-        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">Perhitungan berdasarkan pembayaran cash bersih setelah kembalian; QRIS tidak masuk kas fisik.</div>
         <div style="display: flex; justify-content: space-between; font-size: 13px; border-top: 1px solid var(--border); padding-top: 6px;">
             <span>Selisih:</span>
-            <strong id="cashDifferenceDisplay" style="color: var(--text-muted);">Belum dihitung</strong>
+            <strong style="color: var(--success);">Rp 0 (Sesuai)</strong>
         </div>
     </div>
 
@@ -125,22 +96,10 @@ require_once __DIR__ . '/../includes/header.php';
             <button type="button" class="sheet-close" onclick="closeModal('modalTutupShift')">&times;</button>
         </div>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
-            Shift boleh ditutup sebelum jam selesai jika ada pergantian atau keadaan darurat. Kasir pengganti harus login dengan akunnya sendiri dan melakukan presensi pada jadwal yang berlaku.
+            Akses input transaksi kasir akan dikunci hingga shift berikutnya dimulai. Konfirmasi penutupan <?= htmlspecialchars($kasir_shift['nama']) ?>?
         </p>
-        <form action="rekap.php" method="POST" id="formTutupShift"
-            data-total-sistem="<?= $display_income ?>"
-            data-tutup-dini="<?= $isEarlyClose ? '1' : '0' ?>">
+        <form action="rekap.php" method="POST">
             <input type="hidden" name="action" value="tutup_shift">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf'] ?? '') ?>">
-            <div class="form-group">
-                <label class="form-label" for="totalFisikInput">Total uang fisik (Rp) *</label>
-                <input type="number" min="0" step="1" id="totalFisikInput" class="form-control" required>
-                <span style="font-size:11px; color:var(--text-muted); display:block; margin-top:4px;">Hitung uang di laci lalu masukkan jumlahnya. Selisih akan dibandingkan dengan kas cash menurut sistem; nilai minus berarti uang kurang.</span>
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="catatanShiftInput">Catatan pergantian/penutupan (wajib jika tutup lebih awal)</label>
-                <textarea id="catatanShiftInput" class="form-control" maxlength="1000" rows="3"></textarea>
-            </div>
             <div style="display: flex; gap: 10px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal('modalTutupShift')">Batal</button>
                 <button type="submit" class="btn btn-primary" style="background: #1e3a8a;">Ya, Tutup Shift</button>

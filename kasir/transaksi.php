@@ -1,63 +1,18 @@
 <?php
-require_once __DIR__ . '/../includes/data.php';
-require_once __DIR__ . '/../backend/config/database.php';
-require_once __DIR__ . '/../includes/helpers.php';
-check_auth_guard('kasir');
-
 $page_title = 'Daftar Transaksi - Kino Coin Laundry';
 $app_role = 'kasir';
 $active_tab = 'transaksi';
 
 require_once __DIR__ . '/../includes/header.php';
 
-$filter = in_array($_GET['filter'] ?? '', ['Self Service', 'Drop Off'], true)
-    ? $_GET['filter']
-    : 'Semua';
-$activeShift = one(
-    "SELECT id_shift_operasional
-     FROM shift_operasional
-     WHERE id_kasir = ? AND status = 'aktif'
-     ORDER BY id_shift_operasional DESC
-     LIMIT 1",
-    [(int)$_SESSION['user_id']]
-);
-$dropOffServiceCondition = "LOWER(BTRIM(l.nama_layanan)) LIKE '%drop off%' OR LOWER(BTRIM(l.nama_layanan)) = 'lipat'";
-$selfServiceCondition = "LOWER(BTRIM(l.nama_layanan)) IN ('cuci', 'kering', 'cuci kering', 'extra spin', 'extra dry')";
-$filterCondition = match ($filter) {
-    'Self Service' => "HAVING BOOL_OR($selfServiceCondition) AND NOT BOOL_OR($dropOffServiceCondition)",
-    'Drop Off' => "HAVING BOOL_OR($dropOffServiceCondition)",
-    default => '',
-};
-$tx_list = $activeShift ? rows(
-    "SELECT t.no_invoice AS id,
-            p.nama_pelanggan AS pelanggan,
-            p.no_hp AS wa,
-            STRING_AGG(DISTINCT l.nama_layanan, ', ' ORDER BY l.nama_layanan) AS layanan,
-            SUM(COALESCE(d.berat, d.jumlah::numeric))::numeric AS kuantitas,
-            t.total_bayar,
-            t.total_bayar AS total_biaya,
-            t.jenis_pembayaran AS metode,
-            INITCAP(REPLACE(t.status_pembayaran, '_', ' ')) AS status,
-            u.nama AS kasir,
-            s.nama_shift AS shift,
-            TO_CHAR(t.tanggal_transaksi, 'DD Mon YYYY') AS tanggal,
-            TO_CHAR(t.tanggal_transaksi, 'HH24:MI') AS waktu,
-            COALESCE(SUM(d.jumlah_koin), 0)::int AS total_koin_mesin,
-            CASE WHEN BOOL_OR($dropOffServiceCondition) THEN 'DROP_OFF'
-                 WHEN BOOL_OR($selfServiceCondition) THEN 'SELF_SERVICE'
-                 ELSE 'ADDITIONAL' END AS kategori
-     FROM transaksi t
-     JOIN pelanggan p USING (id_pelanggan)
-     JOIN pengguna u ON u.id_pengguna = t.id_kasir
-     JOIN shift s USING (id_shift)
-     JOIN detail_transaksi d USING (id_transaksi)
-     JOIN layanan l USING (id_layanan)
-     WHERE t.id_shift_operasional = ?
-     GROUP BY t.id_transaksi, p.id_pelanggan, u.id_pengguna, s.id_shift
-     $filterCondition
-     ORDER BY t.tanggal_transaksi DESC",
-    [(int)$activeShift['id_shift_operasional']]
-) : [];
+$filter = $_GET['filter'] ?? 'Semua';
+
+$tx_list = $_SESSION['transactions'];
+if ($filter === 'Self Service') {
+    $tx_list = array_filter($tx_list, fn($t) => ($t['kategori'] ?? '') === 'SELF_SERVICE');
+} elseif ($filter === 'Drop Off') {
+    $tx_list = array_filter($tx_list, fn($t) => ($t['kategori'] ?? '') !== 'SELF_SERVICE');
+}
 ?>
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -84,7 +39,10 @@ $tx_list = $activeShift ? rows(
     </div>
 <?php else: ?>
     <?php foreach (array_reverse($tx_list) as $trx): 
-        $coin_desc = (int)$trx['total_koin_mesin'] . ' koin mesin • ' . strtoupper($trx['metode']);
+        $meta_coin = [];
+        if (!empty($trx['koin_cuci'])) $meta_coin[] = $trx['koin_cuci'] . ' Coin Cuci';
+        if (!empty($trx['koin_kering'])) $meta_coin[] = $trx['koin_kering'] . ' Coin Kering';
+        $coin_desc = !empty($meta_coin) ? implode(' + ', $meta_coin) : ($trx['metode'] ?? 'Tunai');
     ?>
     <div class="trx-item" onclick="showInvoiceDetail(<?= htmlspecialchars(json_encode($trx)) ?>)">
         <div class="trx-top">
@@ -119,7 +77,7 @@ $tx_list = $activeShift ? rows(
         <div class="sheet-handle"></div>
         <div class="sheet-header">
             <div>
-                <span style="font-size: 11px; font-weight: 800; color: var(--primary);" id="detailInvoiceId">Invoice</span>
+                <span style="font-size: 11px; font-weight: 800; color: var(--primary);" id="detailInvoiceId">INV-2026-001</span>
                 <h3 class="sheet-title" id="detailCustomerName">Budi Santoso</h3>
             </div>
             <button type="button" class="sheet-close" onclick="closeModal('modalTrxDetail')">&times;</button>
@@ -136,14 +94,33 @@ function showInvoiceDetail(trx) {
     document.getElementById('detailInvoiceId').textContent = trx.id;
     document.getElementById('detailCustomerName').textContent = trx.pelanggan;
 
-    const paymentMethod = String(trx.metode || '').toLowerCase() === 'qris' ? 'QRIS' : 'Cash';
-    const paymentDetail = `
-        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px; margin-bottom: 12px; color: #15803d;">
-            <strong>Metode Pembayaran: ${paymentMethod}</strong>
-            <p style="font-size: 11px; margin-top: 2px;">Koin mesin adalah token operasional, bukan pembayaran.</p>
-            <p style="font-size: 11px; margin-top: 2px;">Koin mesin digunakan: ${Number(trx.total_koin_mesin || 0).toLocaleString('id-ID')}</p>
-        </div>
-    `;
+    const isToken = (trx.metode === 'Token');
+    let paymentDetail = '';
+
+    if (isToken) {
+        paymentDetail = `
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 6px;">
+                    Rincian Token Dibayar
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span>Coin Cuci (${trx.koin_cuci || 0} pcs):</span>
+                    <strong>Rp ${((trx.koin_cuci || 0) * 7000).toLocaleString('id-ID')}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>Coin Kering (${trx.koin_kering || 0} pcs):</span>
+                    <strong>Rp ${((trx.koin_kering || 0) * 10000).toLocaleString('id-ID')}</strong>
+                </div>
+            </div>
+        `;
+    } else {
+        paymentDetail = `
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px; margin-bottom: 12px; color: #15803d;">
+                <strong>Metode Bayar: Tunai / Transfer (Non-Token)</strong>
+                <p style="font-size: 11px; margin-top: 2px;">Diterima lunas di meja kasir tanpa penggunaan koin mesin.</p>
+            </div>
+        `;
+    }
 
     const html = `
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 12px;">

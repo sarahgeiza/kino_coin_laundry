@@ -3,8 +3,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require_once __DIR__ . '/includes/data.php';
-require_once __DIR__ . '/backend/config/database.php';
-require_once __DIR__ . '/includes/helpers.php';
 
 $login_error = '';
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
@@ -14,45 +12,39 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (empty($username) || empty($password)) {
         $login_error = 'Username dan password wajib diisi.';
     } else {
-        try {
-            $matched_user = one(
-                'SELECT id_pengguna, nama, username, role, password
-                 FROM pengguna
-                 WHERE role = ?
-                   AND (LOWER(username) = LOWER(?) OR LOWER(nama) = LOWER(?))
-                 ORDER BY CASE WHEN LOWER(username) = LOWER(?) THEN 0 ELSE 1 END
-                 LIMIT 1',
-                ['pemilik', $username, $username, $username]
-            );
-
-            if (!$matched_user) {
-                $login_error = 'Akun pemilik tidak terdaftar di database.';
-            } else {
-                $storedPassword = (string)$matched_user['password'];
-                $passwordValid = password_verify($password, $storedPassword);
-                if (!$passwordValid && hash_equals($storedPassword, $password)) {
-                    $passwordValid = true;
-                    execute_sql(
-                        'UPDATE pengguna SET password = ? WHERE id_pengguna = ?',
-                        [password_hash($password, PASSWORD_DEFAULT), (int)$matched_user['id_pengguna']]
-                    );
-                }
-
-                if (!$passwordValid) {
-                    $login_error = 'Password salah. Silakan periksa kembali kata sandi Anda.';
-                } else {
-                    session_regenerate_id(true);
-                    $_SESSION['user_id'] = (int)$matched_user['id_pengguna'];
-                    $_SESSION['username'] = $matched_user['nama'];
-                    $_SESSION['role'] = $matched_user['role'];
-                    $_SESSION['csrf'] = bin2hex(random_bytes(32));
-                    header('Location: admin/index.php');
-                    exit;
+        $matched_user = null;
+        foreach ($_SESSION['users'] as $u) {
+            if (($u['role'] ?? '') === 'Pemilik') {
+                $first_name = explode(' ', trim($u['nama']))[0];
+                if (strcasecmp($u['username'], $username) === 0 || 
+                    strcasecmp($u['email'], $username) === 0 || 
+                    strcasecmp($u['nama'], $username) === 0 ||
+                    strcasecmp($first_name, $username) === 0) {
+                    $matched_user = $u;
+                    break;
                 }
             }
-        } catch (Throwable $e) {
-            error_log($e->getMessage());
-            $login_error = 'Tidak dapat memeriksa akun pemilik di database. Periksa konfigurasi PostgreSQL.';
+        }
+
+        $pass_valid = false;
+        if ($matched_user) {
+            $db_pass = (string)($matched_user['password'] ?? '');
+            if (password_verify($password, $db_pass) || $db_pass === $password) {
+                $pass_valid = true;
+            }
+        }
+
+        if (!$matched_user) {
+            $login_error = 'Akun pemilik tidak terdaftar di sistem atau Anda tidak memiliki hak akses sebagai Pemilik.';
+        } elseif (!$pass_valid) {
+            $login_error = 'Password salah. Silakan periksa kembali kata sandi Anda.';
+        } else {
+            $_SESSION['user_id'] = $matched_user['id'];
+            $_SESSION['username'] = $matched_user['nama'];
+            $_SESSION['role'] = 'pemilik';
+            $_SESSION['csrf'] = bin2hex(random_bytes(32));
+            header('Location: admin/index.php');
+            exit;
         }
     }
 }
@@ -123,13 +115,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             <form action="login-pemilik.php" method="POST">
                 <div class="form-group">
                     <label class="form-label">Username / Email</label>
-                    <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($_POST['username'] ?? 'pemilik') ?>" placeholder="Contoh: pemilik" required>
+                    <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($_POST['username'] ?? 'geiza') ?>" placeholder="Contoh: geiza atau pemilik" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Password</label>
                     <div style="position: relative;">
-                        <input type="password" id="inputPassOwner" name="password" class="form-control" value="<?= htmlspecialchars($_POST['password'] ?? 'password123') ?>" style="padding-right: 80px;" required>
+                        <input type="password" id="inputPassOwner" name="password" class="form-control" value="<?= htmlspecialchars($_POST['password'] ?? 'pemilik123') ?>" style="padding-right: 80px;" required>
                         <button type="button" class="btn-toggle-pass" onclick="togglePassword('inputPassOwner', this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 12px; font-weight: 700; color: #2563eb; cursor: pointer;">
                             Lihat
                         </button>

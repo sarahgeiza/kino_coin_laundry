@@ -13,33 +13,25 @@ require __DIR__.'/../backend/models/Pelanggan.php';
 require __DIR__.'/../backend/models/Layanan.php';
 require __DIR__.'/../backend/models/Shift.php';
 require_once __DIR__.'/../backend/models/Transaksi.php';
+require_once __DIR__.'/../backend/middleware/session.php';
 
 try {
     $module = (string)($_GET['module'] ?? '');
     $action = (string)($_GET['action'] ?? 'list');
     if ($module === 'health' && $action === 'list') { method('GET'); respond(['status'=>'ok','app'=>'Kino Coin Laundry API']); }
-    require_once __DIR__.'/../backend/middleware/session.php';
     require __DIR__.'/../backend/controllers/AuthController.php';
     require __DIR__.'/../backend/controllers/RiwayatController.php';
-    $publicAuthAction = $module === 'auth' && in_array($action, ['login', 'register'], true);
-    $customerSessionAction = $module === 'auth'
-        && in_array($action, ['me', 'logout'], true)
-        && !empty($_SESSION['customer_id']);
-    $customerHistoryAction = $module === 'riwayat' && in_array($action, ['list', 'detail'], true);
-    if ($customerHistoryAction) {
-        customer_actor();
-    } elseif (!$publicAuthAction && !$customerSessionAction) {
-        actor();
-    }
+    $u=actor();
     if (in_array($module,['pengguna','layanan','shift'],true) && in_array($action,['create','update','delete','password'],true)) owner();
     require __DIR__.'/../backend/controllers/PenggunaController.php';
     require __DIR__.'/../backend/controllers/PelangganController.php';
     require __DIR__.'/../backend/controllers/LayananController.php';
     require __DIR__.'/../backend/controllers/ShiftController.php';
-    require __DIR__.'/../backend/controllers/ShiftOperasionalController.php';
     require __DIR__.'/../backend/controllers/TransaksiController.php';
     require __DIR__.'/../backend/controllers/DetailTransaksiController.php';
     require __DIR__.'/../backend/controllers/DashboardRekapController.php';
+    require __DIR__.'/../backend/controllers/ShiftOperasionalController.php';
+    require __DIR__.'/../backend/controllers/PelangganSelfController.php';
     respond(['error'=>'Endpoint tidak ditemukan'],404);
 } catch (PDOException $e) {
     error_log($e->getMessage());
