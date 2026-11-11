@@ -136,7 +136,13 @@ function initTransactionCalculator() {
 
         const rate = parseInt(option.getAttribute('data-price') || 0);
         const category = option.getAttribute('data-category') || 'SELF_SERVICE';
+        const unit = option.getAttribute('data-unit') || 'putaran';
         const qty = parseInt(qtyInput.value) || 0;
+
+        const qtyUnitLabel = document.getElementById('qtyUnitLabel');
+        if (qtyUnitLabel) {
+            qtyUnitLabel.textContent = unit;
+        }
 
         // Validation: Kuantitas > 0
         if (qty <= 0) {

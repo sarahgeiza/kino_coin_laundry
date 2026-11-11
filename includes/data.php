@@ -29,16 +29,33 @@ function sync_live_database(): bool
         $res_l = @pg_query($conn, "SELECT * FROM layanan ORDER BY id_layanan");
         if ($res_l) {
             $services = [];
+            $seen_names = [];
             while ($row = pg_fetch_assoc($res_l)) {
                 $nama = $row['nama_layanan'];
+                $nama_key = strtolower(trim($nama));
+                if (isset($seen_names[$nama_key])) continue;
+                $seen_names[$nama_key] = true;
+
                 $kategori = 'SELF_SERVICE';
                 $label = 'Self Service (Token)';
-                if (stripos($nama, 'Drop Off') !== false || stripos($nama, 'Lipat') !== false) {
+                $satuan = 'putaran';
+
+                if (stripos($nama, 'Drop Off') !== false) {
                     $kategori = 'DROP_OFF';
                     $label = 'Drop Off (Tunai)';
-                } elseif (in_array(strtolower($nama), ['sabun', 'softener', 'kresek'])) {
+                    $satuan = '7.5 kg';
+                } elseif (stripos($nama, 'Lipat') !== false) {
+                    $kategori = 'DROP_OFF';
+                    $label = 'Drop Off (Tunai)';
+                    $satuan = 'kg'; // Jasa lipat per kilogram (kg)
+                } elseif (in_array($nama_key, ['sabun', 'softener', 'kresek']) || stripos($nama, 'sabun') !== false || stripos($nama, 'softener') !== false || stripos($nama, 'kresek') !== false) {
                     $kategori = 'ADDITIONAL';
                     $label = 'Additional (Tunai)';
+                    $satuan = 'pcs';
+                } elseif (stripos($nama, 'extra dry') !== false) {
+                    $satuan = '20 menit';
+                } elseif (!empty($row['berat_standar']) && floatval($row['berat_standar']) > 0 && $kategori !== 'SELF_SERVICE') {
+                    $satuan = $row['berat_standar'] . ' kg';
                 }
 
                 $services[] = [
@@ -46,11 +63,11 @@ function sync_live_database(): bool
                     'kategori' => $kategori,
                     'kategori_label' => $label,
                     'nama' => $nama,
-                    'deskripsi' => $row['durasi'] . ($row['berat_standar'] ? " • {$row['berat_standar']} kg" : ""),
+                    'deskripsi' => $row['durasi'] . ($satuan ? " • {$satuan}" : ""),
                     'tarif' => (int) $row['harga'],
                     'koin_cuci_req' => (stripos($nama, 'cuci') !== false ? 1 : 0),
                     'koin_kering_req' => (stripos($nama, 'kering') !== false ? 1 : 0),
-                    'satuan' => $row['berat_standar'] ? '7.5 kg' : ($kategori === 'ADDITIONAL' ? 'pcs' : 'putaran'),
+                    'satuan' => $satuan,
                     'durasi' => $row['durasi'],
                     'status' => in_array($row['aktif'], ['t', true, 1, '1']) ? 'Aktif' : 'Nonaktif',
                     'icon' => ''

@@ -212,7 +212,7 @@ require_once __DIR__ . '/../includes/header.php';
             <label class="form-label">Paket Layanan *</label>
             <select name="service_id" id="serviceSelect" class="form-control" required>
                 <?php foreach ($_SESSION['services'] as $s): ?>
-                    <option value="<?= $s['id'] ?>" data-price="<?= $s['tarif'] ?>" data-category="<?= $s['kategori'] ?>" <?= ($s['id'] === 3 ? 'selected' : '') ?>>
+                    <option value="<?= $s['id'] ?>" data-price="<?= $s['tarif'] ?>" data-category="<?= $s['kategori'] ?>" data-unit="<?= htmlspecialchars($s['satuan']) ?>" <?= ($s['id'] === 3 ? 'selected' : '') ?>>
                         <?= htmlspecialchars($s['nama']) ?> — <?= format_rupiah($s['tarif']) ?> (<?= $s['satuan'] ?>)
                     </option>
                 <?php endforeach; ?>
@@ -221,7 +221,7 @@ require_once __DIR__ . '/../includes/header.php';
 
         <!-- Counter Kuantitas -->
         <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Kuantitas (Putaran / Kg / Pcs) *</label>
+            <label class="form-label">Kuantitas (<span id="qtyUnitLabel">putaran</span>) *</label>
             <div style="display: flex; align-items: center; gap: 10px;">
                 <button type="button" class="btn btn-outline" style="width: 44px; height: 44px; padding: 0; font-size: 20px;" onclick="changeQty(-1)">-</button>
                 <input type="number" min="1" id="qtyInput" name="qty" class="form-control" value="1" style="text-align: center; font-size: 16px; font-weight: 800;" required>
