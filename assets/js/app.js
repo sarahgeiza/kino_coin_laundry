@@ -202,12 +202,16 @@ function initTransactionCalculator() {
         }
     }
 
-    serviceSelect.addEventListener('change', calculate);
+    serviceSelect.addEventListener('change', () => {
+        calculate();
+        syncActiveServiceChipFromSelect();
+    });
     qtyInput.addEventListener('input', calculate);
     if (coinWashInput) coinWashInput.addEventListener('input', calculate);
     if (coinDryInput) coinDryInput.addEventListener('input', calculate);
 
     calculate();
+    syncActiveServiceChipFromSelect();
 
     form.addEventListener('submit', function (e) {
         const qty = parseInt(qtyInput.value) || 0;
@@ -276,18 +280,111 @@ function initCustomerAutocomplete() {
     });
 }
 
-function selectServiceByCategory(categoryKeyword) {
+function selectServiceByCategory(categoryKeyword, btnEl) {
     const select = document.getElementById('serviceSelect');
     if (!select) return;
 
+    const cat = categoryKeyword.toLowerCase().trim();
+    let targetIndex = -1;
+
+    // Prioritas 1: Pencocokan nama layanan persis (sebelum tanda '—')
     for (let i = 0; i < select.options.length; i++) {
-        const opt = select.options[i];
-        if (opt.text.toLowerCase().includes(categoryKeyword.toLowerCase())) {
-            select.selectedIndex = i;
+        const optText = select.options[i].text.toLowerCase();
+        const optName = optText.split('—')[0].trim();
+        if (optName === cat || (cat === 'cuci kering' && (optName === 'cuci kering' || optName === 'cuci + kering'))) {
+            targetIndex = i;
             break;
         }
     }
+
+    // Prioritas 2: Substring matching dengan proteksi agar 'cuci' tidak salah pilih 'cuci kering'
+    if (targetIndex === -1) {
+        for (let i = 0; i < select.options.length; i++) {
+            const optText = select.options[i].text.toLowerCase();
+            if (cat === 'cuci' && (optText.includes('cuci kering') || optText.includes('cuci + kering'))) continue;
+            if (cat === 'kering' && (optText.includes('cuci kering') || optText.includes('cuci + kering'))) continue;
+            if (optText.includes(cat)) {
+                targetIndex = i;
+                break;
+            }
+        }
+    }
+
+    if (targetIndex !== -1) {
+        select.selectedIndex = targetIndex;
+    }
+
+    // Pindahkan style aktif (warna biru) ke tombol yang ditekan
+    updateActiveServiceChip(btnEl || cat);
+
+    // Memicu event change agar kalkulator dan tampilan total sinkron seketika
     select.dispatchEvent(new Event('change'));
+}
+
+function updateActiveServiceChip(target) {
+    const chipContainer = document.getElementById('quickServiceChips');
+    const chips = chipContainer ? chipContainer.querySelectorAll('.chip') : document.querySelectorAll('.filter-scroll .chip');
+    chips.forEach(c => c.classList.remove('active'));
+
+    if (target instanceof HTMLElement) {
+        target.classList.add('active');
+        return;
+    }
+
+    const keyword = typeof target === 'string' ? target.toLowerCase().trim() : '';
+    if (!keyword) return;
+
+    for (let c of chips) {
+        const cCat = (c.getAttribute('data-category') || c.textContent).toLowerCase().trim();
+        if (cCat === keyword || (keyword === 'cuci kering' && (cCat === 'cuci kering' || cCat === 'cuci + kering'))) {
+            c.classList.add('active');
+            break;
+        }
+    }
+}
+
+function syncActiveServiceChipFromSelect() {
+    const select = document.getElementById('serviceSelect');
+    const chipContainer = document.getElementById('quickServiceChips');
+    if (!select || !chipContainer || select.selectedIndex < 0) return;
+
+    const opt = select.options[select.selectedIndex];
+    if (!opt) return;
+
+    const optText = opt.text.toLowerCase();
+    const optName = optText.split('—')[0].trim();
+    const chips = chipContainer.querySelectorAll('.chip');
+    chips.forEach(c => c.classList.remove('active'));
+
+    let matched = null;
+    chips.forEach(c => {
+        const cCat = (c.getAttribute('data-category') || c.textContent).toLowerCase().trim();
+        if (cCat === 'cuci kering' || cCat === 'cuci + kering') {
+            if (optName.includes('cuci kering') || optName.includes('cuci + kering')) {
+                matched = c;
+            }
+        } else if (cCat === 'cuci') {
+            if (optName.includes('cuci') && !optName.includes('cuci kering') && !optName.includes('cuci + kering')) {
+                matched = c;
+            }
+        } else if (cCat === 'kering') {
+            if (optName.includes('kering') && !optName.includes('cuci kering') && !optName.includes('cuci + kering')) {
+                matched = c;
+            }
+        } else if (cCat === 'drop off') {
+            if (optName.includes('drop off')) {
+                matched = c;
+            }
+        } else if (cCat === 'lipat') {
+            if (optName.includes('lipat')) {
+                matched = c;
+            }
+        }
+    });
+
+    if (matched) {
+        matched.classList.add('active');
+    }
 }
 
 function changeQty(delta) {

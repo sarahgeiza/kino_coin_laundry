@@ -200,12 +200,12 @@ require_once __DIR__ . '/../includes/header.php';
     <!-- Card 2: Pemilihan Layanan -->
     <div class="card">
         <label class="form-label">Pilih Cepat Layanan</label>
-        <div class="filter-scroll" style="margin-bottom: 10px;">
-            <button type="button" class="chip active" onclick="selectServiceByCategory('cuci')">Cuci</button>
-            <button type="button" class="chip" onclick="selectServiceByCategory('kering')">Kering</button>
-            <button type="button" class="chip" onclick="selectServiceByCategory('cuci kering')">Cuci + Kering</button>
-            <button type="button" class="chip" onclick="selectServiceByCategory('drop off')">Drop Off</button>
-            <button type="button" class="chip" onclick="selectServiceByCategory('lipat')">Lipat</button>
+        <div class="filter-scroll" id="quickServiceChips" style="margin-bottom: 10px;">
+            <button type="button" class="chip" data-category="cuci" onclick="selectServiceByCategory('cuci', this)">Cuci</button>
+            <button type="button" class="chip" data-category="kering" onclick="selectServiceByCategory('kering', this)">Kering</button>
+            <button type="button" class="chip" data-category="cuci kering" onclick="selectServiceByCategory('cuci kering', this)">Cuci + Kering</button>
+            <button type="button" class="chip" data-category="drop off" onclick="selectServiceByCategory('drop off', this)">Drop Off</button>
+            <button type="button" class="chip" data-category="lipat" onclick="selectServiceByCategory('lipat', this)">Lipat</button>
         </div>
 
         <div class="form-group">
