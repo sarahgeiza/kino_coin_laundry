@@ -1,6 +1,7 @@
 <?php
 // Output buffering to prevent headers already sent
-if (ob_get_level() === 0) ob_start();
+if (ob_get_level() === 0)
+    ob_start();
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -98,7 +99,7 @@ function sync_live_database(): bool
                     'id' => (int) $row['id_pelanggan'],
                     'nama' => $row['nama_pelanggan'],
                     'wa' => $row['no_hp'],
-                    'kode_kartu' => $row['kode_kartu'] ?: ('KC-P-' . str_pad((string)$row['id_pelanggan'], 4, '0', STR_PAD_LEFT)),
+                    'kode_kartu' => $row['kode_kartu'] ?: ('KC-P-' . str_pad((string) $row['id_pelanggan'], 4, '0', STR_PAD_LEFT)),
                     'is_member' => !empty($row['password_hash']),
                     'tx_count' => (int) $row['tx_count'],
                     'coin_cuci' => (int) $row['total_koin'],
@@ -154,10 +155,10 @@ function sync_live_database(): bool
             $txs = [];
             while ($row = pg_fetch_assoc($res_t)) {
                 $txs[] = [
-                    'id' => $row['no_invoice'] ?: ('INV-' . str_pad((string)$row['id_transaksi'], 3, '0', STR_PAD_LEFT)),
+                    'id' => $row['no_invoice'] ?: ('INV-' . str_pad((string) $row['id_transaksi'], 3, '0', STR_PAD_LEFT)),
                     'pelanggan' => $row['nama_pelanggan'],
                     'wa' => $row['no_hp'],
-                    'kode_kartu' => $row['kode_kartu'] ?: ('KC-P-' . str_pad((string)$row['id_pelanggan'], 4, '0', STR_PAD_LEFT)),
+                    'kode_kartu' => $row['kode_kartu'] ?: ('KC-P-' . str_pad((string) $row['id_pelanggan'], 4, '0', STR_PAD_LEFT)),
                     'layanan' => $row['layanan_names'] ?: 'Cuci Kering',
                     'layanan_tipe' => 'Layanan Mesin',
                     'kategori' => 'SELF_SERVICE',
@@ -231,7 +232,8 @@ function db_save_transaction(array $data): ?string
 {
     try {
         $conn = getConnection();
-        if (!$conn) return null;
+        if (!$conn)
+            return null;
 
         @pg_query($conn, "BEGIN");
 
@@ -241,7 +243,7 @@ function db_save_transaction(array $data): ?string
         $p_res = @pg_query_params($conn, "SELECT id_pelanggan, kode_kartu FROM pelanggan WHERE no_hp = $1", [$wa]);
         $p_row = $p_res ? pg_fetch_assoc($p_res) : null;
         if ($p_row) {
-            $id_pelanggan = (int)$p_row['id_pelanggan'];
+            $id_pelanggan = (int) $p_row['id_pelanggan'];
             $kode_kartu = $p_row['kode_kartu'];
         } else {
             $ins_p = @pg_query_params($conn, "
@@ -253,15 +255,15 @@ function db_save_transaction(array $data): ?string
                 @pg_query($conn, "ROLLBACK");
                 return null;
             }
-            $id_pelanggan = (int)pg_fetch_result($ins_p, 0, 'id_pelanggan');
-            $kode_kartu = 'KC-P-' . str_pad((string)$id_pelanggan, 4, '0', STR_PAD_LEFT);
+            $id_pelanggan = (int) pg_fetch_result($ins_p, 0, 'id_pelanggan');
+            $kode_kartu = 'KC-P-' . str_pad((string) $id_pelanggan, 4, '0', STR_PAD_LEFT);
             @pg_query_params($conn, "UPDATE pelanggan SET kode_kartu = $1 WHERE id_pelanggan = $2", [$kode_kartu, $id_pelanggan]);
         }
 
         // 2. Resolve kasir & shift_operasional aktif
         $kasir_name = $_SESSION['username'] ?? 'Sarah';
         $u_res = @pg_query_params($conn, "SELECT id_pengguna FROM pengguna WHERE nama ILIKE $1 OR username ILIKE $1", ["%$kasir_name%"]);
-        $id_kasir = ($u_res && pg_num_rows($u_res) > 0) ? (int)pg_fetch_result($u_res, 0, 'id_pengguna') : 3;
+        $id_kasir = ($u_res && pg_num_rows($u_res) > 0) ? (int) pg_fetch_result($u_res, 0, 'id_pengguna') : 3;
 
         $so_res = @pg_query_params($conn, "
             SELECT id_shift_operasional, id_shift 
@@ -272,15 +274,16 @@ function db_save_transaction(array $data): ?string
         $id_so = null;
         $id_shift = 2; // Default siang
         if ($so_res && pg_num_rows($so_res) > 0) {
-            $id_so = (int)pg_fetch_result($so_res, 0, 'id_shift_operasional');
-            $id_shift = (int)pg_fetch_result($so_res, 0, 'id_shift');
+            $id_so = (int) pg_fetch_result($so_res, 0, 'id_shift_operasional');
+            $id_shift = (int) pg_fetch_result($so_res, 0, 'id_shift');
         }
 
         // 3. Insert transaksi
         $no_invoice = 'INV-' . date('Ymd') . '-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
-        $total_bayar = (int)$data['total_bayar'];
+        $total_bayar = (int) $data['total_bayar'];
         $metode = strtolower($data['metode'] ?? 'cash');
-        if (!in_array($metode, ['cash', 'qris'])) $metode = 'cash';
+        if (!in_array($metode, ['cash', 'qris']))
+            $metode = 'cash';
 
         $ins_t = @pg_query_params($conn, "
             INSERT INTO transaksi (
@@ -293,21 +296,27 @@ function db_save_transaction(array $data): ?string
                 'lunas', 'antri', $8
             ) RETURNING id_transaksi
         ", [
-            $id_kasir, $id_pelanggan, $id_shift, $id_so,
-            $metode, $total_bayar, $total_bayar, $no_invoice
+            $id_kasir,
+            $id_pelanggan,
+            $id_shift,
+            $id_so,
+            $metode,
+            $total_bayar,
+            $total_bayar,
+            $no_invoice
         ]);
 
         if (!$ins_t) {
             @pg_query($conn, "ROLLBACK");
             return null;
         }
-        $id_transaksi = (int)pg_fetch_result($ins_t, 0, 'id_transaksi');
+        $id_transaksi = (int) pg_fetch_result($ins_t, 0, 'id_transaksi');
 
         // 4. Insert detail transaksi
-        $id_layanan = (int)($data['service_id'] ?? 1);
-        $qty = (int)($data['qty'] ?? 1);
-        $koin_total = (int)(($data['koin_cuci'] ?? 0) + ($data['koin_kering'] ?? 0));
-        $harga_satuan = (int)($data['tarif'] ?? $total_bayar);
+        $id_layanan = (int) ($data['service_id'] ?? 1);
+        $qty = (int) ($data['qty'] ?? 1);
+        $koin_total = (int) (($data['koin_cuci'] ?? 0) + ($data['koin_kering'] ?? 0));
+        $harga_satuan = (int) ($data['tarif'] ?? $total_bayar);
 
         $ins_d = @pg_query_params($conn, "
             INSERT INTO detail_transaksi (
@@ -316,7 +325,13 @@ function db_save_transaction(array $data): ?string
                 $1, $2, $3, $4, $5, $6, $7
             )
         ", [
-            $id_transaksi, $id_layanan, 7.5, $qty, $koin_total, $harga_satuan, $total_bayar
+            $id_transaksi,
+            $id_layanan,
+            7.5,
+            $qty,
+            $koin_total,
+            $harga_satuan,
+            $total_bayar
         ]);
 
         if (!$ins_d) {
@@ -330,7 +345,8 @@ function db_save_transaction(array $data): ?string
         sync_live_database();
         return $no_invoice;
     } catch (Throwable $e) {
-        if (isset($conn) && $conn) @pg_query($conn, "ROLLBACK");
+        if (isset($conn) && $conn)
+            @pg_query($conn, "ROLLBACK");
         return null;
     }
 }
@@ -342,7 +358,8 @@ function db_save_member(string $nama, string $wa, ?string $password = null): ?ar
 {
     try {
         $conn = getConnection();
-        if (!$conn) return null;
+        if (!$conn)
+            return null;
 
         $hash = $password ? password_hash($password, PASSWORD_DEFAULT) : null;
         $res = @pg_query_params($conn, "
@@ -351,9 +368,10 @@ function db_save_member(string $nama, string $wa, ?string $password = null): ?ar
             RETURNING id_pelanggan
         ", [$nama, $wa, $hash]);
 
-        if (!$res) return null;
-        $id = (int)pg_fetch_result($res, 0, 'id_pelanggan');
-        $card = 'KC-P-' . str_pad((string)$id, 4, '0', STR_PAD_LEFT);
+        if (!$res)
+            return null;
+        $id = (int) pg_fetch_result($res, 0, 'id_pelanggan');
+        $card = 'KC-P-' . str_pad((string) $id, 4, '0', STR_PAD_LEFT);
         @pg_query_params($conn, "UPDATE pelanggan SET kode_kartu = $1 WHERE id_pelanggan = $2", [$card, $id]);
 
         sync_live_database();
@@ -370,10 +388,11 @@ function db_start_shift(string $kasir_name, int $shift_id = 2): bool
 {
     try {
         $conn = getConnection();
-        if (!$conn) return false;
+        if (!$conn)
+            return false;
 
         $u_res = @pg_query_params($conn, "SELECT id_pengguna FROM pengguna WHERE nama ILIKE $1 OR username ILIKE $1", ["%$kasir_name%"]);
-        $id_kasir = ($u_res && pg_num_rows($u_res) > 0) ? (int)pg_fetch_result($u_res, 0, 'id_pengguna') : 3;
+        $id_kasir = ($u_res && pg_num_rows($u_res) > 0) ? (int) pg_fetch_result($u_res, 0, 'id_pengguna') : 3;
 
         // Tutup shift aktif sebelumnya jika ada yang tertinggal (status valid: 'ditutup')
         @pg_query_params($conn, "UPDATE shift_operasional SET status = 'ditutup', ditutup_pada = NOW() WHERE id_kasir = $1 AND status = 'aktif'", [$id_kasir]);
@@ -399,10 +418,11 @@ function db_close_shift(string $kasir_name, int $total_fisik = 0, int $selisih =
 {
     try {
         $conn = getConnection();
-        if (!$conn) return false;
+        if (!$conn)
+            return false;
 
         $u_res = @pg_query_params($conn, "SELECT id_pengguna FROM pengguna WHERE nama ILIKE $1 OR username ILIKE $1", ["%$kasir_name%"]);
-        $id_kasir = ($u_res && pg_num_rows($u_res) > 0) ? (int)pg_fetch_result($u_res, 0, 'id_pengguna') : null;
+        $id_kasir = ($u_res && pg_num_rows($u_res) > 0) ? (int) pg_fetch_result($u_res, 0, 'id_pengguna') : null;
 
         $affected = 0;
         // 1. Coba tutup shift aktif milik kasir yang sedang login
@@ -531,9 +551,11 @@ function check_auth_guard(string $role): void
         foreach ($users as $u) {
             if (($u['role'] ?? '') === $db_role) {
                 $first_name = explode(' ', trim($u['nama']))[0];
-                if (strcasecmp($u['nama'], $username) === 0 ||
+                if (
+                    strcasecmp($u['nama'], $username) === 0 ||
                     strcasecmp($u['username'], $username) === 0 ||
-                    strcasecmp($first_name, $username) === 0) {
+                    strcasecmp($first_name, $username) === 0
+                ) {
                     $user_valid = true;
                     break;
                 }
