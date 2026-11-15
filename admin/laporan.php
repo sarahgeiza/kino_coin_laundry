@@ -7,11 +7,16 @@ require_once __DIR__ . '/../includes/header.php';
 
 $periode = $_GET['periode'] ?? 'Hari Ini';
 $all_session_txs = $_SESSION['transactions'] ?? [];
+$today_key = date('Y-m-d');
 
-// Hitung omset hari ini dari transaksi riil sesi kasir
+// Omset hari ini HANYA dari transaksi bertanggal hari ini (bukan seluruh riwayat)
 $today_real_omset = 0;
+$today_tx_count = 0;
 foreach ($all_session_txs as $t) {
-    $today_real_omset += ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
+    if (($t['filter_date'] ?? '') === $today_key) {
+        $today_real_omset += ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
+        $today_tx_count++;
+    }
 }
 ?>
 
@@ -130,7 +135,7 @@ foreach ($all_session_txs as $t) {
     <div id="laporanPeriodeTitle" style="font-size: 11px; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px;">TOTAL OMSET (HARI INI)</div>
     <div style="font-size: 24px; font-weight: 900; color: var(--primary-dark); margin: 4px 0 14px 0; display: flex; align-items: baseline; gap: 8px;">
         <span id="laporanTotalOmset" style="transition: color 0.3s;"><?= format_rupiah($today_real_omset) ?></span>
-        <span id="laporanTxCount" style="font-size: 12px; font-weight: normal; color: var(--text-muted);">(<?= count($all_session_txs) ?> transaksi)</span>
+        <span id="laporanTxCount" style="font-size: 12px; font-weight: normal; color: var(--text-muted);">(<?= $today_tx_count ?> transaksi)</span>
     </div>
 
     <!-- Dynamic 7-Day / Custom Bar Chart -->
@@ -159,285 +164,238 @@ foreach ($all_session_txs as $t) {
 </div>
 
 <script>
-// Data Store Sinkronisasi Real-Time
-window.__LIVE_SESSION_TXS = <?= json_encode($all_session_txs) ?>;
-window.__TODAY_REAL_OMSET = <?= intval($today_real_omset) ?>;
+/* =========================================================================
+   Laporan Transaksi — 100% data riil Supabase (tanpa data dummy)
+   Semua periode (Hari Ini / Kemarin / 7 Hari / Custom / Kosong) dihitung
+   dari window.__LIVE_TX yang berasal dari tabel transaksi.
+   ========================================================================= */
+window.__LIVE_TX = <?= json_encode(array_values($all_session_txs)) ?>;
+window.__TODAY_KEY = "<?= $today_key ?>";
 
-window.__HISTORICAL_DAYS = {
-    '2026-10-25': { d: '25', name: 'Min', omset: 380000, count: 15, txs: [
-        { id: 'INV-2026-H01', pelanggan: 'Aris Munandar', layanan: 'Cuci Kering (Self)', kasir: 'Daniel', status: 'Lunas', total_bayar: 17000 },
-        { id: 'INV-2026-H02', pelanggan: 'Ratih Kumala', layanan: 'Setrika Kilat', kasir: 'Daniel', status: 'Lunas', total_bayar: 24000 }
-    ]},
-    '2026-10-26': { d: '26', name: 'Sen', omset: 420000, count: 18, txs: [
-        { id: 'INV-2026-H03', pelanggan: 'Bagus Santika', layanan: 'Cuci Kering Lengkap', kasir: 'Sarah', status: 'Lunas', total_bayar: 32000 },
-        { id: 'INV-2026-H04', pelanggan: 'Maya Safitri', layanan: 'Kering Koin (Self)', kasir: 'Sarah', status: 'Lunas', total_bayar: 10000 }
-    ]},
-    '2026-10-27': { d: '27', name: 'Sel', omset: 510000, count: 22, txs: [
-        { id: 'INV-2026-H05', pelanggan: 'Citra Lestari', layanan: 'Cuci Kering (Self)', kasir: 'Sarah', status: 'Lunas', total_bayar: 17000 },
-        { id: 'INV-2026-H06', pelanggan: 'Denny Setiawan', layanan: 'Cuci Kering Lengkap', kasir: 'Sarah', status: 'Lunas', total_bayar: 32000 }
-    ]},
-    '2026-10-28': { d: '28', name: 'Rab', omset: 390000, count: 17, txs: [
-        { id: 'INV-2026-H07', pelanggan: 'Dodi Darmawan', layanan: 'Drop Off Regular', kasir: 'Nizar', status: 'Lunas', total_bayar: 28000 },
-        { id: 'INV-2026-H08', pelanggan: 'Gita Gutawa', layanan: 'Cuci Koin (Self)', kasir: 'Nizar', status: 'Lunas', total_bayar: 7000 }
-    ]},
-    '2026-10-29': { d: '29', name: 'Kam', omset: 480000, count: 20, txs: [
-        { id: 'INV-2026-H09', pelanggan: 'Eka Putri', layanan: 'Cuci Kering (Self)', kasir: 'Nizar', status: 'Lunas', total_bayar: 17000 },
-        { id: 'INV-2026-H10', pelanggan: 'Hari Purnomo', layanan: 'Setrika Kilat', kasir: 'Nizar', status: 'Lunas', total_bayar: 18000 }
-    ]},
-    '2026-10-30': { d: '30', name: 'Jum', omset: 520000, count: 22, txs: [
-        { id: 'INV-2026-K01', pelanggan: 'Hendro Wijaya', layanan: 'Cuci Kering (Self)', kasir: 'Sarah', status: 'Lunas', total_bayar: 17000 },
-        { id: 'INV-2026-K02', pelanggan: 'Dewi Anggraini', layanan: 'Cuci Kering Lengkap', kasir: 'Sarah', status: 'Lunas', total_bayar: 32000 },
-        { id: 'INV-2026-K03', pelanggan: 'Fajar Nugraha', layanan: 'Drop Off Regular', kasir: 'Nizar', status: 'Lunas', total_bayar: 25000 }
-    ]},
-    '2026-10-31': { d: '31', name: 'Sab', omset: window.__TODAY_REAL_OMSET, count: window.__LIVE_SESSION_TXS.length, txs: window.__LIVE_SESSION_TXS }
-};
-
+const HARI = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 let currentActiveFilter = '<?= htmlspecialchars($periode) ?>';
 
+function ymd(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function shiftDays(base, delta) {
+    const d = new Date(base.getTime());
+    d.setDate(d.getDate() + delta);
+    return d;
+}
 function formatRupiahJS(num) {
     return 'Rp ' + Number(num || 0).toLocaleString('id-ID');
 }
-
 function shortRupiah(num) {
-    if (num <= 0) return '0';
-    if (num >= 1000000) return (num / 1000000).toFixed(1).replace('.0','') + 'jt';
+    if (!num || num <= 0) return '0';
+    if (num >= 1000000) return (num / 1000000).toFixed(1).replace('.0', '') + 'jt';
     return Math.round(num / 1000) + 'k';
 }
 
-function switchLaporanPeriode(mode) {
-    currentActiveFilter = mode;
+/* Kelompokkan transaksi riil per tanggal */
+function groupTxByDate(txs) {
+    const map = {};
+    txs.forEach(t => {
+        const key = t.filter_date || '';
+        if (!key) return;
+        if (!map[key]) map[key] = { omset: 0, count: 0, txs: [] };
+        map[key].omset += Number(t.total_bayar ?? t.total_biaya ?? 0);
+        map[key].count += 1;
+        map[key].txs.push(t);
+    });
+    return map;
+}
 
-    // Update active button state
-    const btnIds = {
+/* Bangun deret hari (inklusif) dari startDate s/d endDate berdasarkan data riil */
+function buildDays(startDate, endDate) {
+    const map = groupTxByDate(window.__LIVE_TX || []);
+    const days = [];
+    let cur = new Date(startDate.getTime());
+    let guard = 0;
+    while (cur <= endDate && guard < 62) {
+        const key = ymd(cur);
+        const bucket = map[key] || { omset: 0, count: 0, txs: [] };
+        days.push({
+            dateKey: key,
+            d: String(cur.getDate()).padStart(2, '0'),
+            name: HARI[cur.getDay()],
+            omset: bucket.omset,
+            count: bucket.count,
+            txs: bucket.txs,
+            is_active: true
+        });
+        cur = shiftDays(cur, 1);
+        guard++;
+    }
+    return days;
+}
+
+function setActiveChip(mode) {
+    const map = {
         'Hari Ini': 'btnFilterHariIni',
         'Kemarin': 'btnFilterKemarin',
         '7 Hari': 'btnFilter7Hari',
         'Custom': 'btnFilterCustom',
         'Kosong': 'btnFilterKosong'
     };
-    Object.keys(btnIds).forEach(k => {
-        const el = document.getElementById(btnIds[k]);
-        if (el) {
-            if (k === mode) el.classList.add('active');
-            else el.classList.remove('active');
-        }
+    Object.keys(map).forEach(k => {
+        const el = document.getElementById(map[k]);
+        if (!el) return;
+        el.classList.toggle('active', k === mode);
     });
+}
 
-    // Update URL without reload to avoid page jump
-    const newUrl = window.location.pathname + '?periode=' + encodeURIComponent(mode);
-    window.history.replaceState({ periode: mode }, '', newUrl);
+function switchLaporanPeriode(mode) {
+    currentActiveFilter = mode;
+    setActiveChip(mode);
 
-    // Accordion custom box
-    const customBox = document.getElementById('customDateBox');
+    const url = window.location.pathname + '?periode=' + encodeURIComponent(mode);
+    window.history.replaceState({ periode: mode }, '', url);
+
+    const box = document.getElementById('customDateBox');
     if (mode === 'Custom') {
-        customBox.classList.add('open');
+        if (box) box.classList.add('open');
         applyCustomDateFilter();
         return;
-    } else {
-        customBox.classList.remove('open');
     }
+    if (box) box.classList.remove('open');
+
+    const today = new Date(window.__TODAY_KEY + 'T00:00:00');
 
     if (mode === 'Kosong') {
-        renderLaporanView([], [], 'TOTAL OMSET (KOSONG)', 0, 'Grafik Tren Omset (Kosong)');
+        renderLaporanView([], [], 'TOTAL OMSET (KOSONG)', 0, 'Grafik Tren Omset (Kosong)', 'Kosong');
         return;
     }
-
     if (mode === 'Kemarin') {
-        const kemData = window.__HISTORICAL_DAYS['2026-10-30'];
-        const days = build7DaysArray('2026-10-30');
-        renderLaporanView(days, kemData.txs, 'TOTAL OMSET (KEMARIN)', kemData.omset, 'Grafik Tren Omset (Kemarin)');
+        const y = shiftDays(today, -1);
+        const days = buildDays(y, y);
+        renderLaporanView(days, collectTx(days), 'TOTAL OMSET (KEMARIN)', sumOmset(days), 'Grafik Omset Kemarin', 'Kemarin');
         return;
     }
-
     if (mode === '7 Hari') {
-        const days = build7DaysArray(null, true);
-        const totalAll = days.reduce((acc, cur) => acc + cur.omset, 0);
-        let allTxs = [];
-        days.forEach(d => { if (d.txs) allTxs = allTxs.concat(d.txs); });
-        renderLaporanView(days, allTxs, 'TOTAL OMSET (7 HARI)', totalAll, 'Grafik Tren Omset 7 Hari');
+        const days = buildDays(shiftDays(today, -6), today);
+        renderLaporanView(days, collectTx(days), 'TOTAL OMSET (7 HARI)', sumOmset(days), 'Grafik Tren Omset 7 Hari', '7 Hari');
         return;
     }
-
-    // Default: Hari Ini
-    const days = build7DaysArray('2026-10-31');
-    renderLaporanView(days, window.__LIVE_SESSION_TXS, 'TOTAL OMSET (HARI INI)', window.__TODAY_REAL_OMSET, 'Grafik Tren Omset 7 Hari');
+    // Hari Ini
+    const days = buildDays(today, today);
+    renderLaporanView(days, collectTx(days), 'TOTAL OMSET (HARI INI)', sumOmset(days), 'Grafik Omset Hari Ini', 'Hari Ini');
 }
 
-function build7DaysArray(activeKey = null, allActive = false) {
-    const keys = ['2026-10-25', '2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-10-31'];
-    return keys.map(k => {
-        const h = window.__HISTORICAL_DAYS[k];
-        return {
-            dateKey: k,
-            d: h.d,
-            name: h.name,
-            omset: h.omset,
-            count: h.count,
-            txs: h.txs,
-            is_active: allActive ? true : (k === activeKey)
-        };
-    });
-}
-
-// Fitur Custom Range: Dinamis menghitung rentang hari apapun yang dipilih
 function applyCustomDateFilter() {
-    const startVal = document.getElementById('customStartDate').value;
-    const endVal = document.getElementById('customEndDate').value;
+    const s = document.getElementById('customStartDate');
+    const e = document.getElementById('customEndDate');
+    if (!s || !e || !s.value || !e.value) return;
 
-    if (!startVal || !endVal) return;
-    if (startVal > endVal) {
+    if (s.value > e.value) {
         showToast('Tanggal awal tidak boleh melebihi tanggal akhir', 'error');
         return;
     }
+    const start = new Date(s.value + 'T00:00:00');
+    const end = new Date(e.value + 'T00:00:00');
 
-    const startDate = new Date(startVal + 'T00:00:00');
-    const endDate = new Date(endVal + 'T00:00:00');
-    const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-
-    const customDays = [];
-    let cur = new Date(startDate);
-    let totalCustomOmset = 0;
-    let customTxs = [];
-
-    while (cur <= endDate) {
-        const dateKey = cur.toISOString().slice(0, 10);
-        const dayNum = String(cur.getDate()).padStart(2, '0');
-        const dayName = dayNames[cur.getDay()];
-
-        let dayOmset = 0;
-        let dayCount = 0;
-        let dayTxs = [];
-
-        if (window.__HISTORICAL_DAYS[dateKey]) {
-            dayOmset = window.__HISTORICAL_DAYS[dateKey].omset;
-            dayCount = window.__HISTORICAL_DAYS[dateKey].count;
-            dayTxs = window.__HISTORICAL_DAYS[dateKey].txs || [];
-        } else {
-            // Estimasi proporsional jika tanggal di luar baseline
-            dayOmset = 350000 + (cur.getDate() * 15000) % 250000;
-            dayCount = Math.max(5, Math.round(dayOmset / 25000));
-        }
-
-        totalCustomOmset += dayOmset;
-        customTxs = customTxs.concat(dayTxs);
-
-        customDays.push({
-            dateKey: dateKey,
-            d: dayNum,
-            name: dayName,
-            omset: dayOmset,
-            count: dayCount,
-            is_active: true
-        });
-
-        cur.setDate(cur.getDate() + 1);
-        if (customDays.length >= 14) break; // Limit tampilan chart max 14 bar agar tetap rapi
-    }
-
+    const days = buildDays(start, end);
+    const label = 'CUSTOM ' + s.value.slice(5) + ' s/d ' + e.value.slice(5);
     renderLaporanView(
-        customDays, 
-        customTxs.length ? customTxs : window.__LIVE_SESSION_TXS, 
-        `TOTAL OMSET (CUSTOM: ${startVal.slice(5)} s/d ${endVal.slice(5)})`, 
-        totalCustomOmset, 
-        `Grafik Tren Omset Custom (${customDays.length} Hari)`
+        days,
+        collectTx(days),
+        'TOTAL OMSET (' + label + ')',
+        sumOmset(days),
+        'Grafik Tren Omset Custom (' + days.length + ' hari)',
+        'Custom ' + s.value + ' s/d ' + e.value
     );
 }
 
-function renderLaporanView(days, txList, titleText, totalOmset, subtitleText) {
+function collectTx(days) {
+    let out = [];
+    days.forEach(d => { out = out.concat(d.txs || []); });
+    // urutkan terbaru dulu
+    return out.slice().reverse();
+}
+function sumOmset(days) {
+    return days.reduce((a, d) => a + d.omset, 0);
+}
+
+function renderLaporanView(days, txList, titleText, totalOmset, subtitleText, periodeLabel) {
     const mainCard = document.getElementById('laporanMainCard');
     const emptyCard = document.getElementById('laporanEmptyCard');
 
-    if (!days.length || (!txList.length && currentActiveFilter === 'Kosong')) {
-        mainCard.style.display = 'none';
-        emptyCard.style.display = 'block';
-        return;
-    }
+    // Selalu simpan konteks ekspor, termasuk saat kosong (supaya tidak mengekspor data periode lain)
+    window.__CURRENT_LAPORAN_TXS = txList;
+    window.__CURRENT_LAPORAN_PERIODE = periodeLabel || currentActiveFilter;
 
-    mainCard.style.display = 'block';
-    emptyCard.style.display = 'none';
-
-    // 1. Update Header Title & Total Omset
     document.getElementById('laporanPeriodeTitle').textContent = titleText;
     document.getElementById('laporanTotalOmset').textContent = formatRupiahJS(totalOmset);
-    document.getElementById('laporanTxCount').textContent = `(${txList.length} transaksi)`;
+    document.getElementById('laporanTxCount').textContent = '(' + txList.length + ' transaksi)';
     document.getElementById('chartSubTitle').textContent = subtitleText;
 
-    // Simpan data transaksi aktif untuk fungsi export CSV
-    window.__CURRENT_LAPORAN_TXS = txList;
+    if (!txList.length) {
+        if (mainCard) mainCard.style.display = 'none';
+        if (emptyCard) emptyCard.style.display = 'block';
+        return;
+    }
+    if (mainCard) mainCard.style.display = 'block';
+    if (emptyCard) emptyCard.style.display = 'none';
 
-    // 2. Render Animated Bars
-    const barsContainer = document.getElementById('chartBarsContainer');
-    const labelsContainer = document.getElementById('chartLabelsContainer');
-    barsContainer.innerHTML = '';
-    labelsContainer.innerHTML = '';
+    // ---- Chart bars ----
+    const bars = document.getElementById('chartBarsContainer');
+    const labels = document.getElementById('chartLabelsContainer');
+    bars.innerHTML = '';
+    labels.innerHTML = '';
 
-    const maxOmset = Math.max(...days.map(d => d.omset), 100000);
+    const maxOmset = Math.max(...days.map(d => d.omset), 1);
 
     days.forEach(d => {
-        const heightPx = d.omset <= 0 ? 8 : Math.max(12, Math.round((d.omset / maxOmset) * 80));
-        const bgGrad = d.is_active 
-            ? 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)' 
-            : '#94a3b8';
-        const shadow = d.is_active ? '0 3px 8px rgba(37,99,235,0.35)' : 'none';
-        const colorLabel = d.is_active ? '#1d4ed8' : '#64748b';
+        const heightPx = d.omset <= 0 ? 6 : Math.max(12, Math.round((d.omset / maxOmset) * 80));
+        const active = d.omset > 0;
+        const bg = active
+            ? 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)'
+            : '#cbd5e1';
 
-        // Kolom Bar
         const col = document.createElement('div');
         col.className = 'chart-col';
-        col.title = `Tgl ${d.d} (${d.name}): ${formatRupiahJS(d.omset)} (${d.count} trx)`;
-        col.onclick = () => {
-            showToast(`Tgl ${d.d} ${d.name}: ${formatRupiahJS(d.omset)}`, 'info');
-        };
+        col.title = d.d + ' ' + d.name + ': ' + formatRupiahJS(d.omset) + ' (' + d.count + ' trx)';
+        col.innerHTML =
+            '<span style="font-size:9px;font-weight:800;color:' + (active ? '#1d4ed8' : '#94a3b8') + ';margin-bottom:4px;white-space:nowrap;">'
+            + shortRupiah(d.omset) + '</span>' +
+            '<div class="chart-bar-el" style="height:' + heightPx + 'px;background:' + bg + ';box-shadow:' +
+            (active ? '0 3px 8px rgba(37,99,235,0.35)' : 'none') + ';"></div>';
+        bars.appendChild(col);
 
-        col.innerHTML = `
-            <span style="font-size: 9px; font-weight: 800; color: ${colorLabel}; margin-bottom: 4px; white-space: nowrap;">
-                ${shortRupiah(d.omset)}
-            </span>
-            <div class="chart-bar-el" style="height: ${heightPx}px; background: ${bgGrad}; box-shadow: ${shadow};"></div>
-        `;
-        barsContainer.appendChild(col);
-
-        // Label Bawah
         const lbl = document.createElement('div');
         lbl.style.flex = '1';
         lbl.style.textAlign = 'center';
-        lbl.innerHTML = `
-            <span style="font-size: 10px; font-weight: ${d.is_active ? '900' : '700'}; color: ${d.is_active ? '#1e3a8a' : '#64748b'}; display: block;">
-                ${d.d}
-            </span>
-            <span style="font-size: 9px; color: #94a3b8; display: block; margin-top: -2px;">
-                ${d.name}
-            </span>
-        `;
-        labelsContainer.appendChild(lbl);
+        lbl.innerHTML =
+            '<span style="font-size:10px;font-weight:' + (active ? '900' : '700') + ';color:' + (active ? '#1e3a8a' : '#94a3b8') + ';display:block;">'
+            + d.d + '</span>' +
+            '<span style="font-size:9px;color:#94a3b8;display:block;margin-top:-2px;">' + d.name + '</span>';
+        labels.appendChild(lbl);
     });
 
-    // 3. Render Transaction List
-    const listEl = document.getElementById('laporanDetailList');
-    listEl.innerHTML = '';
+    // ---- Detail list ----
+    const list = document.getElementById('laporanDetailList');
+    list.innerHTML = '';
     txList.forEach(t => {
         const item = document.createElement('div');
-        item.style.cssText = 'background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 8px; transition: transform 0.2s;';
-        item.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                <strong style="font-size: 13px; color: var(--text-main);">${escapeHtml(t.id || 'INV')} • ${escapeHtml(t.pelanggan || 'Pelanggan')}</strong>
-                <span class="badge badge-lunas">${escapeHtml(t.status || 'Lunas')}</span>
-            </div>
-            <div style="font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between;">
-                <span>${escapeHtml(t.layanan || '-')} (Kasir ${escapeHtml(t.kasir || 'Daniel')})</span>
-                <strong style="color: var(--primary);">${formatRupiahJS(t.total_bayar || t.total_biaya || 0)}</strong>
-            </div>
-        `;
-        listEl.appendChild(item);
+        item.style.cssText = 'background:#f8fafc;border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;margin-bottom:8px;';
+        item.innerHTML =
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">' +
+                '<strong style="font-size:13px;color:var(--text-main);">' + esc(t.id) + ' • ' + esc(t.pelanggan) + '</strong>' +
+                '<span class="badge badge-lunas">' + esc(t.status || 'Lunas') + '</span>' +
+            '</div>' +
+            '<div style="font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;">' +
+                '<span>' + esc(t.layanan) + ' (Kasir ' + esc(t.kasir) + ') • ' + esc(t.tanggal) + ' ' + esc(t.waktu) + '</span>' +
+                '<strong style="color:var(--primary);">' + formatRupiahJS(t.total_bayar ?? t.total_biaya ?? 0) + '</strong>' +
+            '</div>';
+        list.appendChild(item);
     });
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+function esc(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// Inisialisasi awal saat halaman dimuat
 document.addEventListener('DOMContentLoaded', () => {
     switchLaporanPeriode(currentActiveFilter);
 });

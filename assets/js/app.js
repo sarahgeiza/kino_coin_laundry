@@ -619,7 +619,7 @@ function downloadCSV(filename, rows) {
     const processRow = function (row) {
         let finalVal = '';
         for (let j = 0; j < row.length; j++) {
-            let innerValue = row[j] === null ? '' : row[j].toString();
+            let innerValue = (row[j] === null || row[j] === undefined) ? '' : row[j].toString();
             if (row[j] instanceof Date) {
                 innerValue = row[j].toLocaleString();
             }
@@ -653,16 +653,41 @@ function downloadCSV(filename, rows) {
 }
 
 function exportLaporanTransactionsCSV() {
-    const txs = window.__CURRENT_LAPORAN_TXS || window.__MOCK_TRANSACTIONS || [];
+    const txs = window.__CURRENT_LAPORAN_TXS || window.__LIVE_TRANSACTIONS || window.__MOCK_TRANSACTIONS || [];
+    const periode = window.__CURRENT_LAPORAN_PERIODE || 'Hari Ini';
+
+    if (!txs.length) {
+        showToast('Tidak ada transaksi pada periode ini untuk diekspor', 'error', 3500);
+        return;
+    }
+
     const rows = [
         ['ID Invoice', 'Pelanggan', 'WhatsApp', 'Layanan', 'Kuantitas', 'Total Biaya', 'Total Bayar', 'Metode', 'Status', 'Kasir', 'Shift', 'Tanggal', 'Waktu']
     ];
+
     txs.forEach(t => {
+        const totalBayar = t.total_bayar ?? t.total_biaya ?? 0;
         rows.push([
-            t.id, t.pelanggan, t.wa || '', t.layanan, t.kuantitas, t.total_biaya, t.total_bayar, t.metode, t.status, t.kasir, t.shift, t.tanggal, t.waktu
+            t.id ?? '',
+            t.pelanggan ?? '',
+            t.wa ?? '',
+            t.layanan ?? '',
+            t.kuantitas ?? '',
+            t.total_biaya ?? totalBayar,
+            totalBayar,
+            t.metode ?? '',
+            t.status ?? 'Lunas',
+            t.kasir ?? '',
+            t.shift ?? '',
+            t.tanggal ?? '',
+            t.waktu ?? ''
         ]);
     });
-    downloadCSV('Laporan_Transaksi_Kino_' + new Date().toISOString().slice(0,10) + '.csv', rows);
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    const periodeSlug = String(periode).replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+    downloadCSV('Laporan_Transaksi_Kino_' + periodeSlug + '_' + stamp + '.csv', rows);
+    showToast('Laporan ' + periode + ' berhasil diunduh (' + txs.length + ' transaksi)', 'success');
 }
 
 
