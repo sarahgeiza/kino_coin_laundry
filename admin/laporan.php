@@ -124,14 +124,9 @@ foreach ($all_session_txs as $t) {
 </div>
 
 <!-- Empty State Container (Hidden by default, shown when Kosong) -->
-<div id="laporanEmptyCard" class="card" style="display: none; text-align: center; padding: 34px 20px; color: var(--text-muted); margin-bottom: 16px;">
-    <div style="margin-bottom: 8px;"><?= get_icon('rekap', 36, '#94a3b8') ?></div>
-    <strong id="laporanEmptyTitle" style="font-size: 14px; color: var(--text-main);">Tidak ada transaksi di periode ini</strong>
-    <p id="laporanEmptyHint" style="font-size: 12px; margin-top: 4px; line-height: 1.6;">Pilih periode lain atau atur rentang tanggal.</p>
-    <div style="display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap;">
-        <button type="button" class="btn btn-outline" style="width: auto; padding: 8px 14px; font-size: 12px;" onclick="switchLaporanPeriode('7 Hari')">Lihat 7 Hari Terakhir</button>
-        <button type="button" class="btn btn-outline" style="width: auto; padding: 8px 14px; font-size: 12px;" onclick="jumpToLastTransaction()">Lihat Transaksi Terakhir</button>
-    </div>
+<div id="laporanDetailEmpty" style="display: none; text-align: center; padding: 22px 14px; color: var(--text-muted); border: 1px dashed var(--border); border-radius: var(--radius-md); margin-bottom: 8px;">
+    <strong id="laporanEmptyTitle" style="font-size: 13px; color: var(--text-main); display: block;">Belum ada transaksi</strong>
+    <p id="laporanEmptyHint" style="font-size: 11px; margin-top: 4px; line-height: 1.6;">Grafik tetap ditampilkan. Pilih periode lain untuk melihat data.</p>
 </div>
 
 <!-- Main Omset Summary & Dynamic Animated Chart -->
@@ -267,13 +262,17 @@ function switchLaporanPeriode(mode) {
     const today = new Date(window.__TODAY_KEY + 'T00:00:00');
 
     if (mode === 'Kosong') {
-        renderLaporanView([], [], 'TOTAL OMSET (KOSONG)', 0, 'Grafik Tren Omset (Kosong)', 'Kosong');
+        const zeroDays = buildDays(shiftDays(today, -6), today).map(d => ({
+            dateKey: d.dateKey, d: d.d, name: d.name, omset: 0, count: 0, txs: [], is_active: true
+        }));
+        renderLaporanView(zeroDays, [], 'TOTAL OMSET (KOSONG)', 0, 'Grafik Tren Omset (Kosong)', 'Kosong');
         return;
     }
     if (mode === 'Kemarin') {
         const y = shiftDays(today, -1);
-        const days = buildDays(y, y);
-        renderLaporanView(days, collectTx(days), 'TOTAL OMSET (KEMARIN)', sumOmset(days), 'Grafik Omset Kemarin', 'Kemarin');
+        const periodDays = buildDays(y, y);          // data yang dihitung
+        const chartDays = buildDays(shiftDays(y, -6), y); // grafik tetap 7 hari (UI/UX)
+        renderLaporanView(chartDays, collectTx(periodDays), 'TOTAL OMSET (KEMARIN)', sumOmset(periodDays), 'Grafik Tren Omset 7 Hari', 'Kemarin');
         return;
     }
     if (mode === '7 Hari') {
@@ -281,9 +280,10 @@ function switchLaporanPeriode(mode) {
         renderLaporanView(days, collectTx(days), 'TOTAL OMSET (7 HARI)', sumOmset(days), 'Grafik Tren Omset 7 Hari', '7 Hari');
         return;
     }
-    // Hari Ini
-    const days = buildDays(today, today);
-    renderLaporanView(days, collectTx(days), 'TOTAL OMSET (HARI INI)', sumOmset(days), 'Grafik Omset Hari Ini', 'Hari Ini');
+    // Hari Ini: total & daftar hanya hari ini, grafik tetap tren 7 hari
+    const periodDays = buildDays(today, today);
+    const chartDays = buildDays(shiftDays(today, -6), today);
+    renderLaporanView(chartDays, collectTx(periodDays), 'TOTAL OMSET (HARI INI)', sumOmset(periodDays), 'Grafik Tren Omset 7 Hari', 'Hari Ini');
 }
 
 function applyCustomDateFilter() {
@@ -341,10 +341,11 @@ function jumpToLastTransaction() {
 }
 
 function renderLaporanView(days, txList, titleText, totalOmset, subtitleText, periodeLabel) {
+    // Grafik SELALU tampil (mengikuti UI/UX), termasuk saat periode kosong.
     const mainCard = document.getElementById('laporanMainCard');
-    const emptyCard = document.getElementById('laporanEmptyCard');
+    if (mainCard) mainCard.style.display = 'block';
 
-    // Selalu simpan konteks ekspor, termasuk saat kosong (supaya tidak mengekspor data periode lain)
+    // Simpan konteks ekspor, termasuk saat kosong
     window.__CURRENT_LAPORAN_TXS = txList;
     window.__CURRENT_LAPORAN_PERIODE = periodeLabel || currentActiveFilter;
 
@@ -352,30 +353,6 @@ function renderLaporanView(days, txList, titleText, totalOmset, subtitleText, pe
     document.getElementById('laporanTotalOmset').textContent = formatRupiahJS(totalOmset);
     document.getElementById('laporanTxCount').textContent = '(' + txList.length + ' transaksi)';
     document.getElementById('chartSubTitle').textContent = subtitleText;
-
-    if (!txList.length) {
-        if (mainCard) mainCard.style.display = 'none';
-        if (emptyCard) emptyCard.style.display = 'block';
-
-        const titleEl = document.getElementById('laporanEmptyTitle');
-        const hintEl = document.getElementById('laporanEmptyHint');
-        const lastKey = lastTransactionDate();
-
-        if (titleEl) titleEl.textContent = 'Tidak ada transaksi pada periode ' + (periodeLabel || currentActiveFilter);
-        if (hintEl) {
-            if (lastKey) {
-                const lk = new Date(lastKey + 'T00:00:00');
-                hintEl.innerHTML = 'Transaksi terakhir tercatat pada <strong>' +
-                    String(lk.getDate()).padStart(2, '0') + ' ' + bulanID(lk.getMonth()) + ' ' + lk.getFullYear() +
-                    '</strong>.<br>Gunakan tombol di bawah untuk melihat data yang tersedia.';
-            } else {
-                hintEl.textContent = 'Belum ada transaksi sama sekali di database.';
-            }
-        }
-        return;
-    }
-    if (mainCard) mainCard.style.display = 'block';
-    if (emptyCard) emptyCard.style.display = 'none';
 
     // ---- Chart bars ----
     const bars = document.getElementById('chartBarsContainer');
@@ -386,27 +363,25 @@ function renderLaporanView(days, txList, titleText, totalOmset, subtitleText, pe
     const maxOmset = Math.max(...days.map(d => d.omset), 1);
 
     days.forEach(d => {
-        const heightPx = d.omset <= 0 ? 6 : Math.max(12, Math.round((d.omset / maxOmset) * 80));
-        const active = d.omset > 0;
-        const bg = active
-            ? 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)'
-            : '#cbd5e1';
+        const hasValue = d.omset > 0;
+        const heightPx = hasValue ? Math.max(12, Math.round((d.omset / maxOmset) * 80)) : 6;
+        const bg = hasValue ? 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)' : '#cbd5e1';
 
         const col = document.createElement('div');
         col.className = 'chart-col';
         col.title = d.d + ' ' + d.name + ': ' + formatRupiahJS(d.omset) + ' (' + d.count + ' trx)';
         col.innerHTML =
-            '<span style="font-size:9px;font-weight:800;color:' + (active ? '#1d4ed8' : '#94a3b8') + ';margin-bottom:4px;white-space:nowrap;">'
+            '<span style="font-size:9px;font-weight:800;color:' + (hasValue ? '#1d4ed8' : '#94a3b8') + ';margin-bottom:4px;white-space:nowrap;">'
             + shortRupiah(d.omset) + '</span>' +
             '<div class="chart-bar-el" style="height:' + heightPx + 'px;background:' + bg + ';box-shadow:' +
-            (active ? '0 3px 8px rgba(37,99,235,0.35)' : 'none') + ';"></div>';
+            (hasValue ? '0 3px 8px rgba(37,99,235,0.35)' : 'none') + ';"></div>';
         bars.appendChild(col);
 
         const lbl = document.createElement('div');
         lbl.style.flex = '1';
         lbl.style.textAlign = 'center';
         lbl.innerHTML =
-            '<span style="font-size:10px;font-weight:' + (active ? '900' : '700') + ';color:' + (active ? '#1e3a8a' : '#94a3b8') + ';display:block;">'
+            '<span style="font-size:10px;font-weight:' + (hasValue ? '900' : '700') + ';color:' + (hasValue ? '#1e3a8a' : '#94a3b8') + ';display:block;">'
             + d.d + '</span>' +
             '<span style="font-size:9px;color:#94a3b8;display:block;margin-top:-2px;">' + d.name + '</span>';
         labels.appendChild(lbl);
@@ -414,7 +389,32 @@ function renderLaporanView(days, txList, titleText, totalOmset, subtitleText, pe
 
     // ---- Detail list ----
     const list = document.getElementById('laporanDetailList');
+    const note = document.getElementById('laporanDetailEmpty');
     list.innerHTML = '';
+
+    if (!txList.length) {
+        if (note) {
+            note.style.display = 'block';
+            const titleEl = document.getElementById('laporanEmptyTitle');
+            const hintEl = document.getElementById('laporanEmptyHint');
+            const lastKey = lastTransactionDate();
+
+            if (titleEl) titleEl.textContent = 'Belum ada transaksi pada periode ' + (periodeLabel || currentActiveFilter);
+            if (hintEl) {
+                if (lastKey) {
+                    const lk = new Date(lastKey + 'T00:00:00');
+                    hintEl.innerHTML = 'Transaksi terakhir tercatat <strong>' +
+                        String(lk.getDate()).padStart(2, '0') + ' ' + bulanID(lk.getMonth()) + ' ' + lk.getFullYear() +
+                        '</strong>. Grafik tetap ditampilkan sesuai periode.';
+                } else {
+                    hintEl.textContent = 'Belum ada transaksi sama sekali di database.';
+                }
+            }
+        }
+        return;
+    }
+
+    if (note) note.style.display = 'none';
     txList.forEach(t => {
         const item = document.createElement('div');
         item.style.cssText = 'background:#f8fafc;border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;margin-bottom:8px;';
