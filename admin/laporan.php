@@ -124,10 +124,14 @@ foreach ($all_session_txs as $t) {
 </div>
 
 <!-- Empty State Container (Hidden by default, shown when Kosong) -->
-<div id="laporanEmptyCard" class="card" style="display: none; text-align: center; padding: 40px 20px; color: var(--text-muted); margin-bottom: 16px;">
+<div id="laporanEmptyCard" class="card" style="display: none; text-align: center; padding: 34px 20px; color: var(--text-muted); margin-bottom: 16px;">
     <div style="margin-bottom: 8px;"><?= get_icon('rekap', 36, '#94a3b8') ?></div>
-    <strong style="font-size: 14px; color: var(--text-main);">Tidak ada transaksi di periode ini</strong>
-    <p style="font-size: 12px; margin-top: 4px;">Pilih periode lain atau atur rentang tanggal.</p>
+    <strong id="laporanEmptyTitle" style="font-size: 14px; color: var(--text-main);">Tidak ada transaksi di periode ini</strong>
+    <p id="laporanEmptyHint" style="font-size: 12px; margin-top: 4px; line-height: 1.6;">Pilih periode lain atau atur rentang tanggal.</p>
+    <div style="display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap;">
+        <button type="button" class="btn btn-outline" style="width: auto; padding: 8px 14px; font-size: 12px;" onclick="switchLaporanPeriode('7 Hari')">Lihat 7 Hari Terakhir</button>
+        <button type="button" class="btn btn-outline" style="width: auto; padding: 8px 14px; font-size: 12px;" onclick="jumpToLastTransaction()">Lihat Transaksi Terakhir</button>
+    </div>
 </div>
 
 <!-- Main Omset Summary & Dynamic Animated Chart -->
@@ -316,6 +320,26 @@ function sumOmset(days) {
     return days.reduce((a, d) => a + d.omset, 0);
 }
 
+const BULAN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+function bulanID(m) { return BULAN[m]; }
+
+function lastTransactionDate() {
+    const keys = (window.__LIVE_TX || []).map(t => t.filter_date).filter(Boolean).sort();
+    return keys.length ? keys[keys.length - 1] : null;
+}
+
+function jumpToLastTransaction() {
+    const key = lastTransactionDate();
+    if (!key) { showToast('Belum ada transaksi di database', 'error'); return; }
+    const d = new Date(key + 'T00:00:00');
+    const s = document.getElementById('customStartDate');
+    const e = document.getElementById('customEndDate');
+    if (s) s.value = key;
+    if (e) e.value = key;
+    switchLaporanPeriode('Custom');
+    showToast('Menampilkan transaksi ' + String(d.getDate()).padStart(2, '0') + ' ' + bulanID(d.getMonth()) + ' ' + d.getFullYear(), 'success');
+}
+
 function renderLaporanView(days, txList, titleText, totalOmset, subtitleText, periodeLabel) {
     const mainCard = document.getElementById('laporanMainCard');
     const emptyCard = document.getElementById('laporanEmptyCard');
@@ -332,6 +356,22 @@ function renderLaporanView(days, txList, titleText, totalOmset, subtitleText, pe
     if (!txList.length) {
         if (mainCard) mainCard.style.display = 'none';
         if (emptyCard) emptyCard.style.display = 'block';
+
+        const titleEl = document.getElementById('laporanEmptyTitle');
+        const hintEl = document.getElementById('laporanEmptyHint');
+        const lastKey = lastTransactionDate();
+
+        if (titleEl) titleEl.textContent = 'Tidak ada transaksi pada periode ' + (periodeLabel || currentActiveFilter);
+        if (hintEl) {
+            if (lastKey) {
+                const lk = new Date(lastKey + 'T00:00:00');
+                hintEl.innerHTML = 'Transaksi terakhir tercatat pada <strong>' +
+                    String(lk.getDate()).padStart(2, '0') + ' ' + bulanID(lk.getMonth()) + ' ' + lk.getFullYear() +
+                    '</strong>.<br>Gunakan tombol di bawah untuk melihat data yang tersedia.';
+            } else {
+                hintEl.textContent = 'Belum ada transaksi sama sekali di database.';
+            }
+        }
         return;
     }
     if (mainCard) mainCard.style.display = 'block';

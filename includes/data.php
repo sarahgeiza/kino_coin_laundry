@@ -2,6 +2,10 @@
 // Output buffering to prevent headers already sent
 if (ob_get_level() === 0) ob_start();
 
+// Zona waktu operasional toko (WIB). Tanpa ini, PHP memakai UTC server sehingga
+// transaksi dini hari WIB bisa tercatat pada tanggal yang salah.
+date_default_timezone_set('Asia/Jakarta');
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
