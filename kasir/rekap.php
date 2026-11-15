@@ -2,6 +2,17 @@
 require_once __DIR__ . '/../includes/data.php';
 check_auth_guard('kasir');
 
+$current_kasir = $_SESSION['username'] ?? '';
+
+// GUARD: Rekap & Tutup Shift hanya boleh diakses setelah kasir benar-benar
+// menekan "Mulai Shift & Presensi" (terbukti ada baris shift aktif di database).
+$active_shift_row = db_active_shift($current_kasir);
+if ($active_shift_row === null) {
+    $_SESSION['kasir_checked_in'] = false;
+    header('Location: index.php?toast=need_checkin');
+    exit;
+}
+
 // Hitung total dari transaksi riil database Supabase
 $current_tx_list = $_SESSION['transactions'] ?? [];
 $display_income = 0;
@@ -18,13 +29,12 @@ foreach ($current_tx_list as $t) {
 }
 
 // Handle Close Shift POST BEFORE header output
-$current_kasir = $_SESSION['username'] ?? 'Daniel';
 $kasir_shift = get_active_kasir_shift($current_kasir);
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'tutup_shift') {
+    $closed = db_close_shift($current_kasir, $display_income, 0);
     $_SESSION['kasir_checked_in'] = false;
-    db_close_shift($current_kasir, $display_income, 0);
-    header('Location: index.php?shift_closed=1');
+    header('Location: index.php?' . ($closed ? 'shift_closed=1' : 'toast=close_failed'));
     exit;
 }
 

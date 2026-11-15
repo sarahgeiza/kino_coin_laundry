@@ -57,7 +57,13 @@ function initUrlToasts() {
         showToast('Akun pelanggan berhasil didaftarkan', 'success');
     }
     if (params.get('toast') === 'need_checkin') {
-        showToast('Wajib mulai shift & presensi terlebih dahulu sebelum mencatat transaksi', 'error', 4000);
+        showToast('Wajib mulai shift & presensi terlebih dahulu. Rekap dan tutup shift terkunci.', 'error', 4500);
+    }
+    if (params.get('toast') === 'close_failed') {
+        showToast('Gagal menutup shift: tidak ada shift aktif atas nama Anda.', 'error', 4500);
+    }
+    if (params.get('toast') === 'shift_failed') {
+        showToast('Gagal memulai shift. Periksa koneksi database lalu coba lagi.', 'error', 4500);
     }
 }
 

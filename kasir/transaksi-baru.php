@@ -2,8 +2,10 @@
 require_once __DIR__ . '/../includes/data.php';
 check_auth_guard('kasir');
 
-// Wajib check-in presensi terlebih dahulu sebelum mencatat transaksi kasir
-if (empty($_SESSION['kasir_checked_in'])) {
+// Wajib check-in presensi terlebih dahulu sebelum mencatat transaksi kasir.
+// Sumber kebenaran: ada/tidaknya baris shift_operasional berstatus 'aktif' di Supabase.
+if (db_active_shift($_SESSION['username'] ?? '') === null) {
+    $_SESSION['kasir_checked_in'] = false;
     header('Location: index.php?toast=need_checkin');
     exit;
 }

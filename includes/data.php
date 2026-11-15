@@ -383,6 +383,41 @@ function db_save_member(string $nama, string $wa, ?string $password = null): ?ar
 /**
  * Mulai shift kasir & simpan presensi ke Supabase
  */
+/**
+ * Ambil shift operasional yang sedang AKTIF milik kasir tertentu.
+ * Sumber kebenaran tunggal: tabel shift_operasional di Supabase.
+ */
+function db_active_shift(string $kasir_name): ?array
+{
+    try {
+        $conn = getConnection();
+        if (!$conn) return null;
+
+        $u_res = @pg_query_params(
+            $conn,
+            "SELECT id_pengguna FROM pengguna WHERE nama ILIKE $1 OR username ILIKE $1 LIMIT 1",
+            ["%$kasir_name%"]
+        );
+        if (!$u_res || pg_num_rows($u_res) === 0) return null;
+        $id_kasir = (int) pg_fetch_result($u_res, 0, 'id_pengguna');
+
+        $res = @pg_query_params($conn, "
+            SELECT so.id_shift_operasional, so.id_shift, so.mulai_pada,
+                   s.nama_shift, s.jam_mulai, s.jam_selesai
+            FROM shift_operasional so
+            JOIN shift s ON s.id_shift = so.id_shift
+            WHERE so.id_kasir = $1 AND so.status = 'aktif'
+            ORDER BY so.id_shift_operasional DESC
+            LIMIT 1
+        ", [$id_kasir]);
+
+        if (!$res || pg_num_rows($res) === 0) return null;
+        return pg_fetch_assoc($res);
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
 function db_start_shift(string $kasir_name, int $shift_id = 2): bool
 {
     try {
@@ -409,8 +444,10 @@ function db_start_shift(string $kasir_name, int $shift_id = 2): bool
 }
 
 /**
- * Tutup shift kasir & audit selisih kas fisik di Supabase
- * Mematuhi check constraint PostgreSQL: status IN ('aktif', 'ditutup')
+ * Tutup shift kasir & audit selisih kas fisik di Supabase.
+ * Hanya menutup shift milik kasir yang bersangkutan.
+ * Tidak ada fallback lintas-kasir: kasir tidak bisa menutup shift orang lain
+ * atau "menutup" shift yang tidak pernah ia buka.
  */
 function db_close_shift(string $kasir_name, int $total_fisik = 0, int $selisih = 0): bool
 {
@@ -418,35 +455,17 @@ function db_close_shift(string $kasir_name, int $total_fisik = 0, int $selisih =
         $conn = getConnection();
         if (!$conn) return false;
 
-        $u_res = @pg_query_params($conn, "SELECT id_pengguna FROM pengguna WHERE nama ILIKE $1 OR username ILIKE $1", ["%$kasir_name%"]);
-        $id_kasir = ($u_res && pg_num_rows($u_res) > 0) ? (int)pg_fetch_result($u_res, 0, 'id_pengguna') : null;
+        $active = db_active_shift($kasir_name);
+        if (!$active) return false; // Tidak ada shift aktif milik kasir ini
 
-        $affected = 0;
-        // 1. Coba tutup shift aktif milik kasir yang sedang login
-        if ($id_kasir) {
-            $res = @pg_query_params($conn, "
-                UPDATE shift_operasional 
-                SET status = 'ditutup', ditutup_pada = NOW(), total_fisik = $2, selisih = $3 
-                WHERE id_kasir = $1 AND status = 'aktif'
-            ", [$id_kasir, $total_fisik, $selisih]);
-            $affected = $res ? pg_affected_rows($res) : 0;
-        }
+        $res = @pg_query_params($conn, "
+            UPDATE shift_operasional
+            SET status = 'ditutup', ditutup_pada = NOW(), total_fisik = $2, selisih = $3
+            WHERE id_shift_operasional = $1 AND status = 'aktif'
+        ", [(int) $active['id_shift_operasional'], $total_fisik, $selisih]);
 
-        // 2. Jika kasir ini bukan pembuka shift tapi ada shift toko yang sedang aktif, tutup shift aktif toko
-        if ($affected === 0) {
-            $res2 = @pg_query_params($conn, "
-                UPDATE shift_operasional 
-                SET status = 'ditutup', ditutup_pada = NOW(), total_fisik = $1, selisih = $2 
-                WHERE id_shift_operasional = (
-                    SELECT id_shift_operasional FROM shift_operasional 
-                    WHERE status = 'aktif' 
-                    ORDER BY id_shift_operasional DESC LIMIT 1
-                )
-            ", [$total_fisik, $selisih]);
-            $affected = $res2 ? pg_affected_rows($res2) : 0;
-        }
-
-        sync_live_database();
+        $affected = $res ? pg_affected_rows($res) : 0;
+        if ($affected > 0) sync_live_database();
         return $affected > 0;
     } catch (Throwable $e) {
         return false;

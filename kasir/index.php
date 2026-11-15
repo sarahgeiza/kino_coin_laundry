@@ -7,9 +7,9 @@ $current_kasir_name = $_SESSION['username'] ?? 'Daniel';
 $kasir_shift = get_active_kasir_shift($current_kasir_name);
 
 if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
-    $_SESSION['kasir_checked_in'] = true;
-    db_start_shift($current_kasir_name, $kasir_shift['id'] ?? 2);
-    header('Location: index.php?shift_started=1');
+    $started = db_start_shift($current_kasir_name, $kasir_shift['id'] ?? 2);
+    $_SESSION['kasir_checked_in'] = $started;
+    header('Location: index.php?' . ($started ? 'shift_started=1' : 'toast=shift_failed'));
     exit;
 }
 
@@ -19,8 +19,10 @@ $active_tab = 'home';
 
 require_once __DIR__ . '/../includes/header.php';
 
-// Check if check-in needed (Modal M1)
-$need_checkin = empty($_SESSION['kasir_checked_in']);
+// Check if check-in needed (Modal M1) - sumber kebenaran: shift_operasional di Supabase
+$active_shift_row = db_active_shift($current_kasir_name);
+$need_checkin = ($active_shift_row === null);
+$_SESSION['kasir_checked_in'] = !$need_checkin;
 
 // Hitung metrik shift kasir langsung dari transaksi riil database Supabase
 $current_tx_list = $_SESSION['transactions'] ?? [];
