@@ -174,7 +174,10 @@ function sync_live_database(): bool
                    STRING_AGG(l.nama_layanan, ', ') as layanan_names,
                    COALESCE(SUM(d.jumlah_koin), 0) as total_koin,
                    COALESCE(SUM(d.berat), 0) as total_berat,
-                   COUNT(d.id_detail) as qty_count
+                   COUNT(d.id_detail) as qty_count,
+                   BOOL_OR(l.nama_layanan ILIKE '%drop off%' OR l.nama_layanan ILIKE '%lipat%') AS has_dropoff,
+                   BOOL_OR(l.nama_layanan ILIKE '%cuci%' OR l.nama_layanan ILIKE '%kering%' OR l.nama_layanan ILIKE '%extra%') AS has_machine,
+                   BOOL_OR(l.nama_layanan ILIKE '%sabun%' OR l.nama_layanan ILIKE '%softener%' OR l.nama_layanan ILIKE '%kresek%') AS has_retail
             FROM transaksi t
             JOIN pelanggan p ON p.id_pelanggan = t.id_pelanggan
             JOIN pengguna u ON u.id_pengguna = t.id_kasir
@@ -188,14 +191,27 @@ function sync_live_database(): bool
         if ($res_t) {
             $txs = [];
             while ($row = pg_fetch_assoc($res_t)) {
+                // Kategori transaksi diturunkan dari layanan pada detail transaksi
+                $is_true = fn($v) => ($v === true || $v === 't' || $v === '1' || $v === 1);
+                if ($is_true($row['has_dropoff'])) {
+                    $kategori_trx = 'DROP_OFF';
+                    $layanan_tipe = 'Drop Off (Tunai)';
+                } elseif ($is_true($row['has_machine'])) {
+                    $kategori_trx = 'SELF_SERVICE';
+                    $layanan_tipe = 'Self Service (Token)';
+                } else {
+                    $kategori_trx = 'ADDITIONAL';
+                    $layanan_tipe = 'Additional (Tunai)';
+                }
+
                 $txs[] = [
                     'id' => $row['no_invoice'] ?: ('INV-' . str_pad((string)$row['id_transaksi'], 3, '0', STR_PAD_LEFT)),
                     'pelanggan' => $row['nama_pelanggan'],
                     'wa' => $row['no_hp'],
                     'kode_kartu' => $row['kode_kartu'] ?: ('KC-P-' . str_pad((string)$row['id_pelanggan'], 4, '0', STR_PAD_LEFT)),
                     'layanan' => $row['layanan_names'] ?: 'Cuci Kering',
-                    'layanan_tipe' => 'Layanan Mesin',
-                    'kategori' => 'SELF_SERVICE',
+                    'layanan_tipe' => $layanan_tipe,
+                    'kategori' => $kategori_trx,
                     'kuantitas' => ($row['total_berat'] > 0 ? $row['total_berat'] . ' kg' : $row['qty_count'] . ' item'),
                     'qty_num' => (int) $row['qty_count'],
                     'total_biaya' => (int) $row['total_bayar'],
