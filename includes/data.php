@@ -174,6 +174,7 @@ function sync_live_database(): bool
                    STRING_AGG(l.nama_layanan, ', ') as layanan_names,
                    COALESCE(SUM(d.jumlah_koin), 0) as total_koin,
                    COALESCE(SUM(d.berat), 0) as total_berat,
+                   COALESCE(SUM(d.jumlah), 0) as total_putaran,
                    COUNT(d.id_detail) as qty_count,
                    BOOL_OR(l.nama_layanan ILIKE '%drop off%' OR l.nama_layanan ILIKE '%lipat%') AS has_dropoff,
                    BOOL_OR(l.nama_layanan ILIKE '%cuci%' OR l.nama_layanan ILIKE '%kering%' OR l.nama_layanan ILIKE '%extra%') AS has_machine,
@@ -212,7 +213,10 @@ function sync_live_database(): bool
                     'layanan' => $row['layanan_names'] ?: 'Cuci Kering',
                     'layanan_tipe' => $layanan_tipe,
                     'kategori' => $kategori_trx,
-                    'kuantitas' => ($row['total_berat'] > 0 ? $row['total_berat'] . ' kg' : $row['qty_count'] . ' item'),
+                    'kuantitas' => ($row['total_berat'] > 0
+                        ? (rtrim(rtrim(number_format((float) $row['total_berat'], 1, ',', ''), '0'), ',') . ' kg'
+                            . ((int) $row['total_putaran'] > 1 ? ' · ' . (int) $row['total_putaran'] . ' putaran' : ''))
+                        : $row['qty_count'] . ' item'),
                     'qty_num' => (int) $row['qty_count'],
                     'total_biaya' => (int) $row['total_bayar'],
                     'metode' => ucfirst($row['jenis_pembayaran']),
@@ -357,6 +361,7 @@ function db_save_transaction(array $data): ?string
         // 4. Insert detail transaksi
         $id_layanan = (int)($data['service_id'] ?? 1);
         $qty = (int)($data['qty'] ?? 1);
+        $berat = (float)($data['berat'] ?? 7.5);
         $koin_total = (int)(($data['koin_cuci'] ?? 0) + ($data['koin_kering'] ?? 0));
         $harga_satuan = (int)($data['tarif'] ?? $total_bayar);
 
@@ -367,7 +372,7 @@ function db_save_transaction(array $data): ?string
                 $1, $2, $3, $4, $5, $6, $7
             )
         ", [
-            $id_transaksi, $id_layanan, 7.5, $qty, $koin_total, $harga_satuan, $total_bayar
+            $id_transaksi, $id_layanan, $berat, $qty, $koin_total, $harga_satuan, $total_bayar
         ]);
 
         if (!$ins_d) {

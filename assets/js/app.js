@@ -139,6 +139,27 @@ function initTransactionCalculator() {
     const statusBadgeEl = document.getElementById('statusBadgeDisplay');
     const kuantitasErrorEl = document.getElementById('kuantitasErrorAlert');
 
+    // Kapasitas maksimal satu putaran mesin (kg)
+    const MAX_KG_PER_CYCLE = 7.5;
+    const WASH_COIN_RATE = 7000;
+    const DRY_COIN_RATE = 10000;
+
+    // Layanan yang dihitung per berat cucian (kg), bukan per putaran manual
+    function isWeightBased(name) {
+        const n = (name || '').toLowerCase().trim();
+        return n === 'cuci' || n === 'kering' || n === 'cuci kering' || n === 'cuci + kering';
+    }
+
+    function serviceHasWash(name) {
+        const n = (name || '').toLowerCase();
+        return n.includes('cuci');
+    }
+
+    function serviceHasDry(name) {
+        const n = (name || '').toLowerCase();
+        return n.includes('kering');
+    }
+
     function calculate() {
         const option = serviceSelect.options[serviceSelect.selectedIndex];
         if (!option) return;
@@ -146,21 +167,53 @@ function initTransactionCalculator() {
         const rate = parseInt(option.getAttribute('data-price') || 0);
         const category = option.getAttribute('data-category') || 'SELF_SERVICE';
         const unit = option.getAttribute('data-unit') || 'putaran';
-        const qty = parseInt(qtyInput.value) || 0;
+        const serviceName = option.text.split('—')[0].trim();
+        const weightBased = isWeightBased(serviceName) && category === 'SELF_SERVICE';
 
         const qtyUnitLabel = document.getElementById('qtyUnitLabel');
-        if (qtyUnitLabel) {
-            qtyUnitLabel.textContent = unit;
+        const putaranHint = document.getElementById('putaranHint');
+        const cyclesInput = document.getElementById('cyclesInput');
+
+        let kg = 0;
+        let cycles = 0;
+
+        if (weightBased) {
+            kg = parseFloat(qtyInput.value) || 0;
+            // Setiap 7,5 kg butuh 1 putaran; kelebihan berat menambah putaran
+            cycles = kg > 0 ? Math.ceil(kg / MAX_KG_PER_CYCLE) : 0;
+            if (qtyUnitLabel) qtyUnitLabel.textContent = 'kg';
+            qtyInput.setAttribute('step', '0.5');
+            qtyInput.setAttribute('min', '0.5');
+            if (putaranHint) {
+                if (cycles > 0) {
+                    const sisa = (cycles * MAX_KG_PER_CYCLE) - kg;
+                    putaranHint.style.display = 'block';
+                    putaranHint.innerHTML = 'Butuh <strong>' + cycles + ' putaran</strong> (maks ' +
+                        MAX_KG_PER_CYCLE.toString().replace('.', ',') + ' kg/putaran)' +
+                        (sisa > 0 ? ' &middot; sisa kapasitas ' + sisa.toFixed(1).replace('.', ',') + ' kg' : '');
+                } else {
+                    putaranHint.style.display = 'none';
+                }
+            }
+        } else {
+            kg = parseInt(qtyInput.value) || 0;
+            cycles = kg;
+            if (qtyUnitLabel) qtyUnitLabel.textContent = unit;
+            qtyInput.setAttribute('step', '1');
+            qtyInput.setAttribute('min', '1');
+            if (putaranHint) putaranHint.style.display = 'none';
         }
 
+        if (cyclesInput) cyclesInput.value = cycles;
+
         // Validation: Kuantitas > 0
-        if (qty <= 0) {
+        if (kg <= 0) {
             if (kuantitasErrorEl) kuantitasErrorEl.style.display = 'block';
         } else {
             if (kuantitasErrorEl) kuantitasErrorEl.style.display = 'none';
         }
 
-        const totalBill = rate * qty;
+        const totalBill = rate * cycles;
         if (totalBillEl) {
             totalBillEl.textContent = 'Rp ' + totalBill.toLocaleString('id-ID');
             totalBillEl.classList.remove('num-pulse');
@@ -173,16 +226,67 @@ function initTransactionCalculator() {
             if (tokenSection) tokenSection.style.display = 'block';
             if (tunaiAlertBox) tunaiAlertBox.style.display = 'none';
 
-            const qtyWash = parseInt(coinWashInput ? coinWashInput.value : 0) || 0;
-            const qtyDry = parseInt(coinDryInput ? coinDryInput.value : 0) || 0;
+            const hasWash = serviceHasWash(serviceName);
+            const hasDry = serviceHasDry(serviceName);
 
-            const valWash = qtyWash * 7000;
-            const valDry = qtyDry * 10000;
+            let qtyWash = 0;
+            let qtyDry = 0;
+
+            if (weightBased) {
+                // Koin ditentukan sistem: 1 putaran = 1 koin cuci + 1 koin kering
+                qtyWash = hasWash ? cycles : 0;
+                qtyDry = hasDry ? cycles : 0;
+            } else {
+                qtyWash = parseInt(coinWashInput ? coinWashInput.value : 0) || 0;
+                qtyDry = parseInt(coinDryInput ? coinDryInput.value : 0) || 0;
+            }
+
+            if (coinWashInput) {
+                coinWashInput.value = qtyWash;
+                coinWashInput.readOnly = weightBased;
+                coinWashInput.style.background = weightBased ? '#f1f5f9' : '#ffffff';
+                coinWashInput.style.cursor = weightBased ? 'not-allowed' : '';
+            }
+            if (coinDryInput) {
+                coinDryInput.value = qtyDry;
+                coinDryInput.readOnly = weightBased;
+                coinDryInput.style.background = weightBased ? '#f1f5f9' : '#ffffff';
+                coinDryInput.style.cursor = weightBased ? 'not-allowed' : '';
+            }
+
+            let valWash = 0;
+            let valDry = 0;
+            let washRate = WASH_COIN_RATE;
+            let dryRate = DRY_COIN_RATE;
+
+            if (weightBased) {
+                if (hasWash && hasDry) {
+                    // Paket cuci + kering: sisa harga paket jadi porsi kering
+                    washRate = WASH_COIN_RATE;
+                    dryRate = Math.max(0, rate - WASH_COIN_RATE);
+                    valWash = washRate * qtyWash;
+                    valDry = dryRate * qtyDry;
+                } else if (hasWash) {
+                    washRate = rate;
+                    valWash = rate * qtyWash;
+                } else {
+                    dryRate = rate;
+                    valDry = rate * qtyDry;
+                }
+            } else {
+                valWash = qtyWash * WASH_COIN_RATE;
+                valDry = qtyDry * DRY_COIN_RATE;
+            }
+
+            const washRateEl = document.getElementById('coinWashRate');
+            const dryRateEl = document.getElementById('coinDryRate');
+            if (washRateEl) washRateEl.textContent = '@ Rp ' + washRate.toLocaleString('id-ID') + ' / pcs';
+            if (dryRateEl) dryRateEl.textContent = '@ Rp ' + dryRate.toLocaleString('id-ID') + ' / pcs';
 
             document.getElementById('subtotalWashDisplay').textContent = 'Rp ' + valWash.toLocaleString('id-ID');
             document.getElementById('subtotalDryDisplay').textContent = 'Rp ' + valDry.toLocaleString('id-ID');
 
-            const totalPaid = valWash + valDry;
+            const totalPaid = weightBased ? totalBill : (valWash + valDry);
             if (totalPaidEl) totalPaidEl.textContent = 'Rp ' + totalPaid.toLocaleString('id-ID');
 
             const diff = totalPaid - totalBill;
@@ -229,7 +333,7 @@ function initTransactionCalculator() {
     syncActiveServiceChipFromSelect();
 
     form.addEventListener('submit', function (e) {
-        const qty = parseInt(qtyInput.value) || 0;
+        const qty = parseFloat(qtyInput.value) || 0;
         const name = document.getElementById('inputPelangganNama').value.trim();
         const wa = document.getElementById('inputPelangganWA').value.trim();
 
@@ -405,8 +509,10 @@ function syncActiveServiceChipFromSelect() {
 function changeQty(delta) {
     const input = document.getElementById('qtyInput');
     if (!input) return;
-    let val = (parseInt(input.value) || 0) + delta;
+    const step = parseFloat(input.getAttribute('step')) || 1;
+    let val = (parseFloat(input.value) || 0) + (delta * step);
     if (val < 0) val = 0;
+    val = Math.round(val * 100) / 100;
     input.value = val;
     input.dispatchEvent(new Event('input'));
 }

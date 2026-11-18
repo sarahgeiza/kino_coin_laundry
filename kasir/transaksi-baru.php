@@ -29,7 +29,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     }
     if (empty($trx_error)) {
     $service_id = intval($_POST['service_id'] ?? 1);
-    $qty = intval($_POST['qty'] ?? 1);
+    $qty_raw = (float) ($_POST['qty'] ?? 1);
     $koin_cuci = intval($_POST['koin_cuci'] ?? 0);
     $koin_kering = intval($_POST['koin_kering'] ?? 0);
 
@@ -43,11 +43,34 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     }
     if (!$selected_service) $selected_service = $_SESSION['services'][0];
 
-    $total_biaya = $selected_service['tarif'] * $qty;
+    // Layanan mesin (cuci/kering) dihitung per berat: 1 putaran maksimal 7,5 kg
+    $nama_layanan = strtolower(trim($selected_service['nama']));
+    $layanan_per_kg = ['cuci', 'kering', 'cuci kering', 'cuci + kering'];
+    $is_per_kg = ($selected_service['kategori'] === 'SELF_SERVICE')
+        && in_array($nama_layanan, $layanan_per_kg, true);
+
+    if ($is_per_kg) {
+        $berat = max(0.5, $qty_raw);
+        $putaran = max(1, (int) ceil($berat / 7.5));
+        $qty = $putaran;
+    } else {
+        $berat = 7.5;
+        $qty = max(1, (int) round($qty_raw));
+        $putaran = $qty;
+    }
+
+    $total_biaya = $selected_service['tarif'] * $putaran;
     $is_token = ($selected_service['kategori'] === 'SELF_SERVICE');
-    
+
     if ($is_token) {
-        $total_bayar = ($koin_cuci * 7000) + ($koin_kering * 10000);
+        if ($is_per_kg) {
+            // Koin dihitung sistem: 1 putaran = 1 koin cuci dan/atau 1 koin kering
+            $koin_cuci = (strpos($nama_layanan, 'cuci') !== false) ? $putaran : 0;
+            $koin_kering = (strpos($nama_layanan, 'kering') !== false) ? $putaran : 0;
+            $total_bayar = $total_biaya;
+        } else {
+            $total_bayar = ($koin_cuci * 7000) + ($koin_kering * 10000);
+        }
         $metode = 'Token';
         $status = ($total_bayar >= $total_biaya) ? 'Lunas' : 'Kurang';
     } else {
@@ -62,6 +85,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
         'wa' => $wa,
         'service_id' => $service_id,
         'qty' => $qty,
+        'putaran' => $putaran,
+        'berat' => $berat,
         'koin_cuci' => $koin_cuci,
         'koin_kering' => $koin_kering,
         'tarif' => $selected_service['tarif'] ?? 7000,
@@ -116,7 +141,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
             'layanan' => $selected_service['nama'],
             'layanan_tipe' => $selected_service['kategori_label'],
             'kategori' => $selected_service['kategori'],
-            'kuantitas' => $qty . ' ' . $selected_service['satuan'],
+            'kuantitas' => $is_per_kg
+                ? (rtrim(rtrim(number_format($berat, 1, ',', ''), '0'), ',') . ' kg (' . $putaran . ' putaran)')
+                : ($qty . ' ' . $selected_service['satuan']),
             'qty_num' => $qty,
             'total_biaya' => $total_biaya,
             'metode' => $metode,
@@ -226,9 +253,11 @@ require_once __DIR__ . '/../includes/header.php';
             <label class="form-label">Kuantitas (<span id="qtyUnitLabel">putaran</span>) *</label>
             <div style="display: flex; align-items: center; gap: 10px;">
                 <button type="button" class="btn btn-outline" style="width: 44px; height: 44px; padding: 0; font-size: 20px;" onclick="changeQty(-1)">-</button>
-                <input type="number" min="1" id="qtyInput" name="qty" class="form-control" value="1" style="text-align: center; font-size: 16px; font-weight: 800;" required>
+                <input type="number" min="0.5" step="0.5" id="qtyInput" name="qty" class="form-control" value="1" style="text-align: center; font-size: 16px; font-weight: 800;" required>
                 <button type="button" class="btn btn-outline" style="width: 44px; height: 44px; padding: 0; font-size: 20px;" onclick="changeQty(1)">+</button>
             </div>
+            <input type="hidden" id="cyclesInput" name="putaran" value="1">
+            <div id="putaranHint" style="display: none; margin-top: 8px; font-size: 11px; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 7px 10px;"></div>
             <!-- Alert Kuantitas 0 (K2f) -->
             <div id="kuantitasErrorAlert" style="display: none; color: #dc2626; font-size: 12px; font-weight: 700; margin-top: 6px;">
                 Kuantitas harus &gt; 0
@@ -248,7 +277,7 @@ require_once __DIR__ . '/../includes/header.php';
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border);">
                 <div>
                     <strong>Coin Cuci</strong>
-                    <div style="font-size: 11px; color: var(--text-muted);">@ Rp 7.000 / pcs</div>
+                    <div id="coinWashRate" style="font-size: 11px; color: var(--text-muted);">@ Rp 7.000 / pcs</div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <input type="number" min="0" id="coinWashInput" name="koin_cuci" class="form-control" value="1" style="width: 65px; text-align: center; font-weight: 800;">
@@ -259,7 +288,7 @@ require_once __DIR__ . '/../includes/header.php';
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0;">
                 <div>
                     <strong>Coin Kering</strong>
-                    <div style="font-size: 11px; color: var(--text-muted);">@ Rp 10.000 / pcs</div>
+                    <div id="coinDryRate" style="font-size: 11px; color: var(--text-muted);">@ Rp 10.000 / pcs</div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <input type="number" min="0" id="coinDryInput" name="koin_kering" class="form-control" value="1" style="width: 65px; text-align: center; font-weight: 800;">
