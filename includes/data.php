@@ -365,6 +365,8 @@ function db_save_transaction(array $data): ?string
         $koin_total = (int)(($data['koin_cuci'] ?? 0) + ($data['koin_kering'] ?? 0));
         $harga_satuan = (int)($data['tarif'] ?? $total_bayar);
 
+        $subtotal_main = $harga_satuan * $qty;
+
         $ins_d = @pg_query_params($conn, "
             INSERT INTO detail_transaksi (
                 id_transaksi, id_layanan, berat, jumlah, jumlah_koin, harga_satuan, subtotal
@@ -372,12 +374,31 @@ function db_save_transaction(array $data): ?string
                 $1, $2, $3, $4, $5, $6, $7
             )
         ", [
-            $id_transaksi, $id_layanan, $berat, $qty, $koin_total, $harga_satuan, $total_bayar
+            $id_transaksi, $id_layanan, $berat, $qty, $koin_total, $harga_satuan, $subtotal_main
         ]);
 
         if (!$ins_d) {
             @pg_query($conn, "ROLLBACK");
             return null;
+        }
+
+        // Detail layanan tambahan (sabun, softener, kresek, ...)
+        foreach (($data['addons'] ?? []) as $addon) {
+            $ins_a = @pg_query_params($conn, "
+                INSERT INTO detail_transaksi (
+                    id_transaksi, id_layanan, berat, jumlah, jumlah_koin, harga_satuan, subtotal
+                ) VALUES ($1, $2, NULL, $3, 0, $4, $5)
+            ", [
+                $id_transaksi,
+                (int) $addon['id'],
+                (int) $addon['qty'],
+                (int) $addon['tarif'],
+                (int) $addon['subtotal'],
+            ]);
+            if (!$ins_a) {
+                @pg_query($conn, "ROLLBACK");
+                return null;
+            }
         }
 
         @pg_query($conn, "COMMIT");

@@ -59,7 +59,29 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
         $putaran = $qty;
     }
 
-    $total_biaya = $selected_service['tarif'] * $putaran;
+    // Layanan tambahan (sabun/softener/kresek) menambah tagihan, bukan mengganti layanan
+    $addon_rows = [];
+    $addon_total = 0;
+    foreach (($_POST['addon'] ?? []) as $aid => $aqty) {
+        $aid = (int) $aid;
+        $aqty = (int) $aqty;
+        if ($aqty <= 0) continue;
+        foreach ($_SESSION['services'] as $svc) {
+            if ((int) $svc['id'] === $aid && $svc['kategori'] === 'ADDITIONAL') {
+                $addon_rows[] = [
+                    'id' => $aid,
+                    'nama' => $svc['nama'],
+                    'tarif' => (int) $svc['tarif'],
+                    'qty' => $aqty,
+                    'subtotal' => (int) $svc['tarif'] * $aqty,
+                ];
+                $addon_total += (int) $svc['tarif'] * $aqty;
+                break;
+            }
+        }
+    }
+
+    $total_biaya = ($selected_service['tarif'] * $putaran) + $addon_total;
     $is_token = ($selected_service['kategori'] === 'SELF_SERVICE');
 
     if ($is_token) {
@@ -69,7 +91,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
             $koin_kering = (strpos($nama_layanan, 'kering') !== false) ? $putaran : 0;
             $total_bayar = $total_biaya;
         } else {
-            $total_bayar = ($koin_cuci * 7000) + ($koin_kering * 10000);
+            $total_bayar = ($koin_cuci * 7000) + ($koin_kering * 10000) + $addon_total;
         }
         $metode = 'Token';
         $status = ($total_bayar >= $total_biaya) ? 'Lunas' : 'Kurang';
@@ -89,6 +111,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
         'berat' => $berat,
         'koin_cuci' => $koin_cuci,
         'koin_kering' => $koin_kering,
+        'addons' => $addon_rows,
         'tarif' => $selected_service['tarif'] ?? 7000,
         'total_biaya' => $total_biaya,
         'total_bayar' => $total_bayar,
@@ -138,7 +161,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
             'pelanggan' => $nama,
             'wa' => $wa,
             'kode_kartu' => $member_code,
-            'layanan' => $selected_service['nama'],
+            'layanan' => $selected_service['nama'] . ($addon_rows
+                ? ', ' . implode(', ', array_map(fn($a) => $a['nama'] . ' x' . $a['qty'], $addon_rows))
+                : ''),
             'layanan_tipe' => $selected_service['kategori_label'],
             'kategori' => $selected_service['kategori'],
             'kuantitas' => $is_per_kg
@@ -241,6 +266,7 @@ require_once __DIR__ . '/../includes/header.php';
             <label class="form-label">Paket Layanan *</label>
             <select name="service_id" id="serviceSelect" class="form-control" required>
                 <?php foreach ($_SESSION['services'] as $s): ?>
+                    <?php if ($s['kategori'] === 'ADDITIONAL') continue; ?>
                     <option value="<?= $s['id'] ?>" data-price="<?= $s['tarif'] ?>" data-category="<?= $s['kategori'] ?>" data-unit="<?= htmlspecialchars($s['satuan']) ?>" <?= ($s['id'] === 3 ? 'selected' : '') ?>>
                         <?= htmlspecialchars($s['nama']) ?> — <?= format_rupiah($s['tarif']) ?> (<?= $s['satuan'] ?>)
                     </option>
@@ -258,11 +284,37 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
             <input type="hidden" id="cyclesInput" name="putaran" value="1">
             <div id="putaranHint" style="display: none; margin-top: 8px; font-size: 11px; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 7px 10px;"></div>
+        </div>
+
+        <!-- Layanan Tambahan (ADDITIONAL) -->
+        <?php $addon_services = array_values(array_filter($_SESSION['services'], fn($s) => $s['kategori'] === 'ADDITIONAL')); ?>
+        <?php if (!empty($addon_services)): ?>
+        <div style="margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--border-color, #e2e8f0);">
+            <label class="form-label" style="margin-bottom: 10px;">Layanan Tambahan (opsional)</label>
+            <?php foreach ($addon_services as $a): ?>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid #f1f5f9;">
+                <div>
+                    <div style="font-size: 13px; font-weight: 700;"><?= htmlspecialchars($a['nama']) ?></div>
+                    <div style="font-size: 11px; color: var(--text-muted);"><?= format_rupiah($a['tarif']) ?> / <?= htmlspecialchars($a['satuan']) ?></div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <button type="button" class="btn btn-outline" style="width: 34px; height: 34px; padding: 0; font-size: 16px;" onclick="changeAddon(<?= $a['id'] ?>, -1)">-</button>
+                    <input type="number" min="0" step="1" id="addonInput<?= $a['id'] ?>" name="addon[<?= $a['id'] ?>]" class="form-control" value="0" style="width: 52px; text-align: center; font-weight: 800; padding: 6px;" oninput="clampAddon(this)">
+                    <button type="button" class="btn btn-outline" style="width: 34px; height: 34px; padding: 0; font-size: 16px;" onclick="changeAddon(<?= $a['id'] ?>, 1)">+</button>
+                    <span id="addonSubtotal<?= $a['id'] ?>" style="font-size: 12px; font-weight: 700; min-width: 74px; text-align: right; color: var(--text-muted);">Rp 0</span>
+                </div>
+            </div>
+            <?php endforeach; ?>
+            <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; font-weight: 700;">
+                <span style="color: var(--text-muted);">Subtotal tambahan</span>
+                <span id="addonTotalDisplay">Rp 0</span>
+            </div>
+        </div>
+        <?php endif; ?>
             <!-- Alert Kuantitas 0 (K2f) -->
             <div id="kuantitasErrorAlert" style="display: none; color: #dc2626; font-size: 12px; font-weight: 700; margin-top: 6px;">
                 Kuantitas harus &gt; 0
             </div>
-        </div>
     </div>
 
     <!-- Card 3: Pembayaran Token vs Tunai -->
@@ -439,6 +491,13 @@ function handleQuickCreateMember(e) {
     closeModal('modalNewMember');
     showToast(`Pelanggan ${nama} berhasil ditambahkan`, 'success');
 }
+</script>
+
+<script>
+window.__ADDON_SERVICES = <?= json_encode(array_map(
+    fn($a) => ['id' => (int) $a['id'], 'nama' => $a['nama'], 'tarif' => (int) $a['tarif'], 'satuan' => $a['satuan']],
+    array_values(array_filter($_SESSION['services'], fn($s) => $s['kategori'] === 'ADDITIONAL'))
+), JSON_UNESCAPED_UNICODE) ?>;
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

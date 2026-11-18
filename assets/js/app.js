@@ -122,6 +122,42 @@ function togglePassword(inputId, btnEl) {
 }
 
 // 4. Form Transaksi Baru: Live Calculator & Token Reconciliation (K2, K2b, K2c, K2d, K2e, K2f)
+// ===== Layanan Tambahan (ADDITIONAL) =====
+function getAddonTotal() {
+    let total = 0;
+    const services = window.__ADDON_SERVICES || [];
+    services.forEach(function (s) {
+        const el = document.getElementById('addonInput' + s.id);
+        const qty = el ? Math.max(0, parseInt(el.value) || 0) : 0;
+        const sub = qty * s.tarif;
+        const subEl = document.getElementById('addonSubtotal' + s.id);
+        if (subEl) {
+            subEl.textContent = 'Rp ' + sub.toLocaleString('id-ID');
+            subEl.style.color = qty > 0 ? 'var(--text-main)' : 'var(--text-muted)';
+        }
+        total += sub;
+    });
+    const totEl = document.getElementById('addonTotalDisplay');
+    if (totEl) totEl.textContent = 'Rp ' + total.toLocaleString('id-ID');
+    return total;
+}
+
+function changeAddon(id, delta) {
+    const el = document.getElementById('addonInput' + id);
+    if (!el) return;
+    let v = (parseInt(el.value) || 0) + delta;
+    if (v < 0) v = 0;
+    el.value = v;
+    el.dispatchEvent(new Event('input'));
+}
+
+function clampAddon(el) {
+    let v = parseInt(el.value) || 0;
+    if (v < 0) v = 0;
+    if (!Number.isFinite(v)) v = 0;
+    el.value = v;
+}
+
 function initTransactionCalculator() {
     const form = document.getElementById('formTransaksiBaru');
     if (!form) return;
@@ -213,7 +249,8 @@ function initTransactionCalculator() {
             if (kuantitasErrorEl) kuantitasErrorEl.style.display = 'none';
         }
 
-        const totalBill = rate * cycles;
+        const addonTotal = getAddonTotal();
+        const totalBill = rate * cycles + addonTotal;
         if (totalBillEl) {
             totalBillEl.textContent = 'Rp ' + totalBill.toLocaleString('id-ID');
             totalBillEl.classList.remove('num-pulse');
@@ -326,6 +363,9 @@ function initTransactionCalculator() {
         syncActiveServiceChipFromSelect();
     });
     qtyInput.addEventListener('input', calculate);
+    document.querySelectorAll('[id^="addonInput"]').forEach(function (el) {
+        el.addEventListener('input', calculate);
+    });
     if (coinWashInput) coinWashInput.addEventListener('input', calculate);
     if (coinDryInput) coinDryInput.addEventListener('input', calculate);
 
