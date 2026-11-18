@@ -365,7 +365,9 @@ function db_save_transaction(array $data): ?string
         $koin_total = (int)(($data['koin_cuci'] ?? 0) + ($data['koin_kering'] ?? 0));
         $harga_satuan = (int)($data['tarif'] ?? $total_bayar);
 
-        $subtotal_main = $harga_satuan * $qty;
+        $subtotal_main = isset($data['subtotal_main'])
+            ? (int) $data['subtotal_main']
+            : $harga_satuan * $qty;
 
         $ins_d = @pg_query_params($conn, "
             INSERT INTO detail_transaksi (

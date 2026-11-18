@@ -180,10 +180,16 @@ function initTransactionCalculator() {
     const WASH_COIN_RATE = 7000;
     const DRY_COIN_RATE = 10000;
 
-    // Layanan yang dihitung per berat cucian (kg), bukan per putaran manual
-    function isWeightBased(name) {
+    // Layanan berbasis blok 7,5 kg: 1 putaran menampung maksimal 7,5 kg
+    const BLOCK_SERVICES = ['cuci', 'kering', 'cuci kering', 'cuci + kering', 'cuci kering drop off'];
+    // Layanan dihitung linear per kg (tanpa pembulatan putaran)
+    const PER_KG_SERVICES = ['lipat'];
+
+    function servicePricingMode(name, category) {
         const n = (name || '').toLowerCase().trim();
-        return n === 'cuci' || n === 'kering' || n === 'cuci kering' || n === 'cuci + kering';
+        if (PER_KG_SERVICES.includes(n)) return 'per_kg';
+        if (BLOCK_SERVICES.includes(n)) return 'block';
+        return 'unit';
     }
 
     function serviceHasWash(name) {
@@ -204,7 +210,8 @@ function initTransactionCalculator() {
         const category = option.getAttribute('data-category') || 'SELF_SERVICE';
         const unit = option.getAttribute('data-unit') || 'putaran';
         const serviceName = option.text.split('—')[0].trim();
-        const weightBased = isWeightBased(serviceName) && category === 'SELF_SERVICE';
+        const pricingMode = servicePricingMode(serviceName, category);
+        const weightBased = pricingMode === 'block';
 
         const qtyUnitLabel = document.getElementById('qtyUnitLabel');
         const putaranHint = document.getElementById('putaranHint');
@@ -213,7 +220,7 @@ function initTransactionCalculator() {
         let kg = 0;
         let cycles = 0;
 
-        if (weightBased) {
+        if (pricingMode === 'block') {
             kg = parseFloat(qtyInput.value) || 0;
             // Setiap 7,5 kg butuh 1 putaran; kelebihan berat menambah putaran
             cycles = kg > 0 ? Math.ceil(kg / MAX_KG_PER_CYCLE) : 0;
@@ -227,6 +234,21 @@ function initTransactionCalculator() {
                     putaranHint.innerHTML = 'Butuh <strong>' + cycles + ' putaran</strong> (maks ' +
                         MAX_KG_PER_CYCLE.toString().replace('.', ',') + ' kg/putaran)' +
                         (sisa > 0 ? ' &middot; sisa kapasitas ' + sisa.toFixed(1).replace('.', ',') + ' kg' : '');
+                } else {
+                    putaranHint.style.display = 'none';
+                }
+            }
+        } else if (pricingMode === 'per_kg') {
+            kg = parseFloat(qtyInput.value) || 0;
+            cycles = kg;
+            if (qtyUnitLabel) qtyUnitLabel.textContent = 'kg';
+            qtyInput.setAttribute('step', '0.5');
+            qtyInput.setAttribute('min', '0.5');
+            if (putaranHint) {
+                if (kg > 0) {
+                    putaranHint.style.display = 'block';
+                    putaranHint.innerHTML = 'Dihitung <strong>' + kg.toString().replace('.', ',') + ' kg</strong> &times; ' +
+                        'Rp ' + rate.toLocaleString('id-ID') + '/kg';
                 } else {
                     putaranHint.style.display = 'none';
                 }
@@ -250,7 +272,8 @@ function initTransactionCalculator() {
         }
 
         const addonTotal = getAddonTotal();
-        const totalBill = rate * cycles + addonTotal;
+        const mainBill = pricingMode === 'per_kg' ? Math.round(rate * kg) : rate * cycles;
+        const totalBill = mainBill + addonTotal;
         if (totalBillEl) {
             totalBillEl.textContent = 'Rp ' + totalBill.toLocaleString('id-ID');
             totalBillEl.classList.remove('num-pulse');

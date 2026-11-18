@@ -43,20 +43,37 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     }
     if (!$selected_service) $selected_service = $_SESSION['services'][0];
 
-    // Layanan mesin (cuci/kering) dihitung per berat: 1 putaran maksimal 7,5 kg
+    // Mode harga layanan:
+    //  block  = per blok 7,5 kg (1 putaran mesin), berat dibulatkan ke atas
+    //  per_kg = linear per kg (Lipat)
+    //  unit   = per unit (Extra Spin, Extra Dry)
     $nama_layanan = strtolower(trim($selected_service['nama']));
-    $layanan_per_kg = ['cuci', 'kering', 'cuci kering', 'cuci + kering'];
-    $is_per_kg = ($selected_service['kategori'] === 'SELF_SERVICE')
-        && in_array($nama_layanan, $layanan_per_kg, true);
+    $block_services = ['cuci', 'kering', 'cuci kering', 'cuci + kering', 'cuci kering drop off'];
+    $linear_services = ['lipat'];
 
-    if ($is_per_kg) {
+    if (in_array($nama_layanan, $linear_services, true)) {
+        $pricing_mode = 'per_kg';
+    } elseif (in_array($nama_layanan, $block_services, true)) {
+        $pricing_mode = 'block';
+    } else {
+        $pricing_mode = 'unit';
+    }
+
+    if ($pricing_mode === 'block') {
         $berat = max(0.5, $qty_raw);
         $putaran = max(1, (int) ceil($berat / 7.5));
         $qty = $putaran;
+        $biaya_layanan = (int) $selected_service['tarif'] * $putaran;
+    } elseif ($pricing_mode === 'per_kg') {
+        $berat = max(0.5, $qty_raw);
+        $qty = 1;
+        $putaran = 0;
+        $biaya_layanan = (int) round($selected_service['tarif'] * $berat);
     } else {
         $berat = 7.5;
         $qty = max(1, (int) round($qty_raw));
         $putaran = $qty;
+        $biaya_layanan = (int) $selected_service['tarif'] * $qty;
     }
 
     // Layanan tambahan (sabun/softener/kresek) menambah tagihan, bukan mengganti layanan
@@ -81,11 +98,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
         }
     }
 
-    $total_biaya = ($selected_service['tarif'] * $putaran) + $addon_total;
+    $total_biaya = $biaya_layanan + $addon_total;
     $is_token = ($selected_service['kategori'] === 'SELF_SERVICE');
 
     if ($is_token) {
-        if ($is_per_kg) {
+        if ($pricing_mode === 'block') {
             // Koin dihitung sistem: 1 putaran = 1 koin cuci dan/atau 1 koin kering
             $koin_cuci = (strpos($nama_layanan, 'cuci') !== false) ? $putaran : 0;
             $koin_kering = (strpos($nama_layanan, 'kering') !== false) ? $putaran : 0;
@@ -109,6 +126,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
         'qty' => $qty,
         'putaran' => $putaran,
         'berat' => $berat,
+        'subtotal_main' => $biaya_layanan,
         'koin_cuci' => $koin_cuci,
         'koin_kering' => $koin_kering,
         'addons' => $addon_rows,
@@ -166,9 +184,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
                 : ''),
             'layanan_tipe' => $selected_service['kategori_label'],
             'kategori' => $selected_service['kategori'],
-            'kuantitas' => $is_per_kg
+            'kuantitas' => $pricing_mode === 'block'
                 ? (rtrim(rtrim(number_format($berat, 1, ',', ''), '0'), ',') . ' kg (' . $putaran . ' putaran)')
-                : ($qty . ' ' . $selected_service['satuan']),
+                : ($pricing_mode === 'per_kg'
+                    ? (rtrim(rtrim(number_format($berat, 1, ',', ''), '0'), ',') . ' kg')
+                    : ($qty . ' ' . $selected_service['satuan'])),
             'qty_num' => $qty,
             'total_biaya' => $total_biaya,
             'metode' => $metode,
