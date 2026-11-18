@@ -158,6 +158,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
         'putaran' => $putaran,
         'berat' => $berat,
         'subtotal_main' => $biaya_layanan,
+        'pricing_mode' => $pricing_mode,
         'koin_cuci' => $koin_cuci,
         'koin_kering' => $koin_kering,
         'addons' => $addon_rows,

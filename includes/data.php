@@ -11,6 +11,22 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/../backend/config/database.php';
+require_once __DIR__ . '/api_client.php';
+
+/**
+ * Supabase berjalan pada zona UTC, sedangkan jam operasional laundry memakai WIB.
+ * Tanpa ini, CURRENT_TIME/CURRENT_DATE di query shift meleset 7 jam.
+ */
+function db_apply_timezone(): void
+{
+    static $applied = false;
+    if ($applied) {
+        return;
+    }
+    $conn = getConnection();
+    @pg_query($conn, "SET TIME ZONE 'Asia/Jakarta'");
+    $applied = true;
+}
 
 // Inisialisasi token CSRF jika belum ada di sesi
 if (empty($_SESSION['csrf'])) {
@@ -24,6 +40,7 @@ if (empty($_SESSION['csrf'])) {
 function sync_live_database(): bool
 {
     try {
+        db_apply_timezone();
         $conn = getConnection();
         if (!$conn) {
             return false;
@@ -284,139 +301,51 @@ sync_live_database();
  */
 function db_save_transaction(array $data): ?string
 {
-    try {
-        $conn = getConnection();
-        if (!$conn) return null;
-
-        @pg_query($conn, "BEGIN");
-
-        // 1. Cari atau buat pelanggan di DB
-        $wa = $data['wa'];
-        $nama = $data['nama'];
-        $p_res = @pg_query_params($conn, "SELECT id_pelanggan, kode_kartu FROM pelanggan WHERE no_hp = $1", [$wa]);
-        $p_row = $p_res ? pg_fetch_assoc($p_res) : null;
-        if ($p_row) {
-            $id_pelanggan = (int)$p_row['id_pelanggan'];
-            $kode_kartu = $p_row['kode_kartu'];
-        } else {
-            $ins_p = @pg_query_params($conn, "
-                INSERT INTO pelanggan (nama_pelanggan, no_hp)
-                VALUES ($1, $2)
-                RETURNING id_pelanggan
-            ", [$nama, $wa]);
-            if (!$ins_p) {
-                $GLOBALS['kino_last_db_error'] = pg_last_error($conn);
-                @pg_query($conn, "ROLLBACK");
-                return null;
-            }
-            $id_pelanggan = (int)pg_fetch_result($ins_p, 0, 'id_pelanggan');
-            $kode_kartu = 'KC-P-' . str_pad((string)$id_pelanggan, 4, '0', STR_PAD_LEFT);
-            @pg_query_params($conn, "UPDATE pelanggan SET kode_kartu = $1 WHERE id_pelanggan = $2", [$kode_kartu, $id_pelanggan]);
-        }
-
-        // 2. Resolve kasir & shift_operasional aktif
-        $kasir_name = $_SESSION['username'] ?? 'Sarah';
-        $u_res = @pg_query_params($conn, "SELECT id_pengguna FROM pengguna WHERE nama ILIKE $1 OR username ILIKE $1", ["%$kasir_name%"]);
-        $id_kasir = ($u_res && pg_num_rows($u_res) > 0) ? (int)pg_fetch_result($u_res, 0, 'id_pengguna') : 3;
-
-        $so_res = @pg_query_params($conn, "
-            SELECT id_shift_operasional, id_shift 
-            FROM shift_operasional 
-            WHERE id_kasir = $1 AND status = 'aktif' 
-            ORDER BY id_shift_operasional DESC LIMIT 1
-        ", [$id_kasir]);
-        $id_so = null;
-        $id_shift = 2; // Default siang
-        if ($so_res && pg_num_rows($so_res) > 0) {
-            $id_so = (int)pg_fetch_result($so_res, 0, 'id_shift_operasional');
-            $id_shift = (int)pg_fetch_result($so_res, 0, 'id_shift');
-        }
-
-        // 3. Insert transaksi
-        $no_invoice = 'INV-' . date('Ymd') . '-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
-        $total_bayar = (int)$data['total_bayar'];
-        $metode = strtolower($data['metode'] ?? 'cash');
-        if (!in_array($metode, ['cash', 'qris'])) $metode = 'cash';
-
-        $ins_t = @pg_query_params($conn, "
-            INSERT INTO transaksi (
-                id_kasir, tanggal_transaksi, id_pelanggan, id_shift, id_shift_operasional,
-                jenis_pembayaran, total_bayar, jumlah_dibayar, sisa_bayar, uang_kembalian,
-                status_pembayaran, status_pengerjaan, no_invoice
-            ) VALUES (
-                $1, NOW(), $2, $3, $4,
-                $5, $6, $7, 0, 0,
-                'lunas', 'antri', $8
-            ) RETURNING id_transaksi
-        ", [
-            $id_kasir, $id_pelanggan, $id_shift, $id_so,
-            $metode, $total_bayar, $total_bayar, $no_invoice
-        ]);
-
-        if (!$ins_t) {
-            $GLOBALS['kino_last_db_error'] = pg_last_error($conn);
-            @pg_query($conn, "ROLLBACK");
-            return null;
-        }
-        $id_transaksi = (int)pg_fetch_result($ins_t, 0, 'id_transaksi');
-
-        // 4. Insert detail transaksi
-        $id_layanan = (int)($data['service_id'] ?? 1);
-        $qty = (int)($data['qty'] ?? 1);
-        $berat = (float)($data['berat'] ?? 7.5);
-        $koin_total = (int)(($data['koin_cuci'] ?? 0) + ($data['koin_kering'] ?? 0));
-        $harga_satuan = (int)($data['tarif'] ?? $total_bayar);
-
-        $subtotal_main = isset($data['subtotal_main'])
-            ? (int) $data['subtotal_main']
-            : $harga_satuan * $qty;
-
-        $ins_d = @pg_query_params($conn, "
-            INSERT INTO detail_transaksi (
-                id_transaksi, id_layanan, berat, jumlah, jumlah_koin, harga_satuan, subtotal
-            ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7
-            )
-        ", [
-            $id_transaksi, $id_layanan, $berat, $qty, $koin_total, $harga_satuan, $subtotal_main
-        ]);
-
-        if (!$ins_d) {
-            $GLOBALS['kino_last_db_error'] = pg_last_error($conn);
-            @pg_query($conn, "ROLLBACK");
-            return null;
-        }
-
-        // Detail layanan tambahan (sabun, softener, kresek, ...)
-        foreach (($data['addons'] ?? []) as $addon) {
-            $ins_a = @pg_query_params($conn, "
-                INSERT INTO detail_transaksi (
-                    id_transaksi, id_layanan, berat, jumlah, jumlah_koin, harga_satuan, subtotal
-                ) VALUES ($1, $2, NULL, $3, 0, $4, $5)
-            ", [
-                $id_transaksi,
-                (int) $addon['id'],
-                (int) $addon['qty'],
-                (int) $addon['tarif'],
-                (int) $addon['subtotal'],
-            ]);
-            if (!$ins_a) {
-                $GLOBALS['kino_last_db_error'] = pg_last_error($conn);
-                @pg_query($conn, "ROLLBACK");
-                return null;
-            }
-        }
-
-        @pg_query($conn, "COMMIT");
-
-        // Sync ulang sesi
-        sync_live_database();
-        return $no_invoice;
-    } catch (Throwable $e) {
-        $GLOBALS['kino_last_db_error'] = $e->getMessage();
-        if (isset($conn) && $conn) @pg_query($conn, "ROLLBACK");
+    if (empty($_SESSION['user_id'])) {
+        $GLOBALS['kino_last_db_error'] = 'Sesi login tidak valid. Silakan login ulang.';
         return null;
     }
+
+    // Susun detail sesuai kontrak backend: layanan berbasis berat kirim 'berat',
+    // layanan satuan (sabun/softener/kresek) kirim 'jumlah'.
+    $details = [];
+    $mode = $data['pricing_mode'] ?? 'unit';
+
+    if ($mode === 'unit') {
+        $details[] = [
+            'id_layanan' => (int) ($data['service_id'] ?? 1),
+            'jumlah' => max(1, (int) ($data['qty'] ?? 1)),
+        ];
+    } else {
+        $details[] = [
+            'id_layanan' => (int) ($data['service_id'] ?? 1),
+            'berat' => (float) ($data['berat'] ?? 7.5),
+        ];
+    }
+
+    foreach (($data['addons'] ?? []) as $addon) {
+        $details[] = [
+            'id_layanan' => (int) $addon['id'],
+            'jumlah' => max(1, (int) $addon['qty']),
+        ];
+    }
+
+    $response = api_call('transaksi', 'create', 'POST', [], [
+        'nama_pelanggan' => (string) ($data['nama'] ?? ''),
+        'no_hp' => (string) ($data['wa'] ?? ''),
+        'detail_transaksi' => $details,
+        'jenis_pembayaran' => 'cash',
+        'jumlah_dibayar' => (int) ($data['total_bayar'] ?? 0),
+    ]);
+
+    if (!api_ok($response)) {
+        $GLOBALS['kino_last_db_error'] = api_error_message($response);
+        return null;
+    }
+
+    sync_live_database();
+
+    return (string) ($response['data']['data']['no_invoice'] ?? '');
 }
 
 /**
@@ -424,27 +353,33 @@ function db_save_transaction(array $data): ?string
  */
 function db_save_member(string $nama, string $wa, ?string $password = null): ?array
 {
-    try {
-        $conn = getConnection();
-        if (!$conn) return null;
+    $response = api_call('pelanggan', 'create', 'POST', [], [
+        'nama_pelanggan' => $nama,
+        'no_hp' => $wa,
+    ]);
 
-        $hash = $password ? password_hash($password, PASSWORD_DEFAULT) : null;
-        $res = @pg_query_params($conn, "
-            INSERT INTO pelanggan (nama_pelanggan, no_hp, password_hash)
-            VALUES ($1, $2, $3)
-            RETURNING id_pelanggan
-        ", [$nama, $wa, $hash]);
-
-        if (!$res) return null;
-        $id = (int)pg_fetch_result($res, 0, 'id_pelanggan');
-        $card = 'KC-P-' . str_pad((string)$id, 4, '0', STR_PAD_LEFT);
-        @pg_query_params($conn, "UPDATE pelanggan SET kode_kartu = $1 WHERE id_pelanggan = $2", [$card, $id]);
-
-        sync_live_database();
-        return ['id' => $id, 'nama' => $nama, 'wa' => $wa, 'kode_kartu' => $card];
-    } catch (Throwable $e) {
+    if (!api_ok($response)) {
+        $GLOBALS['kino_last_db_error'] = api_error_message($response);
         return null;
     }
+
+    sync_live_database();
+
+    // kode_kartu dibuat oleh trigger database, jadi ambil dari data yang baru disinkronkan
+    $member = null;
+    foreach ($_SESSION['members'] ?? [] as $m) {
+        if ((string) ($m['wa'] ?? '') === $wa) {
+            $member = $m;
+            break;
+        }
+    }
+
+    return [
+        'id' => (int) ($member['id'] ?? 0),
+        'nama' => (string) ($member['nama'] ?? $nama),
+        'wa' => (string) ($member['wa'] ?? $wa),
+        'kode_kartu' => (string) ($member['kode_kartu'] ?? ''),
+    ];
 }
 
 /**
@@ -487,40 +422,18 @@ function db_active_shift(string $kasir_name): ?array
 
 function db_start_shift(string $kasir_name, int $shift_id = 2): bool
 {
-    try {
-        $conn = getConnection();
-        if (!$conn) return false;
+    $response = api_call('shift-operasional', 'open', 'POST', [], [
+        'id_shift' => $shift_id,
+    ]);
 
-        $u_res = @pg_query_params($conn, "SELECT id_pengguna FROM pengguna WHERE nama ILIKE $1 OR username ILIKE $1", ["%$kasir_name%"]);
-        $id_kasir = ($u_res && pg_num_rows($u_res) > 0) ? (int)pg_fetch_result($u_res, 0, 'id_pengguna') : 3;
-
-        // Tolak presensi bila kasir tidak dijadwalkan pada shift yang dibuka ini
-        $sr = @pg_query_params($conn, 'SELECT nama_shift FROM shift WHERE id_shift = $1', [$shift_id]);
-        $shift_nama_raw = ($sr && pg_num_rows($sr)) ? (string) pg_fetch_result($sr, 0, 'nama_shift') : 'Shift';
-        $shift_def = [
-            'id' => (int) $shift_id,
-            'nama' => 'Shift ' . preg_replace('/^Shift\s+/i', '', $shift_nama_raw)
-        ];
-        $assign = kasir_shift_assignment($kasir_name, $shift_def);
-        if (!$assign['allowed']) {
-            $GLOBALS['shift_start_error'] = $assign['reason'];
-            return false;
-        }
-
-        // Tutup shift aktif sebelumnya jika ada yang tertinggal (status valid: 'ditutup')
-        @pg_query_params($conn, "UPDATE shift_operasional SET status = 'ditutup', ditutup_pada = NOW() WHERE id_kasir = $1 AND status = 'aktif'", [$id_kasir]);
-
-        $res = @pg_query_params($conn, "
-            INSERT INTO shift_operasional (id_kasir, id_shift, mulai_pada, total_sistem, status)
-            VALUES ($1, $2, NOW(), 0, 'aktif')
-            RETURNING id_shift_operasional
-        ", [$id_kasir, $shift_id]);
-
-        sync_live_database();
-        return $res !== false;
-    } catch (Throwable $e) {
+    if (!api_ok($response)) {
+        $GLOBALS['shift_start_error'] = api_error_message($response);
         return false;
     }
+
+    sync_live_database();
+
+    return true;
 }
 
 /**
@@ -531,25 +444,18 @@ function db_start_shift(string $kasir_name, int $shift_id = 2): bool
  */
 function db_close_shift(string $kasir_name, int $total_fisik = 0, int $selisih = 0): bool
 {
-    try {
-        $conn = getConnection();
-        if (!$conn) return false;
+    $response = api_call('shift-operasional', 'close', 'POST', [], [
+        'total_fisik' => $total_fisik,
+    ]);
 
-        $active = db_active_shift($kasir_name);
-        if (!$active) return false; // Tidak ada shift aktif milik kasir ini
-
-        $res = @pg_query_params($conn, "
-            UPDATE shift_operasional
-            SET status = 'ditutup', ditutup_pada = NOW(), total_fisik = $2, selisih = $3
-            WHERE id_shift_operasional = $1 AND status = 'aktif'
-        ", [(int) $active['id_shift_operasional'], $total_fisik, $selisih]);
-
-        $affected = $res ? pg_affected_rows($res) : 0;
-        if ($affected > 0) sync_live_database();
-        return $affected > 0;
-    } catch (Throwable $e) {
+    if (!api_ok($response)) {
+        $GLOBALS['shift_close_error'] = api_error_message($response);
         return false;
     }
+
+    sync_live_database();
+
+    return true;
 }
 
 function format_rupiah(int $angka): string

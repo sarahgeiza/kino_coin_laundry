@@ -1,14 +1,37 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * Dilempar saat controller backend dipanggil in-process (bukan lewat HTTP),
+ * supaya respond() tidak menghentikan halaman yang sedang dirender.
+ */
+class ApiResponse extends \Exception
+{
+    public array $payload;
+    public int $status;
+
+    public function __construct(array $payload, int $status = 200)
+    {
+        $this->payload = $payload;
+        $this->status = $status;
+        parent::__construct('api_response', $status);
+    }
+}
+
 function respond(array $data, int $status = 200): never
 {
+    if (!empty($GLOBALS['kino_api_inproc'])) {
+        throw new ApiResponse($data, $status);
+    }
     http_response_code($status);
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 function body(): array
 {
+    if (isset($GLOBALS['kino_api_body'])) {
+        return $GLOBALS['kino_api_body'];
+    }
     $raw = file_get_contents('php://input');
     $data = json_decode($raw ?: '{}', true);
     if (!is_array($data)) respond(['error' => 'JSON tidak valid'], 400);
