@@ -13,6 +13,37 @@ if (db_active_shift($_SESSION['username'] ?? '') === null) {
 
 
 $trx_error = '';
+
+// Handle tambah pelanggan cepat dari modal form transaksi (langsung ke database)
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'quick_member') {
+    $qm_nama = trim($_POST['quick_nama'] ?? '');
+    $qm_wa = trim($_POST['quick_wa'] ?? '');
+
+    if ($qm_nama === '' || !preg_match('/^[0-9]{10,15}$/', $qm_wa)) {
+        header('Location: transaksi-baru.php?toast=member_invalid');
+        exit;
+    }
+
+    // Sudah terdaftar? Pakai data lama supaya tidak dobel
+    $existing = null;
+    foreach ($_SESSION['members'] ?? [] as $m) {
+        if (($m['wa'] ?? '') === $qm_wa) { $existing = $m; break; }
+    }
+
+    if ($existing) {
+        header('Location: transaksi-baru.php?scan_member=' . urlencode($existing['kode_kartu']) . '&toast=member_exists');
+        exit;
+    }
+
+    $saved_member = db_save_member($qm_nama, $qm_wa);
+    if ($saved_member) {
+        header('Location: transaksi-baru.php?scan_member=' . urlencode($saved_member['kode_kartu']) . '&toast=member_saved');
+    } else {
+        header('Location: transaksi-baru.php?toast=member_failed');
+    }
+    exit;
+}
+
 // Handle Save Transaction POST
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_trx') {
     $nama = trim($_POST['nama_pelanggan'] ?? '');
@@ -408,14 +439,15 @@ require_once __DIR__ . '/../includes/header.php';
             <button type="button" class="sheet-close" onclick="closeModal('modalNewMember')">&times;</button>
         </div>
 
-        <form id="formNewMemberModal" onsubmit="handleQuickCreateMember(event)">
+        <form id="formNewMemberModal" method="POST" action="transaksi-baru.php">
+            <input type="hidden" name="action" value="quick_member">
             <div class="form-group">
                 <label class="form-label">Nama Lengkap *</label>
-                <input type="text" id="modalMemberNama" class="form-control" placeholder="Contoh: Dewi Lestari" required>
+                <input type="text" id="modalMemberNama" name="quick_nama" class="form-control" placeholder="Contoh: Dewi Lestari" required>
             </div>
             <div class="form-group">
                 <label class="form-label">Nomor WhatsApp *</label>
-                <input type="text" id="modalMemberWA" class="form-control" placeholder="Contoh: 08155556666" inputmode="numeric" pattern="[0-9]+" title="Nomor WhatsApp hanya boleh berisi angka" oninput="this.setCustomValidity(''); this.value = this.value.replace(/[^0-9]/g, '')" required>
+                <input type="text" id="modalMemberWA" name="quick_wa" class="form-control" placeholder="Contoh: 08155556666" inputmode="numeric" pattern="[0-9]{10,15}" title="Nomor WhatsApp hanya boleh berisi angka (10-15 digit)" oninput="this.setCustomValidity(''); this.value = this.value.replace(/[^0-9]/g, '')" required>
             </div>
             <div class="form-group">
                 <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
@@ -474,44 +506,23 @@ require_once __DIR__ . '/../includes/header.php';
 </div>
 
 <script>
-function handleQuickCreateMember(e) {
-    e.preventDefault();
-    const nama = document.getElementById('modalMemberNama').value.trim();
-    const wa = document.getElementById('modalMemberWA').value.trim();
-    const isMember = document.getElementById('modalMemberCheck').checked;
-
-    if (!nama || !/^[0-9]+$/.test(wa)) {
-        document.getElementById('modalMemberWA').setCustomValidity('Nomor WhatsApp hanya boleh berisi angka.');
-        document.getElementById('modalMemberWA').reportValidity();
-        return;
-    }
-
-    document.getElementById('modalMemberWA').setCustomValidity('');
-
-    const newCode = 'KC-P-000' + (window.__MOCK_MEMBERS.length + 1);
-    const newMember = {
-        id: window.__MOCK_MEMBERS.length + 1,
-        nama,
-        wa,
-        kode_kartu: newCode,
-        is_member: isMember,
-        tx_count: 0
-    };
-
-    window.__MOCK_MEMBERS.push(newMember);
-
-    document.getElementById('inputPelangganNama').value = nama;
-    document.getElementById('inputPelangganWA').value = wa;
-    const badge = document.getElementById('memberSelectedBadge');
-    if (badge) {
-        badge.style.display = 'block';
-        badge.innerHTML = `Member Baru Terdaftar: <strong>${nama}</strong> (${newCode})`;
-    }
-
-    closeModal('modalNewMember');
-    showToast(`Pelanggan ${nama} berhasil ditambahkan`, 'success');
-}
 </script>
+
+<?php if (!empty($_GET['toast'])): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var messages = {
+        member_saved: ['Pelanggan baru tersimpan di database', 'success'],
+        member_exists: ['Nomor WA sudah terdaftar, memakai data lama', 'info'],
+        member_invalid: ['Nama dan nomor WhatsApp tidak valid', 'error'],
+        member_failed: ['Gagal menyimpan pelanggan ke database', 'error']
+    };
+    var key = <?= json_encode($_GET['toast']) ?>;
+    var item = messages[key];
+    if (item && typeof showToast === 'function') showToast(item[0], item[1]);
+});
+</script>
+<?php endif; ?>
 
 <script>
 window.__ADDON_SERVICES = <?= json_encode(array_map(

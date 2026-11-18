@@ -28,16 +28,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
             if ($is_duplicate) {
                 $user_error = 'Username ' . htmlspecialchars($username) . ' sudah digunakan oleh staf lain.';
             } else {
-                $_SESSION['users'][] = [
-                    'id' => count($_SESSION['users']) + 1,
-                    'nama' => $nama,
-                    'role' => $role,
-                    'email' => $email ?: strtolower($username) . '@kino.com',
-                    'username' => $username,
-                    'password' => $pass ?: '123456'
-                ];
-                header('Location: users.php?toast=saved');
-                exit;
+                $conn = getConnection();
+                $ins = $conn ? @pg_query_params($conn,
+                    "INSERT INTO pengguna (nama, username, role, password)
+                     VALUES ($1, $2, $3, $4) RETURNING id_pengguna",
+                    [$nama, $username, strtolower($role), password_hash($pass ?: '123456', PASSWORD_DEFAULT)]
+                ) : false;
+
+                if (!$ins) {
+                    $user_error = 'Gagal menyimpan staf ke database. Coba lagi.';
+                } else {
+                    sync_live_database();
+                    header('Location: users.php?toast=saved');
+                    exit;
+                }
             }
         }
     } elseif ($action === 'edit_user') {
@@ -45,23 +49,48 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
         $nama = trim($_POST['nama'] ?? '');
         $email = trim($_POST['email'] ?? '');
         
-        foreach ($_SESSION['users'] as &$u) {
-            if ($u['id'] === $user_id) {
-                $u['nama'] = $nama;
-                if ($email) $u['email'] = $email;
-                break;
+        if ($user_id <= 0 || $nama === '') {
+            $user_error = 'Nama staf tidak boleh kosong.';
+        } else {
+            $conn = getConnection();
+            $upd = $conn ? @pg_query_params($conn,
+                "UPDATE pengguna SET nama = $1 WHERE id_pengguna = $2",
+                [$nama, $user_id]
+            ) : false;
+
+            if (!$upd) {
+                $user_error = 'Gagal memperbarui staf di database. Coba lagi.';
+            } else {
+                sync_live_database();
+                header('Location: users.php?toast=saved');
+                exit;
             }
         }
-        header('Location: users.php?toast=saved');
-        exit;
     } elseif ($action === 'deactivate_user') {
         $user_id = intval($_POST['user_id'] ?? 0);
-        // Safeguard: Owner cannot be deactivated
-        $_SESSION['users'] = array_values(array_filter($_SESSION['users'], function($u) use ($user_id) {
-            return ($u['id'] !== $user_id) || ($u['role'] === 'Pemilik');
-        }));
-        header('Location: users.php?toast=deactivated');
-        exit;
+        // Safeguard: akun Pemilik tidak boleh dihapus
+        $target_role = '';
+        foreach ($_SESSION['users'] ?? [] as $u) {
+            if ((int) ($u['id'] ?? 0) === $user_id) { $target_role = strtolower($u['role'] ?? ''); break; }
+        }
+
+        if ($user_id <= 0 || $target_role === 'pemilik') {
+            $user_error = 'Akun Pemilik tidak bisa dinonaktifkan.';
+        } else {
+            $conn = getConnection();
+            $del = $conn ? @pg_query_params($conn,
+                "DELETE FROM pengguna WHERE id_pengguna = $1 AND LOWER(role) <> 'pemilik'",
+                [$user_id]
+            ) : false;
+
+            if (!$del) {
+                $user_error = 'Staf tidak bisa dihapus karena masih terhubung dengan data transaksi/shift.';
+            } else {
+                sync_live_database();
+                header('Location: users.php?toast=deactivated');
+                exit;
+            }
+        }
     }
 }
 
