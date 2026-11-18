@@ -104,7 +104,9 @@ $show_toast_logout = (isset($_GET['logout']) && $_GET['logout'] == '1');
         </div>
 
         <!-- Hero Brand -->
-        <div class="logo-box-lg">KC</div>
+        <div class="logo-box-lg" style="background:#ffffff; padding:7px; overflow:hidden;">
+            <img src="assets/img/logo-kino.png" alt="Kino Coin Laundry" style="width:100%; height:100%; object-fit:contain; display:block;">
+        </div>
         <h1 style="font-size: 28px; font-weight: 900; line-height: 1.2; margin-bottom: 8px;">Kino Coin Laundry</h1>
         <p style="font-size: 14px; opacity: 0.9; line-height: 1.6; margin-bottom: 24px;">
             Sistem manajemen operasional laundry modern berbasis koin. Kelola transaksi, pantau bisnis, dan cek riwayat cucian dalam satu aplikasi.

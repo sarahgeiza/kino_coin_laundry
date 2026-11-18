@@ -91,8 +91,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 <div class="login-page-wrapper">
     <div class="login-card-box">
         <div class="login-header-top">
-            <div style="width: 52px; height: 52px; border-radius: 14px; background: #ffffff; color: #ea580c; font-weight: 900; font-size: 22px; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px auto; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-                KC
+            <div style="width: 56px; height: 56px; border-radius: 14px; background: #ffffff; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px auto; box-shadow: 0 4px 12px rgba(0,0,0,0.18); padding: 6px; overflow: hidden;">
+                <img src="../assets/img/logo-kino.png" alt="Kino Coin Laundry" style="width:100%; height:100%; object-fit:contain; display:block;">
             </div>
             <h2 style="font-size: 20px; font-weight: 900;">Kino Coin Laundry</h2>
             <p style="font-size: 13px; opacity: 0.9; margin-top: 2px;">Portal Pelanggan</p>
