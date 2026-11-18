@@ -6,7 +6,15 @@ check_auth_guard('kasir');
 $current_kasir_name = $_SESSION['username'] ?? 'Daniel';
 $kasir_shift = get_active_kasir_shift($current_kasir_name);
 
+// Validasi penugasan kasir ke shift (roster dari Pemilik)
+$shift_assignment = kasir_shift_assignment($current_kasir_name, $kasir_shift);
+
 if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
+    if (!$shift_assignment['allowed']) {
+        $_SESSION['kasir_checked_in'] = false;
+        header('Location: index.php?toast=not_assigned');
+        exit;
+    }
     $started = db_start_shift($current_kasir_name, $kasir_shift['id'] ?? 2);
     $_SESSION['kasir_checked_in'] = $started;
     header('Location: index.php?' . ($started ? 'shift_started=1' : 'toast=shift_failed'));
@@ -158,12 +166,24 @@ $disp_dry_val = format_rupiah($total_live_dry * 10000);
             </div>
         </div>
 
+        <?php if ($shift_assignment['allowed']): ?>
         <form action="index.php" method="POST">
             <input type="hidden" name="action" value="mulai_shift">
             <button type="submit" class="btn btn-primary" style="padding: 14px;">
                 Mulai Shift &amp; Presensi
             </button>
         </form>
+        <?php else: ?>
+        <div style="background:#fee2e2; border:1px solid #fca5a5; color:#b91c1c; padding:12px 14px; border-radius:10px; font-size:12px; font-weight:700; line-height:1.6; margin-bottom:12px;">
+            <?= htmlspecialchars($shift_assignment['reason']) ?>
+        </div>
+        <button type="button" class="btn btn-outline" style="padding:14px;" disabled>
+            Presensi Terkunci
+        </button>
+        <form action="../logout.php" method="POST" style="margin-top:10px;">
+            <button type="submit" class="btn btn-outline" style="padding:12px; font-size:13px;">Keluar</button>
+        </form>
+        <?php endif; ?>
     </div>
 </div>
 

@@ -4,50 +4,89 @@ check_auth_guard('pemilik');
 
 // Handle Add/Edit Shift POST
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
+
+    // Ambil pilihan kasir dari checkbox. Kosong = tidak ada kasir ditugaskan.
+    $selected_ids = isset($_POST['selected_staff']) && is_array($_POST['selected_staff'])
+        ? array_values(array_filter(array_map('intval', $_POST['selected_staff'])))
+        : [];
+
+    // Nama kasir terpilih (dipakai untuk roster sesi & tampilan)
+    $selected_names = [];
+    foreach (($_SESSION['users'] ?? []) as $u) {
+        if (in_array((int) ($u['id'] ?? 0), $selected_ids, true)) {
+            $selected_names[] = $u['nama'];
+        }
+    }
+
     if ($_POST['action'] === 'add_shift') {
         $nama = trim($_POST['nama_shift'] ?? '');
         $mulai = trim($_POST['mulai'] ?? '08:00');
         $selesai = trim($_POST['selesai'] ?? '14:00');
-        
-        if (isset($_POST['selected_staff']) && is_array($_POST['selected_staff'])) {
-            $staff = implode(', ', array_map('trim', $_POST['selected_staff']));
-        } else {
-            $staff = trim($_POST['staff'] ?? '');
+
+        if ($nama !== '') {
+            $conn = getConnection();
+            $new_id = null;
+
+            // Simpan definisi shift ke database bila memungkinkan
+            if ($conn) {
+                $ins = @pg_query_params($conn,
+                    "INSERT INTO shift (nama_shift, jam_mulai, jam_selesai) VALUES ($1, $2, $3) RETURNING id_shift",
+                    [preg_replace('/^Shift\s+/i', '', $nama), $mulai, $selesai]
+                );
+                if ($ins) $new_id = (int) pg_fetch_result($ins, 0, 'id_shift');
+            }
+
+            if ($new_id === null) {
+                $new_id = count($_SESSION['shifts'] ?? []) + 1;
+            }
+
+            // Simpan roster
+            $key = shift_roster_key($nama);
+            $_SESSION['shift_staff'][$key] = $selected_names;
+            db_save_shift_roster($new_id, $selected_ids);
+
+            header('Location: master.php?tab=shift&toast=saved');
+            exit;
         }
-        $_SESSION['shifts'][] = [
-            'id' => count($_SESSION['shifts']) + 1,
-            'nama' => $nama,
-            'mulai' => $mulai,
-            'selesai' => $selesai,
-            'jam_tampil' => "$mulai — $selesai",
-            'staff' => $staff
-        ];
-        header('Location: master.php?tab=shift&toast=saved');
-        exit;
     } elseif ($_POST['action'] === 'edit_shift') {
         $shift_id = intval($_POST['shift_id'] ?? 0);
         $nama = trim($_POST['nama_shift'] ?? '');
         $mulai = trim($_POST['mulai'] ?? '08:00');
         $selesai = trim($_POST['selesai'] ?? '14:00');
-        
-        if (isset($_POST['selected_staff']) && is_array($_POST['selected_staff'])) {
-            $staff = implode(', ', array_map('trim', $_POST['selected_staff']));
-        } else {
-            $staff = trim($_POST['staff'] ?? '');
-        }
-        
-        foreach ($_SESSION['shifts'] as &$sh) {
-            if ($sh['id'] === $shift_id || $sh['nama'] === $nama) {
-                $sh['nama'] = $nama;
-                $sh['mulai'] = $mulai;
-                $sh['selesai'] = $selesai;
-                $sh['jam_tampil'] = "$mulai — $selesai";
-                $sh['staff'] = $staff;
-                break;
+
+        if ($shift_id > 0 && $nama !== '') {
+            $conn = getConnection();
+            if ($conn) {
+                @pg_query_params($conn,
+                    "UPDATE shift SET nama_shift = $1, jam_mulai = $2, jam_selesai = $3 WHERE id_shift = $4",
+                    [preg_replace('/^Shift\s+/i', '', $nama), $mulai, $selesai, $shift_id]
+                );
             }
+
+            // Roster: SELALU ditimpa dengan pilihan terbaru (termasuk bila kosong)
+            $key = shift_roster_key($nama);
+            $_SESSION['shift_staff'][$key] = $selected_names;
+            db_save_shift_roster($shift_id, $selected_ids);
+
+            // Perbarui definisi shift di state sesi agar langsung terlihat
+            // (pakai indeks: foreach by reference pada hasil ?? tidak memodifikasi array asli)
+            if (isset($_SESSION['shifts']) && is_array($_SESSION['shifts'])) {
+                foreach ($_SESSION['shifts'] as $idx => $sh) {
+                    if ((int) $sh['id'] === $shift_id) {
+                        $_SESSION['shifts'][$idx]['nama'] = $nama;
+                        $_SESSION['shifts'][$idx]['mulai'] = $mulai;
+                        $_SESSION['shifts'][$idx]['selesai'] = $selesai;
+                        $_SESSION['shifts'][$idx]['jam_tampil'] = "$mulai — $selesai";
+                        $_SESSION['shifts'][$idx]['staff'] = implode(', ', $selected_names);
+                        $_SESSION['shifts'][$idx]['staff_list'] = $selected_names;
+                        break;
+                    }
+                }
+            }
+
+            header('Location: master.php?tab=shift&toast=saved');
+            exit;
         }
-        header('Location: master.php?tab=shift&toast=saved');
-        exit;
     }
 }
 
@@ -161,7 +200,7 @@ $subtab = $_GET['tab'] ?? 'layanan';
             <?= htmlspecialchars($sh['jam_tampil']) ?> WIB
         </div>
         <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
-            Kasir: <?= htmlspecialchars($sh['staff']) ?>
+            Kasir: <?= $sh['staff'] !== '' ? htmlspecialchars($sh['staff']) : '<em style="color:#b91c1c;">Belum ada kasir</em>' ?>
         </div>
     </div>
     <?php endforeach; ?>
@@ -197,7 +236,7 @@ $subtab = $_GET['tab'] ?? 'layanan';
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 140px; overflow-y: auto; background: #f8fafc; padding: 10px; border-radius: 12px; border: 1.5px solid var(--border);">
                     <?php foreach ($kasir_users as $ku): ?>
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text-main); cursor: pointer; padding: 6px 8px; border-radius: 8px; background: white; border: 1px solid var(--border);">
-                            <input type="checkbox" name="selected_staff[]" value="<?= htmlspecialchars($ku['nama']) ?>">
+                            <input type="checkbox" class="staff-checkbox" name="selected_staff[]" value="<?= (int) $ku['id'] ?>" data-name="<?= htmlspecialchars($ku['nama']) ?>">
                             <span><?= htmlspecialchars($ku['nama']) ?></span>
                         </label>
                     <?php endforeach; ?>
@@ -244,7 +283,7 @@ $subtab = $_GET['tab'] ?? 'layanan';
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 140px; overflow-y: auto; background: #f8fafc; padding: 10px; border-radius: 12px; border: 1.5px solid var(--border);">
                     <?php foreach ($kasir_users as $ku): ?>
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text-main); cursor: pointer; padding: 6px 8px; border-radius: 8px; background: white; border: 1px solid var(--border);">
-                            <input type="checkbox" class="edit-staff-checkbox" name="selected_staff[]" value="<?= htmlspecialchars($ku['nama']) ?>">
+                            <input type="checkbox" class="edit-staff-checkbox" name="selected_staff[]" value="<?= (int) $ku['id'] ?>" data-name="<?= htmlspecialchars($ku['nama']) ?>">
                             <span><?= htmlspecialchars($ku['nama']) ?></span>
                         </label>
                     <?php endforeach; ?>
@@ -268,12 +307,14 @@ function editShift(sh) {
     document.getElementById('editShiftStart').value = sh.mulai;
     document.getElementById('editShiftEnd').value = sh.selesai;
     
-    // Auto-check kasir bertugas
-    const assigned = (sh.staff || '').split(',').map(s => s.trim().toLowerCase());
+    // Auto-check kasir bertugas (reset dulu supaya yang dilepas benar-benar kosong)
+    const assignedList = Array.isArray(sh.staff_list) && sh.staff_list.length
+        ? sh.staff_list.map(s => String(s).trim().toLowerCase())
+        : (sh.staff || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
     document.querySelectorAll('.edit-staff-checkbox').forEach(cb => {
-        const val = cb.value.trim().toLowerCase();
-        // check if name matches or contains
-        cb.checked = assigned.some(a => a.includes(val) || val.includes(a));
+        const name = (cb.dataset.name || '').trim().toLowerCase();
+        cb.checked = name !== '' && assignedList.includes(name);
     });
 
     openModal('modalEditShift');

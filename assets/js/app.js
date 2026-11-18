@@ -65,6 +65,9 @@ function initUrlToasts() {
     if (params.get('toast') === 'shift_failed') {
         showToast('Gagal memulai shift. Periksa koneksi database lalu coba lagi.', 'error', 4500);
     }
+    if (params.get('toast') === 'not_assigned') {
+        showToast('Anda tidak dijadwalkan pada shift ini. Presensi ditolak.', 'error', 5000);
+    }
 }
 
 // 2. Modal Management (Bottom Sheet Overlay / Centered on PC)

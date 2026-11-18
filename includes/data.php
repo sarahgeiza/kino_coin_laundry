@@ -134,16 +134,30 @@ function sync_live_database(): bool
         $res_sh = @pg_query($conn, "SELECT * FROM shift ORDER BY id_shift");
         if ($res_sh) {
             $shifts = [];
+            $seen_shift = [];
             while ($row = pg_fetch_assoc($res_sh)) {
+                $nama_shift = (str_starts_with($row['nama_shift'], 'Shift') ? '' : 'Shift ') . $row['nama_shift'];
+                $key = strtolower(trim($nama_shift));
+                if (isset($seen_shift[$key])) continue; // hindari baris shift duplikat
+                $seen_shift[$key] = true;
+
                 $m = substr($row['jam_mulai'], 0, 5);
                 $s = substr($row['jam_selesai'], 0, 5);
+
+                // Roster kasir: prioritas dari tabel jadwal_shift, fallback ke roster sesi
+                $roster = db_shift_roster((int) $row['id_shift']);
+                if ($roster === null) {
+                    $roster = $_SESSION['shift_staff'][shift_roster_key($nama_shift)] ?? [];
+                }
+
                 $shifts[] = [
                     'id' => (int) $row['id_shift'],
-                    'nama' => (str_starts_with($row['nama_shift'], 'Shift') ? '' : 'Shift ') . $row['nama_shift'],
+                    'nama' => $nama_shift,
                     'mulai' => $m,
                     'selesai' => $s,
                     'jam_tampil' => "$m — $s",
-                    'staff' => 'Sarah, Ramzy'
+                    'staff' => implode(', ', $roster),
+                    'staff_list' => array_values($roster)
                 ];
             }
             if (!empty($shifts)) {
@@ -431,6 +445,19 @@ function db_start_shift(string $kasir_name, int $shift_id = 2): bool
         $u_res = @pg_query_params($conn, "SELECT id_pengguna FROM pengguna WHERE nama ILIKE $1 OR username ILIKE $1", ["%$kasir_name%"]);
         $id_kasir = ($u_res && pg_num_rows($u_res) > 0) ? (int)pg_fetch_result($u_res, 0, 'id_pengguna') : 3;
 
+        // Tolak presensi bila kasir tidak dijadwalkan pada shift yang dibuka ini
+        $sr = @pg_query_params($conn, 'SELECT nama_shift FROM shift WHERE id_shift = $1', [$shift_id]);
+        $shift_nama_raw = ($sr && pg_num_rows($sr)) ? (string) pg_fetch_result($sr, 0, 'nama_shift') : 'Shift';
+        $shift_def = [
+            'id' => (int) $shift_id,
+            'nama' => 'Shift ' . preg_replace('/^Shift\s+/i', '', $shift_nama_raw)
+        ];
+        $assign = kasir_shift_assignment($kasir_name, $shift_def);
+        if (!$assign['allowed']) {
+            $GLOBALS['shift_start_error'] = $assign['reason'];
+            return false;
+        }
+
         // Tutup shift aktif sebelumnya jika ada yang tertinggal (status valid: 'ditutup')
         @pg_query_params($conn, "UPDATE shift_operasional SET status = 'ditutup', ditutup_pada = NOW() WHERE id_kasir = $1 AND status = 'aktif'", [$id_kasir]);
 
@@ -484,6 +511,249 @@ function format_rupiah(int $angka): string
 /**
  * Mencari shift aktif kasir berdasarkan penugasan staf dan jam berjalan
  */
+/**
+ * Simpan roster kasir untuk sebuah shift ke tabel jadwal_shift.
+ * Aman dipanggil walau tabel/binding belum tersedia (return false).
+ */
+/**
+ * Cache roster per-request (bisa di-flush setelah mutasi).
+ */
+/**
+ * Kunci roster ternormalisasi: buang prefix "Shift" dan spasi, lowercase.
+ * Dipakai agar "Shift Pagi", "Pagi", " shift  pagi " menunjuk roster yang sama.
+ */
+function shift_roster_key(string $name): string
+{
+    $n = strtolower(trim($name));
+    $n = preg_replace('/^shift\s+/i', '', $n);
+    return preg_replace('/\s+/', ' ', $n);
+}
+
+function db_shift_roster_cache(): array
+{
+    if (!isset($GLOBALS['kino_shift_roster_cache'])) $GLOBALS['kino_shift_roster_cache'] = [];
+    return $GLOBALS['kino_shift_roster_cache'];
+}
+function db_shift_roster_flush(): void
+{
+    $GLOBALS['kino_shift_roster_cache'] = [];
+}
+
+/**
+ * Tabel shift bisa punya baris duplikat (nama sama, id berbeda) akibat seeding berulang.
+ * Semua operasi roster dipusatkan ke id terkecil dengan nama yang sama,
+ * supaya sunting roster dari baris mana pun tetap konsisten.
+ */
+function db_shift_canonical_id(int $shift_id): int
+{
+    try {
+        $conn = getConnection();
+        if (!$conn) return $shift_id;
+
+        $res = @pg_query_params($conn, "
+            SELECT MIN(s2.id_shift) AS id
+            FROM shift s1
+            JOIN shift s2 ON LOWER(TRIM(s2.nama_shift)) = LOWER(TRIM(s1.nama_shift))
+            WHERE s1.id_shift = $1
+        ", [$shift_id]);
+
+        if ($res && pg_num_rows($res) > 0) {
+            $id = (int) pg_fetch_result($res, 0, 'id');
+            if ($id > 0) return $id;
+        }
+        return $shift_id;
+    } catch (Throwable $e) {
+        return $shift_id;
+    }
+}
+
+function db_save_shift_roster(int $shift_id, array $kasir_ids): bool
+{
+    try {
+        $conn = getConnection();
+        if (!$conn) return false;
+
+        $chk = @pg_query($conn, "SELECT to_regclass('public.jadwal_shift') AS t");
+        if (!$chk || pg_fetch_result($chk, 0, 't') === null) return false;
+
+        // dibuat_oleh wajib terisi: pakai user aktif, fallback pemilik pertama
+        $owner_id = (int) ($_SESSION['user_id'] ?? 0);
+        if ($owner_id <= 0) {
+            $ow = @pg_query($conn, "SELECT id_pengguna FROM pengguna WHERE role = 'pemilik' ORDER BY id_pengguna LIMIT 1");
+            $owner_id = ($ow && pg_num_rows($ow)) ? (int) pg_fetch_result($ow, 0, 'id_pengguna') : 0;
+        }
+        if ($owner_id <= 0) return false;
+
+        $ids = array_values(array_filter(array_map('intval', $kasir_ids)));
+
+        // Semua baris shift dengan nama sama diperlakukan sebagai satu shift
+        $shift_id = db_shift_canonical_id($shift_id);
+
+        @pg_query($conn, "BEGIN");
+
+        // 1. Lepas kasir yang tidak lagi dipilih -> tandai 'dibatalkan' (BUKAN dihapus),
+        //    supaya sistem tetap tahu roster hari ini sudah pernah diatur.
+        if (empty($ids)) {
+            @pg_query_params($conn,
+                "UPDATE jadwal_shift SET status = 'dibatalkan'
+                 WHERE id_shift = $1 AND tanggal = CURRENT_DATE",
+                [$shift_id]
+            );
+        } else {
+            $placeholders = implode(',', array_map('intval', $ids));
+            @pg_query($conn,
+                "UPDATE jadwal_shift SET status = 'dibatalkan'
+                 WHERE id_shift = " . (int) $shift_id . "
+                   AND tanggal = CURRENT_DATE
+                   AND id_kasir NOT IN (" . $placeholders . ")"
+            );
+        }
+
+        // 2. Pasang / pindahkan kasir terpilih ke shift ini.
+        //    UNIQUE(id_kasir, tanggal): satu kasir hanya satu shift per hari.
+        //    Status valid: dijadwalkan | dimulai | selesai | dibatalkan.
+        foreach ($ids as $kid) {
+            @pg_query_params($conn,
+                "INSERT INTO jadwal_shift (id_shift, id_kasir, tanggal, status, dibuat_oleh)
+                 VALUES ($1, $2, CURRENT_DATE, 'dijadwalkan', $3)
+                 ON CONFLICT (id_kasir, tanggal)
+                 DO UPDATE SET id_shift = EXCLUDED.id_shift,
+                               status = 'dijadwalkan',
+                               dibuat_oleh = EXCLUDED.dibuat_oleh",
+                [$shift_id, $kid, $owner_id]
+            );
+        }
+
+        @pg_query($conn, "COMMIT");
+        db_shift_roster_flush();
+        return true;
+    } catch (Throwable $e) {
+        if (isset($conn) && $conn) @pg_query($conn, "ROLLBACK");
+        return false;
+    }
+}
+
+/**
+ * Roster kasir untuk sebuah shift.
+ * Sumber utama: tabel jadwal_shift (butuh binding shift<->kasir di database).
+ * Return null jika tabel/binding belum tersedia atau belum ada baris,
+ * supaya pemanggil bisa fallback ke roster sesi.
+ */
+function db_shift_roster(int $shift_id): ?array
+{
+    $shift_id = db_shift_canonical_id($shift_id);
+
+    $cache = db_shift_roster_cache();
+    if (array_key_exists($shift_id, $cache)) return $cache[$shift_id];
+
+    try {
+        $conn = getConnection();
+        if (!$conn) { $GLOBALS['kino_shift_roster_cache'][$shift_id] = null; return null; }
+
+        // Tabel jadwal_shift opsional: kalau belum ada, jangan bikin fatal error
+        $chk = @pg_query($conn, "SELECT to_regclass('public.jadwal_shift') AS t");
+        if (!$chk || pg_fetch_result($chk, 0, 't') === null) {
+            $GLOBALS['kino_shift_roster_cache'][$shift_id] = null;
+            return null;
+        }
+
+        $res = @pg_query_params($conn, "
+            SELECT p.nama
+            FROM jadwal_shift j
+            JOIN pengguna p ON p.id_pengguna = j.id_kasir
+            WHERE j.id_shift = $1
+              AND j.tanggal = CURRENT_DATE
+              AND COALESCE(j.status, 'dijadwalkan') <> 'dibatalkan'
+            ORDER BY p.nama
+        ", [$shift_id]);
+
+        if (!$res || pg_num_rows($res) === 0) {
+            $GLOBALS['kino_shift_roster_cache'][$shift_id] = null;
+            return null;
+        }
+
+        $names = [];
+        while ($r = pg_fetch_assoc($res)) $names[] = $r['nama'];
+        $GLOBALS['kino_shift_roster_cache'][$shift_id] = $names;
+        return $names;
+    } catch (Throwable $e) {
+        $GLOBALS['kino_shift_roster_cache'][$shift_id] = null;
+        return null;
+    }
+}
+
+/**
+ * Cek apakah kasir boleh presensi pada shift tertentu.
+ * Return ['allowed' => bool, 'reason' => string, 'roster' => array]
+ */
+/**
+ * Apakah Pemilik sudah pernah mengatur roster shift untuk hari ini?
+ * Dipakai membedakan "belum diatur" (izinkan) vs "sengaja dikosongkan" (tolak).
+ */
+function db_roster_configured(): bool
+{
+    try {
+        $conn = getConnection();
+        if (!$conn) return false;
+
+        $chk = @pg_query($conn, "SELECT to_regclass('public.jadwal_shift') AS t");
+        if (!$chk || pg_fetch_result($chk, 0, 't') === null) return false;
+
+        // Roster dianggap "sudah diatur" bila ada baris apa pun hari ini,
+        // termasuk yang berstatus 'dibatalkan' (kasir sengaja dilepas Pemilik).
+        $res = @pg_query($conn, "SELECT 1 FROM jadwal_shift WHERE tanggal = CURRENT_DATE LIMIT 1");
+        return ($res && pg_num_rows($res) > 0);
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function kasir_shift_assignment(string $kasir_name, array $shift): array
+{
+    $shift_id = (int) ($shift['id'] ?? 0);
+    $roster = db_shift_roster($shift_id);
+
+    if ($roster === null) {
+        $key = shift_roster_key($shift['nama'] ?? '');
+        if (array_key_exists($key, $_SESSION['shift_staff'] ?? [])) {
+            $roster = (array) $_SESSION['shift_staff'][$key];
+        }
+    }
+
+    if ($roster === null) {
+        // Roster sudah diatur Pemilik untuk hari ini, tapi shift ini tidak punya kasir
+        if (db_roster_configured()) {
+            return [
+                'allowed' => false,
+                'reason' => 'Tidak ada kasir yang dijadwalkan pada ' . ($shift['nama'] ?? 'shift ini') . '. Hubungi Pemilik untuk mengatur jadwal shift.',
+                'roster' => []
+            ];
+        }
+        // Belum ada pengaturan roster sama sekali -> izinkan (sistem belum dikonfigurasi)
+        return ['allowed' => true, 'reason' => '', 'roster' => []];
+    }
+
+    if (empty($roster)) {
+        return [
+            'allowed' => false,
+            'reason' => 'Tidak ada kasir yang dijadwalkan pada ' . ($shift['nama'] ?? 'shift ini') . '. Hubungi Pemilik untuk mengatur jadwal shift.',
+            'roster' => []
+        ];
+    }
+
+    foreach ($roster as $r) {
+        if (stripos($r, $kasir_name) !== false || stripos($kasir_name, $r) !== false) {
+            return ['allowed' => true, 'reason' => '', 'roster' => $roster];
+        }
+    }
+
+    return [
+        'allowed' => false,
+        'reason' => 'Anda tidak dijadwalkan pada ' . ($shift['nama'] ?? 'shift ini') . '. Hubungi Pemilik untuk mengatur jadwal shift.',
+        'roster' => $roster
+    ];
+}
+
 function get_active_kasir_shift(string $kasir_name): array
 {
     $all_shifts = $_SESSION['shifts'] ?? [];
