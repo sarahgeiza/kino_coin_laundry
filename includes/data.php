@@ -305,6 +305,7 @@ function db_save_transaction(array $data): ?string
                 RETURNING id_pelanggan
             ", [$nama, $wa]);
             if (!$ins_p) {
+                $GLOBALS['kino_last_db_error'] = pg_last_error($conn);
                 @pg_query($conn, "ROLLBACK");
                 return null;
             }
@@ -353,6 +354,7 @@ function db_save_transaction(array $data): ?string
         ]);
 
         if (!$ins_t) {
+            $GLOBALS['kino_last_db_error'] = pg_last_error($conn);
             @pg_query($conn, "ROLLBACK");
             return null;
         }
@@ -380,6 +382,7 @@ function db_save_transaction(array $data): ?string
         ]);
 
         if (!$ins_d) {
+            $GLOBALS['kino_last_db_error'] = pg_last_error($conn);
             @pg_query($conn, "ROLLBACK");
             return null;
         }
@@ -398,6 +401,7 @@ function db_save_transaction(array $data): ?string
                 (int) $addon['subtotal'],
             ]);
             if (!$ins_a) {
+                $GLOBALS['kino_last_db_error'] = pg_last_error($conn);
                 @pg_query($conn, "ROLLBACK");
                 return null;
             }
@@ -409,6 +413,7 @@ function db_save_transaction(array $data): ?string
         sync_live_database();
         return $no_invoice;
     } catch (Throwable $e) {
+        $GLOBALS['kino_last_db_error'] = $e->getMessage();
         if (isset($conn) && $conn) @pg_query($conn, "ROLLBACK");
         return null;
     }

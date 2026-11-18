@@ -168,8 +168,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     ];
     $saved_inv = db_save_transaction($tx_data);
 
-    // 2. Fallback sesi jika database offline
+    // 2. Fallback sesi jika database gagal — tapi JANGAN diam-diam dianggap sukses
     if (!$saved_inv) {
+        $db_err = $GLOBALS['kino_last_db_error'] ?? '';
+        $trx_error = 'Transaksi GAGAL tersimpan ke database'
+            . ($db_err !== '' ? ': ' . $db_err : '. Periksa koneksi database.')
+            . ' — data hanya tercatat sementara di sesi ini.';
+
         $member_code = null;
         $member_idx = -1;
         foreach ($_SESSION['members'] as $idx => $m) {
