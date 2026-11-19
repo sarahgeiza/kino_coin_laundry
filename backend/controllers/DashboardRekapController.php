@@ -181,8 +181,78 @@ if ($module === 'dashboard' || $module === 'rekap') {
         ]);
     }
 
-    // REKAP SHIFT, KASIR, PERIODE, PEMBAYARAN
-    if (in_array($action, ['shift', 'kasir', 'periode', 'pembayaran'], true)) {
+    // REKAP SHIFT OPERASIONAL (v_rekap_shift_operasional)
+    if ($module === 'rekap' && $action === 'shift') {
+        $limit = min(100, max(1, isset($_GET['limit']) ? integer($_GET['limit']) : 20));
+        $page = max(1, isset($_GET['page']) ? integer($_GET['page']) : 1);
+        $offset = ($page - 1) * $limit;
+
+        $rekapWhere = ' WHERE v.mulai_pada::date >= ?::date AND v.mulai_pada::date <= ?::date';
+        $rekapParams = [$start, $end];
+
+        if ($role === 'kasir') {
+            $rekapWhere .= ' AND so.id_kasir = ?';
+            $rekapParams[] = $userId;
+        }
+
+        $countRow = one(
+            'SELECT COUNT(v.id_shift_operasional)::int AS total
+             FROM v_rekap_shift_operasional v
+             JOIN shift_operasional so ON so.id_shift_operasional = v.id_shift_operasional' . $rekapWhere,
+            $rekapParams
+        );
+        $total = (int) ($countRow['total'] ?? 0);
+
+        $dataParams = array_merge($rekapParams, [$limit, $offset]);
+        $rows = rows(
+            'SELECT v.id_shift_operasional,
+                    v.mulai_pada::date::text AS tanggal,
+                    v.nama_kasir,
+                    v.nama_shift,
+                    v.mulai_pada::text AS mulai_pada,
+                    v.ditutup_pada::text AS ditutup_pada,
+                    v.status,
+                    v.jumlah_transaksi,
+                    v.total_berat_kg AS total_berat,
+                    v.total_koin_mesin AS total_koin,
+                    v.total_omzet,
+                    v.total_sistem,
+                    v.total_fisik,
+                    v.selisih
+             FROM v_rekap_shift_operasional v
+             JOIN shift_operasional so ON so.id_shift_operasional = v.id_shift_operasional' . $rekapWhere . '
+             ORDER BY v.id_shift_operasional DESC
+             LIMIT ? OFFSET ?',
+            $dataParams
+        );
+
+        $data = array_map(static function (array $r): array {
+            return [
+                'id_shift_operasional' => (int) $r['id_shift_operasional'],
+                'tanggal'              => (string) $r['tanggal'],
+                'nama_kasir'           => (string) $r['nama_kasir'],
+                'nama_shift'           => (string) $r['nama_shift'],
+                'mulai_pada'           => (string) $r['mulai_pada'],
+                'ditutup_pada'         => $r['ditutup_pada'] !== null ? (string) $r['ditutup_pada'] : null,
+                'status'               => (string) $r['status'],
+                'jumlah_transaksi'     => (int) ($r['jumlah_transaksi'] ?? 0),
+                'total_berat'          => (float) ($r['total_berat'] ?? 0),
+                'total_koin'           => (int) ($r['total_koin'] ?? 0),
+                'total_omzet'          => (int) ($r['total_omzet'] ?? 0),
+                'total_sistem'         => (int) ($r['total_sistem'] ?? 0),
+                'total_fisik'          => $r['total_fisik'] !== null ? (int) $r['total_fisik'] : null,
+                'selisih'              => $r['selisih'] !== null ? (int) $r['selisih'] : null,
+            ];
+        }, $rows);
+
+        respond([
+            'data'  => $data,
+            'total' => $total,
+        ]);
+    }
+
+    // REKAP KASIR, PERIODE, PEMBAYARAN
+    if (in_array($action, ['kasir', 'periode', 'pembayaran'], true)) {
 
         $group = match ($action) {
             'shift' => [

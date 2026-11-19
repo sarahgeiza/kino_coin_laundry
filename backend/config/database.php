@@ -95,5 +95,8 @@ function getConnection(): \PgSql\Connection
         );
     }
 
+    date_default_timezone_set('Asia/Jakarta');
+    @pg_query($conn, "SET TIME ZONE 'Asia/Jakarta'");
+
     return $conn;
 }

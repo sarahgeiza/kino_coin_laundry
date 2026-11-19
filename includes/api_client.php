@@ -25,6 +25,7 @@ if (session_status() === PHP_SESSION_NONE) {
 function api_controller_file(string $module): ?string
 {
     $map = [
+        'auth'              => 'AuthController.php',
         'transaksi'         => 'TransaksiController.php',
         'detail-transaksi'  => 'DetailTransaksiController.php',
         'pelanggan'         => 'PelangganController.php',
@@ -35,6 +36,7 @@ function api_controller_file(string $module): ?string
         'dashboard'         => 'DashboardRekapController.php',
         'rekap'             => 'DashboardRekapController.php',
         'riwayat'           => 'RiwayatController.php',
+        'jadwal-shift'      => 'JadwalShiftController.php',
     ];
     $file = $map[$module] ?? null;
 
