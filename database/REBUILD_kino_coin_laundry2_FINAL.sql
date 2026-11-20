@@ -230,7 +230,3 @@ FROM public.layanan ORDER BY id_layanan;
 SELECT nama_shift, jam_mulai, jam_selesai
 FROM public.shift ORDER BY id_shift;
 
-SELECT column_name
-FROM information_schema.columns
-WHERE table_schema = 'public' AND table_name = 'transaksi'
-  AND column_name IN ('koin_500','koin_1000','nilai_koin');
