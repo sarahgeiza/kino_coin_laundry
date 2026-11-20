@@ -373,6 +373,11 @@ if ($module === 'transaksi') {
                 $coinsPerProcess = (int) $service['jumlah_koin'];
                 $standardWeight = (float) ($service['berat_standar'] ?? 0);
 
+                // Drop Off tetap ditagih per proses, tetapi bukan layanan koin mesin.
+                if (stripos((string) $service['nama_layanan'], 'drop off') !== false) {
+                    $coinsPerProcess = 0;
+                }
+
                 if ($price <= 0 || $coinsPerProcess < 0) {
                     respond(['error' => 'Konfigurasi harga atau koin layanan tidak valid'], 422);
                 }

@@ -91,6 +91,10 @@ class Transaksi extends BaseModel
             $harga = (int) $layanan['harga'];
             $coinsPerProcess = (int)($layanan['jumlah_koin'] ?? 0);
             $standardWeight = (float)($layanan['berat_standar'] ?? 0);
+            // Drop Off tetap ditagih per proses, tetapi bukan layanan koin mesin.
+            if (stripos((string)$layanan['nama_layanan'], 'drop off') !== false) {
+                $coinsPerProcess = 0;
+            }
             if ($coinsPerProcess > 0 || $standardWeight > 0) {
                 $weight = isset($item['berat']) ? (float)$item['berat'] : 0.0;
                 if (!is_finite($weight) || $weight <= 0 || $weight > 999.99) {

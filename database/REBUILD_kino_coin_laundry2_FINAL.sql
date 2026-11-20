@@ -177,7 +177,7 @@ VALUES
     ('Cuci Kering',          16000, 7.50, 2, '1 hari', TRUE),
     ('Extra Spin',            4000, 7.50, 1, '15 menit', TRUE),
     ('Extra Dry',             5000, NULL, 1, '20 menit', TRUE),
-    ('Cuci Kering Drop Off', 20000, 7.50, 2, '1 hari', TRUE),
+    ('Cuci Kering Drop Off', 20000, 7.50, 0, '1 hari', TRUE),
     ('Lipat',                 1500, NULL, 0, '1 hari', TRUE),
     ('Sabun',                 1500, NULL, 0, 'Langsung', TRUE),
     ('Softener',              1500, NULL, 0, 'Langsung', TRUE),
