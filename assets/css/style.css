@@ -843,3 +843,163 @@ body {
     display: inline-block;
     animation: numPulse 0.18s ease-out;
 }
+
+
+/* ==========================================================================
+   DESKTOP APP SHELL (>=1024px)
+   Tampilan HP tetap sama; di desktop nav bawah jadi sidebar kiri,
+   konten melebar, kartu lebih lega, hover halus.
+   ========================================================================== */
+@media (min-width: 1024px) {
+    body {
+        background: #eef2f7;
+    }
+
+    .app-screen {
+        max-width: 100%;
+        margin: 0;
+        background: var(--bg-main);
+        box-shadow: none;
+    }
+
+    /* header jadi band lebar sejajar konten */
+    .header-staff,
+    .header-owner,
+    .header-customer {
+        margin-left: 236px;
+        width: auto;
+        box-sizing: border-box;
+        border-radius: 0;
+        padding: 24px 44px;
+        box-shadow: 0 6px 22px rgba(15, 23, 42, 0.12);
+    }
+    .header-top {
+        max-width: 1160px;
+        margin: 0 auto;
+    }
+    .header-title-box h1 {
+        font-size: 24px;
+    }
+
+    /* nav bawah -> sidebar kiri */
+    .bottom-nav {
+        top: 0;
+        bottom: 0;
+        left: 0;
+        transform: none;
+        width: 236px;
+        max-width: 236px;
+        height: 100vh;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
+        gap: 4px;
+        padding: 18px 14px;
+        border-top: 0;
+        border-right: 1px solid var(--border);
+        box-shadow: none;
+        background: #ffffff;
+    }
+    .bottom-nav::before {
+        content: "Kino Coin Laundry";
+        display: block;
+        padding: 6px 12px 18px 12px;
+        font-size: 14px;
+        font-weight: 900;
+        letter-spacing: -0.01em;
+        color: var(--primary-dark);
+    }
+    .nav-tab {
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 12px;
+        padding: 11px 14px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-muted);
+        transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    }
+    .nav-tab:hover {
+        background: #f1f5f9;
+        color: var(--primary);
+        transform: translateX(2px);
+    }
+    .nav-tab.active {
+        background: var(--primary-subtle);
+        color: var(--primary);
+    }
+    .nav-tab .tab-icon {
+        width: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* area konten */
+    .content-area {
+        margin-left: 236px;
+        width: auto;
+        padding: 26px 44px 56px 44px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        box-sizing: border-box;
+    }
+    .content-area > *:not(.fab-btn):not(.sheet-overlay) {
+        width: 100%;
+        max-width: 1160px;
+    }
+
+    /* kartu & grid lebih lega */
+    .card {
+        padding: 22px;
+        transition: box-shadow 0.22s ease, transform 0.22s ease, border-color 0.22s ease;
+    }
+    .card:hover {
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+        border-color: #dbe3ee;
+        transform: translateY(-2px);
+    }
+    .metrics-row {
+        gap: 16px;
+    }
+    .metric-box {
+        padding: 20px 18px;
+        transition: transform 0.22s ease, box-shadow 0.22s ease;
+    }
+    .metric-box:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 26px rgba(15, 23, 42, 0.14);
+    }
+    .trx-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        border-color: #dbe3ee;
+    }
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+    }
+    .chip:hover {
+        border-color: var(--primary-light);
+        color: var(--primary);
+    }
+
+    /* form lebih sempit biar tidak melar */
+    .page-narrow .content-area > * {
+        max-width: 940px;
+    }
+
+    /* kontrol segmented jangan melar penuh */
+    .content-area > *:not(.fab-btn):not(.sheet-overlay).master-tabs {
+        max-width: 380px;
+    }
+
+    /* FAB menyesuaikan lebar konten */
+    .fab-btn {
+        right: max(32px, calc(50vw - 640px));
+        bottom: 32px;
+    }
+}

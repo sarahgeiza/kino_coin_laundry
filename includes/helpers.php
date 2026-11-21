@@ -103,6 +103,16 @@ function actor(): array
 {
     if (empty($_SESSION['user_id'])) respond(['error' => 'Harus login'], 401);
     $u = one('SELECT id_pengguna,nama,username,role FROM pengguna WHERE id_pengguna=?', [(int)$_SESSION['user_id']]);
+
+    // Pelanggan tersimpan di tabel pelanggan, bukan pengguna
+    if (!$u && !empty($_SESSION['customer_id'])) {
+        $u = one(
+            "SELECT id_pelanggan AS id_pengguna, nama_pelanggan AS nama, no_hp AS username, 'pelanggan' AS role
+             FROM pelanggan WHERE id_pelanggan = ?",
+            [(int) $_SESSION['customer_id']]
+        );
+    }
+
     if (!$u) {
         session_destroy();
         respond(['error' => 'Akun tidak ditemukan'], 401);

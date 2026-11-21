@@ -11,7 +11,9 @@ $filter = $_GET['filter'] ?? 'Semua';
 $login_user_name = $_SESSION['username'] ?? 'Budi';
 
 $current_member = null;
-foreach ($_SESSION['members'] as $m) {
+$session_members = $_SESSION['members'] ?? [];
+$session_transactions = $_SESSION['transactions'] ?? [];
+foreach ($session_members as $m) {
     if (strcasecmp($m['nama'], $login_user_name) === 0) {
         $current_member = $m;
         break;
@@ -20,7 +22,7 @@ foreach ($_SESSION['members'] as $m) {
 
 // Fallback auto-registration if newly logged in
 if (!$current_member) {
-    $new_id = count($_SESSION['members']) + 1;
+    $new_id = count($session_members) + 1;
     $new_code = 'KC-P-' . str_pad($new_id, 4, '0', STR_PAD_LEFT);
     $current_member = [
         'id' => $new_id,
@@ -36,7 +38,7 @@ if (!$current_member) {
 }
 
 // 2. Filter customer transactions specifically for this user
-$customer_txs = array_filter($_SESSION['transactions'], function($t) use ($current_member) {
+$customer_txs = array_filter($session_transactions, function($t) use ($current_member) {
     return (stripos($t['pelanggan'], $current_member['nama']) !== false) ||
            (isset($t['kode_kartu']) && $t['kode_kartu'] === $current_member['kode_kartu']);
 });

@@ -122,7 +122,12 @@ function sync_live_database(): bool
                     'kategori' => $kategori,
                     'kategori_label' => $label,
                     'nama' => $nama,
-                    'deskripsi' => ($row['durasi'] ?? '') . ($satuan ? " • {$satuan}" : ''),
+                    'deskripsi' => (function ($durasi, $satuan) {
+                        $durasi = trim((string) $durasi);
+                        if ($satuan === '' || $satuan === null) return $durasi;
+                        if ($durasi !== '' && stripos($durasi, $satuan) !== false) return $durasi;
+                        return $durasi !== '' ? "{$durasi} • {$satuan}" : $satuan;
+                    })((string) ($row['durasi'] ?? ''), (string) $satuan),
                     'tarif' => (int) $row['harga'],
                     'koin_cuci_req' => (stripos($nama, 'cuci') !== false ? 1 : 0),
                     'koin_kering_req' => (stripos($nama, 'kering') !== false ? 1 : 0),
@@ -215,8 +220,8 @@ function sync_live_database(): bool
             }
         }
 
-        // 5. Transaksi
-        if ($isOwner || $isKasir) {
+        // 5. Transaksi (pemilik & kasir: semua; pelanggan: miliknya sendiri)
+        if ($isOwner || $isKasir || $isCustomer) {
             $txRows = api_collect_all('transaksi', 'list', [
                 'start' => '2000-01-01',
                 'end' => date('Y-m-d'),
@@ -267,7 +272,7 @@ function sync_live_database(): bool
                     'status' => ucfirst((string) ($row['status_pembayaran'] ?: 'lunas')),
                     'kasir' => (string) $row['nama_kasir'],
                     'shift' => 'Shift ' . $row['nama_shift'],
-                    'waktu' => date('H:i WIB', $waktu),
+                    'waktu' => date('H:i', $waktu) . ' WIB',
                     'tanggal' => date('d M Y', $waktu),
                     'filter_date' => date('Y-m-d', $waktu),
                 ];

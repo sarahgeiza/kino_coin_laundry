@@ -207,6 +207,7 @@ if (!empty($scan_code)) {
 $page_title = 'Transaksi Baru - Kino Coin Laundry';
 $app_role = 'kasir';
 $active_tab = 'transaksi';
+$page_class = 'page-narrow';
 
 require_once __DIR__ . '/../includes/header.php';
 

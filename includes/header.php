@@ -10,6 +10,7 @@ $app_role = $app_role ?? 'kasir'; // 'kasir' | 'pemilik' | 'pelanggan'
 $active_tab = $active_tab ?? 'home';
 $show_app_header = $show_app_header ?? true;
 $show_bottom_nav = $show_bottom_nav ?? true;
+$page_class = $page_class ?? '';
 
 // Validasi otorisasi & keaslian akun pengguna terhadap data Manajemen Pengguna
 check_auth_guard($app_role);
@@ -46,7 +47,7 @@ $shift_time_label = $active_shift['jam_tampil'] ?? '14:00 — 20:00';
 </head>
 <body>
 
-<div class="app-screen">
+<div class="app-screen <?= htmlspecialchars($page_class) ?>">
 
     <!-- Toast Notification Container -->
     <div class="toast-container" id="toastContainer"></div>

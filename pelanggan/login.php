@@ -35,6 +35,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 $login_error = 'Akun ini bukan akun pelanggan. Gunakan portal staf.';
             } else {
                 $_SESSION['customer_id'] = (int) ($account['id'] ?? 0);
+                $_SESSION['user_id'] = $_SESSION['customer_id'];
                 $_SESSION['username'] = (string) ($account['nama'] ?? '');
                 $_SESSION['role'] = 'pelanggan';
                 $_SESSION['csrf'] = (string) ($response['data']['csrf_token'] ?? bin2hex(random_bytes(32)));
