@@ -90,13 +90,22 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
         $pricing_mode = 'unit';
     }
 
-    if ($pricing_mode === 'block') {
-        $berat = max(0.5, $qty_raw);
+    // Validasi kuantitas: tidak boleh 0 / negatif / bukan angka
+    if (!is_numeric($_POST['qty'] ?? '') || $qty_raw <= 0) {
+        $trx_error = $pricing_mode === 'unit'
+            ? 'Kuantitas harus lebih dari 0.'
+            : 'Berat cucian harus lebih dari 0 kg.';
+        $berat = 0;
+        $qty = 0;
+        $putaran = 0;
+        $biaya_layanan = 0;
+    } elseif ($pricing_mode === 'block') {
+        $berat = $qty_raw;
         $putaran = max(1, (int) ceil($berat / 7.5));
         $qty = $putaran;
         $biaya_layanan = (int) $selected_service['tarif'] * $putaran;
     } elseif ($pricing_mode === 'per_kg') {
-        $berat = max(0.5, $qty_raw);
+        $berat = $qty_raw;
         $qty = 1;
         $putaran = 0;
         $biaya_layanan = (int) round($selected_service['tarif'] * $berat);
@@ -149,7 +158,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
         $status = 'Lunas';
     }
 
-        // 1. Simpan langsung ke Supabase PostgreSQL
+    if (!empty($trx_error)) {
+        // Validasi gagal: jangan simpan apa pun
+    } else {
+        // 1. Simpan lewat controller backend
     $tx_data = [
         'nama' => $nama,
         'wa' => $wa,
@@ -242,6 +254,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     }
 header('Location: index.php?toast=saved');
     exit;
+    }
     }
 }
 

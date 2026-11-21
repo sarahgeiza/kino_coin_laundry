@@ -115,9 +115,9 @@ foreach ($all_session_txs as $t) {
     <div class="card" style="padding: 12px; background: #eff6ff; border-color: #bfdbfe; margin-bottom: 0;">
         <span style="font-size: 11px; font-weight: 800; color: #1e3a8a; display: block; margin-bottom: 8px;">Pilih Rentang Tanggal:</span>
         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <input type="date" id="customStartDate" class="form-control" value="2026-10-25" style="font-size: 12px; padding: 8px; flex: 1; min-width: 120px;" onchange="applyCustomDateFilter()">
+            <input type="date" id="customStartDate" class="form-control" value="<?= date('Y-m-d', strtotime('-6 days')) ?>" style="font-size: 12px; padding: 8px; flex: 1; min-width: 120px;" onchange="applyCustomDateFilter()">
             <span style="font-size: 12px; font-weight: 700; color: #64748b;">s/d</span>
-            <input type="date" id="customEndDate" class="form-control" value="2026-10-31" style="font-size: 12px; padding: 8px; flex: 1; min-width: 120px;" onchange="applyCustomDateFilter()">
+            <input type="date" id="customEndDate" class="form-control" value="<?= date('Y-m-d') ?>" style="font-size: 12px; padding: 8px; flex: 1; min-width: 120px;" onchange="applyCustomDateFilter()">
             <button type="button" class="btn btn-primary" style="width: auto; padding: 8px 14px; font-size: 12px;" onclick="applyCustomDateFilter()">Terapkan</button>
         </div>
     </div>

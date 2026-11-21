@@ -382,10 +382,15 @@ function db_save_transaction(array $data): ?string
  */
 function db_save_member(string $nama, string $wa, ?string $password = null): ?array
 {
-    $response = api_call('pelanggan', 'create', 'POST', [], [
+    $payload = [
         'nama_pelanggan' => $nama,
         'no_hp' => $wa,
-    ]);
+    ];
+    if ($password !== null && $password !== '') {
+        $payload['password'] = $password;
+    }
+
+    $response = api_call('pelanggan', 'create', 'POST', [], $payload);
 
     if (!api_ok($response)) {
         $GLOBALS['kino_last_db_error'] = api_error_message($response);
@@ -468,11 +473,14 @@ function db_start_shift(string $kasir_name, int $shift_id = 2): bool
  * Tidak ada fallback lintas-kasir: kasir tidak bisa menutup shift orang lain
  * atau "menutup" shift yang tidak pernah ia buka.
  */
-function db_close_shift(string $kasir_name, int $total_fisik = 0, int $selisih = 0): bool
+function db_close_shift(string $kasir_name, int $total_fisik = 0, int $selisih = 0, string $catatan = ''): bool
 {
-    $response = api_call('shift-operasional', 'close', 'POST', [], [
-        'total_fisik' => $total_fisik,
-    ]);
+    $payload = ['total_fisik' => $total_fisik];
+    if (trim($catatan) !== '') {
+        $payload['catatan'] = trim($catatan);
+    }
+
+    $response = api_call('shift-operasional', 'close', 'POST', [], $payload);
 
     if (!api_ok($response)) {
         $GLOBALS['shift_close_error'] = api_error_message($response);
@@ -627,6 +635,7 @@ function kasir_shift_assignment(string $kasir_name, array $shift): array
 function get_active_kasir_shift(string $kasir_name): array
 {
     $all_shifts = $_SESSION['shifts'] ?? [];
+
     if (empty($all_shifts)) {
         return [
             'id' => 2,
@@ -634,48 +643,32 @@ function get_active_kasir_shift(string $kasir_name): array
             'mulai' => '12:00',
             'selesai' => '18:00',
             'jam_tampil' => '12:00 — 18:00',
-            'staff' => 'Sarah, Ramzy'
+            'staff' => '',
         ];
     }
 
-    $now_time = date('H:i');
-    $candidate_by_name = null;
+    $now = date('H:i');
 
-    foreach (array_reverse($all_shifts) as $s) {
-        $staff_list = array_map('trim', explode(',', $s['staff'] ?? ''));
-        $matched_name = false;
-        foreach ($staff_list as $st) {
-            if (stripos($st, $kasir_name) !== false || stripos($kasir_name, $st) !== false) {
-                $matched_name = true;
-                break;
-            }
+    // Shift ditentukan murni oleh jam berjalan; roster hanya menentukan
+    // siapa yang boleh presensi pada shift tersebut.
+    foreach ($all_shifts as $s) {
+        $start = (string) ($s['mulai'] ?? '');
+        $end = (string) ($s['selesai'] ?? '');
+        if ($start === '' || $end === '') {
+            continue;
         }
 
-        if ($matched_name) {
-            if (!$candidate_by_name) {
-                $candidate_by_name = $s;
-            }
-            $start = $s['mulai'];
-            $end = $s['selesai'];
-            if ($start && $end) {
-                if ($start <= $end) {
-                    if ($now_time >= $start && $now_time <= $end) {
-                        return $s;
-                    }
-                } else {
-                    if ($now_time >= $start || $now_time <= $end) {
-                        return $s;
-                    }
-                }
-            }
+        $isActive = $start <= $end
+            ? ($now >= $start && $now < $end)
+            : ($now >= $start || $now < $end);
+
+        if ($isActive) {
+            return $s;
         }
     }
 
-    if ($candidate_by_name) {
-        return $candidate_by_name;
-    }
-
-    return $all_shifts[1] ?? $all_shifts[0];
+    // Tidak ada jendela yang cocok (mis. jam shift tidak lengkap): pakai shift pertama.
+    return $all_shifts[0];
 }
 
 /**

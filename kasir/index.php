@@ -17,7 +17,15 @@ if (isset($_POST['action']) && $_POST['action'] === 'mulai_shift') {
     }
     $started = db_start_shift($current_kasir_name, $kasir_shift['id'] ?? 2);
     $_SESSION['kasir_checked_in'] = $started;
-    header('Location: index.php?' . ($started ? 'shift_started=1' : 'toast=shift_failed'));
+
+    if (!$started) {
+        $_SESSION['checkin_error'] = $GLOBALS['shift_start_error'] ?? 'Presensi gagal.';
+        header('Location: index.php?err=1');
+        exit;
+    }
+
+    unset($_SESSION['checkin_error']);
+    header('Location: index.php?shift_started=1');
     exit;
 }
 
@@ -52,6 +60,12 @@ $disp_wash_val = format_rupiah($total_live_wash * 7000);
 $disp_dry = $total_live_dry . ' pcs';
 $disp_dry_val = format_rupiah($total_live_dry * 10000);
 ?>
+
+<?php if (!empty($_SESSION['checkin_error'])): ?>
+<div style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; padding:12px 14px; border-radius:10px; font-size:12px; font-weight:700; margin-bottom:14px;">
+    <?= htmlspecialchars($_SESSION['checkin_error']) ?>
+</div>
+<?php unset($_SESSION['checkin_error']); endif; ?>
 
 <!-- Tombol Aksi Cepat (Persis Figma K1) -->
 <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 10px; margin-bottom: 16px;">

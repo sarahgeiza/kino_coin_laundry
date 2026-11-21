@@ -25,6 +25,12 @@ if ($filter === 'Self Service') {
     </a>
 </div>
 
+<?php if (db_active_shift($_SESSION['username'] ?? '') === null): ?>
+<div style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; padding:10px 12px; border-radius:10px; font-size:11px; font-weight:600; margin-bottom:12px;">
+    Belum presensi. Halaman ini hanya menampilkan transaksi shift yang sedang aktif — mulai shift di Beranda untuk mencatat transaksi baru.
+</div>
+<?php endif; ?>
+
 <!-- Filter Chips: Semua, Self Service, Drop Off -->
 <div class="filter-scroll">
     <a href="transaksi.php?filter=Semua" class="chip <?= $filter === 'Semua' ? 'active' : '' ?>">Semua</a>

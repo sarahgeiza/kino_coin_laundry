@@ -32,9 +32,20 @@ foreach ($current_tx_list as $t) {
 $kasir_shift = get_active_kasir_shift($current_kasir);
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'tutup_shift') {
-    $closed = db_close_shift($current_kasir, $display_income, 0);
+    $fisik = isset($_POST['total_fisik']) && $_POST['total_fisik'] !== ''
+        ? max(0, (int) $_POST['total_fisik'])
+        : $display_income;
+    $catatan = trim((string) ($_POST['catatan'] ?? ''));
+    $closed = db_close_shift($current_kasir, $fisik, 0, $catatan);
     $_SESSION['kasir_checked_in'] = false;
-    header('Location: index.php?' . ($closed ? 'shift_closed=1' : 'toast=close_failed'));
+
+    if ($closed) {
+        unset($_SESSION['close_error']);
+        header('Location: index.php?shift_closed=1');
+    } else {
+        $_SESSION['close_error'] = $GLOBALS['shift_close_error'] ?? 'Gagal menutup shift.';
+        header('Location: rekap.php?err=1');
+    }
     exit;
 }
 
@@ -44,6 +55,12 @@ $active_tab = 'rekap';
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
+
+<?php if (!empty($_SESSION['close_error'])): ?>
+<div style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; padding:12px 14px; border-radius:10px; font-size:12px; font-weight:700; margin-bottom:14px;">
+    <?= htmlspecialchars($_SESSION['close_error']) ?>
+</div>
+<?php unset($_SESSION['close_error']); endif; ?>
 
 <div style="margin-bottom: 14px;">
     <h2 style="font-size: 17px; font-weight: 800;">Rekapitulasi Operasional</h2>
@@ -110,6 +127,14 @@ require_once __DIR__ . '/../includes/header.php';
         </p>
         <form action="rekap.php" method="POST">
             <input type="hidden" name="action" value="tutup_shift">
+            <div class="form-group">
+                <label class="form-label">Uang Fisik di Kasir (Rp)</label>
+                <input type="number" name="total_fisik" class="form-control" min="0" step="1000" value="<?= (int) $display_income ?>" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Catatan (wajib jika tutup lebih awal)</label>
+                <input type="text" name="catatan" class="form-control" maxlength="200" placeholder="Contoh: tutup lebih awal, mesin rusak">
+            </div>
             <div style="display: flex; gap: 10px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal('modalTutupShift')">Batal</button>
                 <button type="submit" class="btn btn-primary" style="background: #1e3a8a;">Ya, Tutup Shift</button>
