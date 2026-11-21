@@ -210,8 +210,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
                 'is_member' => true,
                 'tx_count' => 0,
                 'coin_cuci' => 0,
-                'coin_kering' => 0,
-                'password' => 'password123'
+                'coin_kering' => 0
             ];
         }
 

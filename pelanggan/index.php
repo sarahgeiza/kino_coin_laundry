@@ -30,8 +30,7 @@ if (!$current_member) {
         'is_member' => true,
         'tx_count' => 0,
         'coin_cuci' => 0,
-        'coin_kering' => 0,
-        'password' => 'password123'
+        'coin_kering' => 0
     ];
     $_SESSION['members'][] = $current_member;
 }

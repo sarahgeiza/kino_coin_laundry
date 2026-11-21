@@ -109,16 +109,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 </div>
             <?php endif; ?>
 
-            <form action="login-kasir.php" method="POST">
+            <form action="login-kasir.php" method="POST" autocomplete="off">
                 <div class="form-group">
                     <label class="form-label">Username / Email</label>
-                    <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($_POST['username'] ?? 'sarah') ?>" placeholder="Contoh: sarah atau ramzy" required>
+                    <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>" autocomplete="off" placeholder="Contoh: sarah atau ramzy" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Password</label>
                     <div style="position: relative;">
-                        <input type="password" id="inputPassKasir" name="password" class="form-control" value="<?= htmlspecialchars($_POST['password'] ?? 'kasir123') ?>" style="padding-right: 80px;" required>
+                        <input type="password" id="inputPassKasir" name="password" class="form-control" value="" autocomplete="new-password" style="padding-right: 80px;" required>
                         <button type="button" class="btn-toggle-pass" onclick="togglePassword('inputPassKasir', this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 12px; font-weight: 700; color: #2563eb; cursor: pointer;">
                             Lihat
                         </button>

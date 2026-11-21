@@ -105,10 +105,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 </div>
             <?php endif; ?>
 
-            <form action="login.php" method="POST">
+            <form action="login.php" method="POST" autocomplete="off">
                 <div class="form-group">
                     <label class="form-label">Nomor WhatsApp</label>
-                    <input type="text" id="custLoginWa" name="wa" class="form-control" value="<?= htmlspecialchars($_POST['wa'] ?? '0899887766') ?>" placeholder="Contoh: 0899887766" inputmode="numeric" pattern="[0-9]+" title="Nomor WhatsApp hanya boleh berisi angka" aria-describedby="custLoginWaWarning" oninput="validateCustLoginWa(this)" required>
+                    <input type="text" id="custLoginWa" name="wa" class="form-control" value="<?= htmlspecialchars($_POST['wa'] ?? '') ?>" autocomplete="off" placeholder="08xxxxxxxxxx" inputmode="numeric" pattern="[0-9]+" title="Nomor WhatsApp hanya boleh berisi angka" aria-describedby="custLoginWaWarning" oninput="validateCustLoginWa(this)" required>
                     <small id="custLoginWaWarning" role="alert" aria-live="polite" style="display:none; color:#dc2626; font-size:12px; margin-top:5px;">
                         Nomor WhatsApp hanya boleh berisi angka.
                     </small>
@@ -117,7 +117,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 <div class="form-group">
                     <label class="form-label">Password</label>
                     <div style="position: relative;">
-                        <input type="password" id="inputPassCust" name="password" class="form-control" value="<?= htmlspecialchars($_POST['password'] ?? 'password123') ?>" style="padding-right: 80px;" required>
+                        <input type="password" id="inputPassCust" name="password" class="form-control" value="" autocomplete="new-password" style="padding-right: 80px;" required>
                         <button type="button" onclick="togglePassword('inputPassCust', this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 12px; font-weight: 700; color: #ea580c; cursor: pointer;">
                             Lihat
                         </button>
