@@ -12,50 +12,36 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (empty($username) || empty($password)) {
         $login_error = 'Username dan password wajib diisi.';
     } else {
-        $matched_user = null;
-        foreach ($_SESSION['users'] as $u) {
-            if (($u['role'] ?? '') === 'Kasir') {
-                $first_name = explode(' ', trim($u['nama']))[0];
-                if (strcasecmp($u['username'], $username) === 0 || 
-                    strcasecmp($u['email'], $username) === 0 || 
-                    strcasecmp($u['nama'], $username) === 0 ||
-                    strcasecmp($first_name, $username) === 0) {
-                    $matched_user = $u;
-                    break;
-                }
-            }
-        }
+        $response = api_call('auth', 'login', 'POST', [], [
+            'username' => $username,
+            'password' => $password,
+        ]);
 
-        $pass_valid = false;
-        if ($matched_user) {
-            $db_pass = (string)($matched_user['password'] ?? '');
-            if (password_verify($password, $db_pass) || $db_pass === $password) {
-                $pass_valid = true;
-            }
-        }
-
-        if (!$matched_user) {
-            $login_error = 'Akun kasir tidak terdaftar di sistem. Hubungi Pemilik toko untuk mendaftarkan akun Anda di Manajemen Pengguna.';
-        } elseif (!$pass_valid) {
-            $login_error = 'Password salah. Silakan periksa kembali kata sandi Anda.';
+        if (!api_ok($response)) {
+            $login_error = $response['status'] === 401
+                ? 'Username atau password salah.'
+                : api_error_message($response);
         } else {
-            $_SESSION['user_id'] = $matched_user['id'];
-            $_SESSION['username'] = $matched_user['nama'];
-            $_SESSION['role'] = 'kasir';
-            $_SESSION['csrf'] = bin2hex(random_bytes(32));
+            $account = $response['data']['user'] ?? [];
+            $role = strtolower((string) ($account['role'] ?? ''));
 
-            // Cek apakah kasir sudah memiliki shift aktif di database Supabase
-            $so_active = false;
-            foreach ($_SESSION['presensi'] ?? [] as $pr) {
-                if ($pr['kasir'] === $matched_user['nama'] && $pr['status'] === 'Berjalan') {
-                    $so_active = true;
-                    break;
+            if ($role !== 'kasir') {
+                unset($_SESSION['user_id'], $_SESSION['customer_id'], $_SESSION['role'], $_SESSION['username']);
+                $login_error = 'Akun ini bukan kasir. Gunakan portal yang sesuai.';
+            } else {
+                $_SESSION['user_id'] = (int) ($account['id'] ?? 0);
+                $_SESSION['username'] = (string) ($account['nama'] ?? '');
+                $_SESSION['role'] = 'kasir';
+                $_SESSION['csrf'] = (string) ($response['data']['csrf_token'] ?? bin2hex(random_bytes(32)));
+
+                if ('kasir' === 'kasir') {
+                    $active = api_call('shift-operasional', 'current', 'GET');
+                    $_SESSION['kasir_checked_in'] = api_ok($active) && !empty($active['data']['data']);
                 }
-            }
-            $_SESSION['kasir_checked_in'] = $so_active;
 
-            header('Location: kasir/index.php');
-            exit;
+                header('Location: kasir/index.php');
+                exit;
+            }
         }
     }
 }

@@ -12,39 +12,36 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (empty($username) || empty($password)) {
         $login_error = 'Username dan password wajib diisi.';
     } else {
-        $matched_user = null;
-        foreach ($_SESSION['users'] as $u) {
-            if (($u['role'] ?? '') === 'Pemilik') {
-                $first_name = explode(' ', trim($u['nama']))[0];
-                if (strcasecmp($u['username'], $username) === 0 || 
-                    strcasecmp($u['email'], $username) === 0 || 
-                    strcasecmp($u['nama'], $username) === 0 ||
-                    strcasecmp($first_name, $username) === 0) {
-                    $matched_user = $u;
-                    break;
-                }
-            }
-        }
+        $response = api_call('auth', 'login', 'POST', [], [
+            'username' => $username,
+            'password' => $password,
+        ]);
 
-        $pass_valid = false;
-        if ($matched_user) {
-            $db_pass = (string)($matched_user['password'] ?? '');
-            if (password_verify($password, $db_pass) || $db_pass === $password) {
-                $pass_valid = true;
-            }
-        }
-
-        if (!$matched_user) {
-            $login_error = 'Akun pemilik tidak terdaftar di sistem atau Anda tidak memiliki hak akses sebagai Pemilik.';
-        } elseif (!$pass_valid) {
-            $login_error = 'Password salah. Silakan periksa kembali kata sandi Anda.';
+        if (!api_ok($response)) {
+            $login_error = $response['status'] === 401
+                ? 'Username atau password salah.'
+                : api_error_message($response);
         } else {
-            $_SESSION['user_id'] = $matched_user['id'];
-            $_SESSION['username'] = $matched_user['nama'];
-            $_SESSION['role'] = 'pemilik';
-            $_SESSION['csrf'] = bin2hex(random_bytes(32));
-            header('Location: admin/index.php');
-            exit;
+            $account = $response['data']['user'] ?? [];
+            $role = strtolower((string) ($account['role'] ?? ''));
+
+            if ($role !== 'pemilik') {
+                unset($_SESSION['user_id'], $_SESSION['customer_id'], $_SESSION['role'], $_SESSION['username']);
+                $login_error = 'Akun ini bukan pemilik. Gunakan portal yang sesuai.';
+            } else {
+                $_SESSION['user_id'] = (int) ($account['id'] ?? 0);
+                $_SESSION['username'] = (string) ($account['nama'] ?? '');
+                $_SESSION['role'] = 'pemilik';
+                $_SESSION['csrf'] = (string) ($response['data']['csrf_token'] ?? bin2hex(random_bytes(32)));
+
+                if ('pemilik' === 'kasir') {
+                    $active = api_call('shift-operasional', 'current', 'GET');
+                    $_SESSION['kasir_checked_in'] = api_ok($active) && !empty($active['data']['data']);
+                }
+
+                header('Location: admin/index.php');
+                exit;
+            }
         }
     }
 }

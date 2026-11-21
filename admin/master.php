@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../includes/data.php';
 check_auth_guard('pemilik');
 
+$shift_error = '';
+
 // Handle Add/Edit Shift POST
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
 
@@ -24,29 +26,22 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
         $selesai = trim($_POST['selesai'] ?? '14:00');
 
         if ($nama !== '') {
-            $conn = getConnection();
-            $new_id = null;
+            $response = api_call('shift', 'create', 'POST', [], [
+                'nama_shift' => preg_replace('/^Shift\s+/i', '', $nama),
+                'jam_mulai' => $mulai,
+                'jam_selesai' => $selesai,
+            ]);
 
-            // Simpan definisi shift ke database bila memungkinkan
-            if ($conn) {
-                $ins = @pg_query_params($conn,
-                    "INSERT INTO shift (nama_shift, jam_mulai, jam_selesai) VALUES ($1, $2, $3) RETURNING id_shift",
-                    [preg_replace('/^Shift\s+/i', '', $nama), $mulai, $selesai]
-                );
-                if ($ins) $new_id = (int) pg_fetch_result($ins, 0, 'id_shift');
+            if (!api_ok($response)) {
+                $shift_error = api_error_message($response);
+            } else {
+                $new_id = (int) ($response['data']['data']['id_shift'] ?? 0);
+                db_save_shift_roster($new_id, $selected_ids);
+                sync_live_database();
+
+                header('Location: master.php?tab=shift&toast=saved');
+                exit;
             }
-
-            if ($new_id === null) {
-                $new_id = count($_SESSION['shifts'] ?? []) + 1;
-            }
-
-            // Simpan roster
-            $key = shift_roster_key($nama);
-            $_SESSION['shift_staff'][$key] = $selected_names;
-            db_save_shift_roster($new_id, $selected_ids);
-
-            header('Location: master.php?tab=shift&toast=saved');
-            exit;
         }
     } elseif ($_POST['action'] === 'edit_shift') {
         $shift_id = intval($_POST['shift_id'] ?? 0);
@@ -55,37 +50,22 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
         $selesai = trim($_POST['selesai'] ?? '14:00');
 
         if ($shift_id > 0 && $nama !== '') {
-            $conn = getConnection();
-            if ($conn) {
-                @pg_query_params($conn,
-                    "UPDATE shift SET nama_shift = $1, jam_mulai = $2, jam_selesai = $3 WHERE id_shift = $4",
-                    [preg_replace('/^Shift\s+/i', '', $nama), $mulai, $selesai, $shift_id]
-                );
+            $response = api_call('shift', 'update', 'POST', [], [
+                'id_shift' => $shift_id,
+                'nama_shift' => preg_replace('/^Shift\s+/i', '', $nama),
+                'jam_mulai' => $mulai,
+                'jam_selesai' => $selesai,
+            ]);
+
+            if (!api_ok($response)) {
+                $shift_error = api_error_message($response);
+            } else {
+                db_save_shift_roster($shift_id, $selected_ids);
+                sync_live_database();
+
+                header('Location: master.php?tab=shift&toast=saved');
+                exit;
             }
-
-            // Roster: SELALU ditimpa dengan pilihan terbaru (termasuk bila kosong)
-            $key = shift_roster_key($nama);
-            $_SESSION['shift_staff'][$key] = $selected_names;
-            db_save_shift_roster($shift_id, $selected_ids);
-
-            // Perbarui definisi shift di state sesi agar langsung terlihat
-            // (pakai indeks: foreach by reference pada hasil ?? tidak memodifikasi array asli)
-            if (isset($_SESSION['shifts']) && is_array($_SESSION['shifts'])) {
-                foreach ($_SESSION['shifts'] as $idx => $sh) {
-                    if ((int) $sh['id'] === $shift_id) {
-                        $_SESSION['shifts'][$idx]['nama'] = $nama;
-                        $_SESSION['shifts'][$idx]['mulai'] = $mulai;
-                        $_SESSION['shifts'][$idx]['selesai'] = $selesai;
-                        $_SESSION['shifts'][$idx]['jam_tampil'] = "$mulai — $selesai";
-                        $_SESSION['shifts'][$idx]['staff'] = implode(', ', $selected_names);
-                        $_SESSION['shifts'][$idx]['staff_list'] = $selected_names;
-                        break;
-                    }
-                }
-            }
-
-            header('Location: master.php?tab=shift&toast=saved');
-            exit;
         }
     }
 }
@@ -105,6 +85,12 @@ $subtab = $_GET['tab'] ?? 'layanan';
 
 
 ?>
+
+<?php if (!empty($shift_error)): ?>
+<div style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; padding:12px 14px; border-radius:10px; font-size:12px; font-weight:700; margin-bottom:14px;">
+    <?= htmlspecialchars($shift_error) ?>
+</div>
+<?php endif; ?>
 
 <div style="margin-bottom: 12px;">
     <h2 style="font-size: 16px; font-weight: 800;">Master Data</h2>

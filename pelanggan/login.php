@@ -16,34 +16,31 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     } elseif (!preg_match('/^[0-9]+$/', $wa)) {
         $login_error = 'Nomor WhatsApp hanya boleh berisi angka.';
     } else {
-        // Search existing member strictly by WhatsApp number
-        $matched = null;
-        foreach ($_SESSION['members'] as $m) {
-            if ($m['wa'] === $wa) {
-                $matched = $m;
-                break;
-            }
-        }
+        $response = api_call('auth', 'login', 'POST', [], [
+            'username' => $wa,
+            'password' => $pass,
+        ]);
 
-        $pass_valid = false;
-        if ($matched) {
-            $db_pass = (string)($matched['password'] ?? '');
-            if (empty($db_pass) || password_verify($pass, $db_pass) || $db_pass === $pass) {
-                $pass_valid = true;
+        if (!api_ok($response)) {
+            if ($response['status'] === 401) {
+                $login_error = 'Nomor WhatsApp belum terdaftar atau password salah.';
+            } else {
+                $login_error = api_error_message($response);
             }
-        }
-
-        if (!$matched) {
-            $login_error = 'Nomor WhatsApp ' . htmlspecialchars($wa) . ' belum terdaftar. Silakan daftar akun baru terlebih dahulu.';
-        } elseif (!$pass_valid) {
-            $login_error = 'Password salah. Silakan periksa kembali kata sandi Anda.';
         } else {
-            $_SESSION['customer_id'] = $matched['id'];
-            $_SESSION['username'] = $matched['nama'];
-            $_SESSION['role'] = 'pelanggan';
-            $_SESSION['csrf'] = bin2hex(random_bytes(32));
-            header('Location: index.php');
-            exit;
+            $account = $response['data']['user'] ?? [];
+
+            if (strtolower((string) ($account['role'] ?? '')) !== 'pelanggan') {
+                unset($_SESSION['user_id'], $_SESSION['customer_id'], $_SESSION['role'], $_SESSION['username']);
+                $login_error = 'Akun ini bukan akun pelanggan. Gunakan portal staf.';
+            } else {
+                $_SESSION['customer_id'] = (int) ($account['id'] ?? 0);
+                $_SESSION['username'] = (string) ($account['nama'] ?? '');
+                $_SESSION['role'] = 'pelanggan';
+                $_SESSION['csrf'] = (string) ($response['data']['csrf_token'] ?? bin2hex(random_bytes(32)));
+                header('Location: index.php');
+                exit;
+            }
         }
     }
 }

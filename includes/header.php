@@ -14,6 +14,9 @@ $show_bottom_nav = $show_bottom_nav ?? true;
 // Validasi otorisasi & keaslian akun pengguna terhadap data Manajemen Pengguna
 check_auth_guard($app_role);
 
+// Semua data halaman ditarik dari endpoint backend (controller API).
+sync_live_database();
+
 $user_name = $_SESSION['username'] ?? '';
 $user_avatar = strtoupper(substr($user_name, 0, 1));
 
