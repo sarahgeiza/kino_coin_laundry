@@ -99,7 +99,9 @@ if ($module === 'auth') {
         $password = (string) $b['password'];
         $account = one(
             'SELECT id_pengguna AS id, nama, username, role, password AS password_hash
-             FROM pengguna WHERE username = ?',
+             FROM pengguna WHERE LOWER(username) = LOWER(?)
+             ORDER BY id_pengguna
+             LIMIT 1',
             [$username]
         );
 

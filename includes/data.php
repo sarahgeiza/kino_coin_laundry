@@ -436,6 +436,25 @@ function db_active_shift(string $kasir_name = ''): ?array
         return null;
     }
 
+    // Shift yang melewati jam selesai (mis. lupa ditutup kemarin) ditutup otomatis
+    // supaya tidak nyangkut sebagai "Berjalan" dan tidak memblokir presensi baru.
+    $mulaiTs = strtotime((string) ($row['mulai_pada'] ?? ''));
+    $jamSelesai = (string) ($row['jam_selesai'] ?? '');
+    if ($mulaiTs && $jamSelesai !== '') {
+        $batas = strtotime(date('Y-m-d', $mulaiTs) . ' ' . substr($jamSelesai, 0, 5));
+        if ($batas !== false && $batas <= $mulaiTs) {
+            $batas += 86400;
+        }
+        if ($batas !== false && time() > $batas + 600) {
+            api_call('shift-operasional', 'close', 'POST', [], [
+                'total_fisik' => 0,
+                'catatan' => 'Auto-tutup: shift tidak ditutup sampai jam selesai',
+            ]);
+
+            return null;
+        }
+    }
+
     return [
         'id_shift_operasional' => (int) $row['id_shift_operasional'],
         'id_shift' => (int) $row['id_shift'],
@@ -589,33 +608,24 @@ function db_roster_configured(): bool
 function kasir_shift_assignment(string $kasir_name, array $shift): array
 {
     $shift_id = (int) ($shift['id'] ?? 0);
+    $shift_label = (string) ($shift['nama'] ?? 'shift ini');
     $roster = db_shift_roster($shift_id);
 
+    // Roster hari ini wajib ada. Tanpa jadwal, kasir tidak boleh presensi
+    // supaya tidak ada yang "nebeng" shift orang lain.
     if ($roster === null) {
-        $key = shift_roster_key($shift['nama'] ?? '');
-        if (array_key_exists($key, $_SESSION['shift_staff'] ?? [])) {
-            $roster = (array) $_SESSION['shift_staff'][$key];
-        }
-    }
-
-    if ($roster === null) {
-        // Roster sudah diatur Pemilik untuk hari ini, tapi shift ini tidak punya kasir
-        if (db_roster_configured()) {
+        if (!db_roster_configured()) {
             return [
                 'allowed' => false,
-                'reason' => 'Tidak ada kasir yang dijadwalkan pada ' . ($shift['nama'] ?? 'shift ini') . '. Hubungi Pemilik untuk mengatur jadwal shift.',
-                'roster' => []
+                'reason' => 'Belum ada jadwal shift untuk hari ini. Minta Pemilik mengatur jadwal di menu Master → Shift.',
+                'roster' => [],
             ];
         }
-        // Belum ada pengaturan roster sama sekali -> izinkan (sistem belum dikonfigurasi)
-        return ['allowed' => true, 'reason' => '', 'roster' => []];
-    }
 
-    if (empty($roster)) {
         return [
             'allowed' => false,
-            'reason' => 'Tidak ada kasir yang dijadwalkan pada ' . ($shift['nama'] ?? 'shift ini') . '. Hubungi Pemilik untuk mengatur jadwal shift.',
-            'roster' => []
+            'reason' => 'Tidak ada kasir yang dijadwalkan pada ' . $shift_label . '. Hubungi Pemilik untuk mengatur jadwal shift.',
+            'roster' => [],
         ];
     }
 
@@ -627,8 +637,8 @@ function kasir_shift_assignment(string $kasir_name, array $shift): array
 
     return [
         'allowed' => false,
-        'reason' => 'Anda tidak dijadwalkan pada ' . ($shift['nama'] ?? 'shift ini') . '. Hubungi Pemilik untuk mengatur jadwal shift.',
-        'roster' => $roster
+        'reason' => 'Anda tidak dijadwalkan pada ' . $shift_label . '. Hubungi Pemilik untuk mengatur jadwal shift.',
+        'roster' => $roster,
     ];
 }
 
@@ -636,13 +646,19 @@ function get_active_kasir_shift(string $kasir_name): array
 {
     $all_shifts = $_SESSION['shifts'] ?? [];
 
+    // Pastikan master shift sudah dimuat dari backend sebelum menentukan shift.
+    if (empty($all_shifts)) {
+        sync_live_database();
+        $all_shifts = $_SESSION['shifts'] ?? [];
+    }
+
     if (empty($all_shifts)) {
         return [
-            'id' => 2,
-            'nama' => 'Shift Siang',
-            'mulai' => '12:00',
-            'selesai' => '18:00',
-            'jam_tampil' => '12:00 — 18:00',
+            'id' => 0,
+            'nama' => 'Shift',
+            'mulai' => '00:00',
+            'selesai' => '00:00',
+            'jam_tampil' => '-',
             'staff' => '',
         ];
     }
