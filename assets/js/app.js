@@ -292,26 +292,21 @@ function initTransactionCalculator() {
             let qtyWash = 0;
             let qtyDry = 0;
 
-            if (weightBased) {
-                // Koin ditentukan sistem: 1 putaran = 1 koin cuci + 1 koin kering
-                qtyWash = hasWash ? cycles : 0;
-                qtyDry = hasDry ? cycles : 0;
-            } else {
-                qtyWash = parseInt(coinWashInput ? coinWashInput.value : 0) || 0;
-                qtyDry = parseInt(coinDryInput ? coinDryInput.value : 0) || 0;
-            }
+            // Koin selalu ditentukan sistem: 1 putaran = 1 koin cuci + 1 koin kering
+            qtyWash = hasWash ? cycles : 0;
+            qtyDry = hasDry ? cycles : 0;
 
             if (coinWashInput) {
                 coinWashInput.value = qtyWash;
-                coinWashInput.readOnly = weightBased;
-                coinWashInput.style.background = weightBased ? '#f1f5f9' : '#ffffff';
-                coinWashInput.style.cursor = weightBased ? 'not-allowed' : '';
+                coinWashInput.readOnly = true;
+                coinWashInput.style.background = '#f1f5f9';
+                coinWashInput.style.cursor = 'not-allowed';
             }
             if (coinDryInput) {
                 coinDryInput.value = qtyDry;
-                coinDryInput.readOnly = weightBased;
-                coinDryInput.style.background = weightBased ? '#f1f5f9' : '#ffffff';
-                coinDryInput.style.cursor = weightBased ? 'not-allowed' : '';
+                coinDryInput.readOnly = true;
+                coinDryInput.style.background = '#f1f5f9';
+                coinDryInput.style.cursor = 'not-allowed';
             }
 
             let valWash = 0;
@@ -346,7 +341,7 @@ function initTransactionCalculator() {
             document.getElementById('subtotalWashDisplay').textContent = 'Rp ' + valWash.toLocaleString('id-ID');
             document.getElementById('subtotalDryDisplay').textContent = 'Rp ' + valDry.toLocaleString('id-ID');
 
-            const totalPaid = weightBased ? totalBill : (valWash + valDry);
+            const totalPaid = totalBill;
             if (totalPaidEl) totalPaidEl.textContent = 'Rp ' + totalPaid.toLocaleString('id-ID');
 
             const diff = totalPaid - totalBill;
@@ -368,9 +363,12 @@ function initTransactionCalculator() {
                 }
             }
         } else {
-            // Drop Off or Additional -> Tunai
+            // Drop Off or Additional -> Tunai (tidak memakai koin mesin)
             if (tokenSection) tokenSection.style.display = 'none';
             if (tunaiAlertBox) tunaiAlertBox.style.display = 'block';
+
+            if (coinWashInput) coinWashInput.value = 0;
+            if (coinDryInput) coinDryInput.value = 0;
 
             if (totalPaidEl) totalPaidEl.textContent = 'Rp ' + totalBill.toLocaleString('id-ID');
 

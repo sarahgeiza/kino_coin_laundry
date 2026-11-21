@@ -341,9 +341,13 @@ function db_save_transaction(array $data): ?string
     $mode = $data['pricing_mode'] ?? 'unit';
 
     if ($mode === 'unit') {
+        // Layanan satuan (Extra Spin / Extra Dry): kirim juga berat setara
+        // supaya backend menghitung jumlah putaran = qty.
+        $unitQty = max(1, (int) ($data['qty'] ?? 1));
         $details[] = [
             'id_layanan' => (int) ($data['service_id'] ?? 1),
-            'jumlah' => max(1, (int) ($data['qty'] ?? 1)),
+            'jumlah' => $unitQty,
+            'berat' => 7.5 * $unitQty,
         ];
     } else {
         $details[] = [

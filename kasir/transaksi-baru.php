@@ -142,16 +142,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     $is_token = ($selected_service['kategori'] === 'SELF_SERVICE');
 
     if ($is_token) {
-        if ($pricing_mode === 'block') {
-            // Koin dihitung sistem: 1 putaran = 1 koin cuci dan/atau 1 koin kering
-            $koin_cuci = (strpos($nama_layanan, 'cuci') !== false) ? $putaran : 0;
-            $koin_kering = (strpos($nama_layanan, 'kering') !== false) ? $putaran : 0;
-            $total_bayar = $total_biaya;
-        } else {
-            $total_bayar = ($koin_cuci * 7000) + ($koin_kering * 10000) + $addon_total;
-        }
+        // Koin selalu dihitung sistem dari layanan + jumlah putaran.
+        // Input koin di form hanya tampilan, bukan sumber tagihan.
+        $putaranKoin = $pricing_mode === 'block' ? $putaran : $qty;
+        $koin_cuci = (strpos($nama_layanan, 'cuci') !== false) ? $putaranKoin : 0;
+        $koin_kering = (strpos($nama_layanan, 'kering') !== false) ? $putaranKoin : 0;
+        $total_bayar = $total_biaya;
         $metode = 'Token';
-        $status = ($total_bayar >= $total_biaya) ? 'Lunas' : 'Kurang';
+        $status = 'Lunas';
     } else {
         $total_bayar = $total_biaya;
         $metode = 'Tunai';
@@ -181,78 +179,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && 
     ];
     $saved_inv = db_save_transaction($tx_data);
 
-    // 2. Fallback sesi jika database gagal — tapi JANGAN diam-diam dianggap sukses
+    // 2. Gagal simpan: tampilkan pesan error, jangan berpura-pura sukses
     if (!$saved_inv) {
         $db_err = $GLOBALS['kino_last_db_error'] ?? '';
         $trx_error = 'Transaksi GAGAL tersimpan ke database'
-            . ($db_err !== '' ? ': ' . $db_err : '. Periksa koneksi database.')
-            . ' — data hanya tercatat sementara di sesi ini.';
-
-        $member_code = null;
-        $member_idx = -1;
-        foreach ($_SESSION['members'] as $idx => $m) {
-            if (strcasecmp($m['nama'], $nama) === 0 || $m['wa'] === $wa) {
-                $member_code = $m['kode_kartu'];
-                $member_idx = $idx;
-                break;
-            }
-        }
-
-        if (!$member_code) {
-            $new_m_id = count($_SESSION['members']) + 1;
-            $member_code = 'KC-P-' . str_pad($new_m_id, 4, '0', STR_PAD_LEFT);
-            $member_idx = count($_SESSION['members']);
-            $_SESSION['members'][] = [
-                'id' => $new_m_id,
-                'nama' => $nama,
-                'wa' => $wa,
-                'kode_kartu' => $member_code,
-                'is_member' => true,
-                'tx_count' => 0,
-                'coin_cuci' => 0,
-                'coin_kering' => 0
-            ];
-        }
-
-        if ($member_idx >= 0 && isset($_SESSION['members'][$member_idx])) {
-            $_SESSION['members'][$member_idx]['tx_count'] += 1;
-            $_SESSION['members'][$member_idx]['coin_cuci'] += $koin_cuci;
-            $_SESSION['members'][$member_idx]['coin_kering'] += $koin_kering;
-        }
-
-        $new_id = 'INV-2026-' . str_pad(count($_SESSION['transactions']) + 1, 3, '0', STR_PAD_LEFT);
-
-        $_SESSION['transactions'][] = [
-            'id' => $new_id,
-            'pelanggan' => $nama,
-            'wa' => $wa,
-            'kode_kartu' => $member_code,
-            'layanan' => $selected_service['nama'] . ($addon_rows
-                ? ', ' . implode(', ', array_map(fn($a) => $a['nama'] . ' x' . $a['qty'], $addon_rows))
-                : ''),
-            'layanan_tipe' => $selected_service['kategori_label'],
-            'kategori' => $selected_service['kategori'],
-            'kuantitas' => $pricing_mode === 'block'
-                ? (rtrim(rtrim(number_format($berat, 1, ',', ''), '0'), ',') . ' kg (' . $putaran . ' putaran)')
-                : ($pricing_mode === 'per_kg'
-                    ? (rtrim(rtrim(number_format($berat, 1, ',', ''), '0'), ',') . ' kg')
-                    : ($qty . ' ' . $selected_service['satuan'])),
-            'qty_num' => $qty,
-            'total_biaya' => $total_biaya,
-            'metode' => $metode,
-            'koin_cuci' => $koin_cuci,
-            'koin_kering' => $koin_kering,
-            'total_bayar' => $total_bayar,
-            'status' => $status,
-            'kasir' => $_SESSION['username'] ?? 'Sarah',
-            'shift' => (get_active_kasir_shift($_SESSION['username'] ?? 'Sarah'))['nama'],
-            'waktu' => date('H:i') . ' WIB',
-            'tanggal' => date('d M Y'),
-            'filter_date' => date('Y-m-d')
-        ];
+            . ($db_err !== '' ? ': ' . $db_err : '. Periksa koneksi database.');
+    } else {
+        header('Location: index.php?toast=saved');
+        exit;
     }
-header('Location: index.php?toast=saved');
-    exit;
     }
     }
 }
@@ -288,6 +223,12 @@ require_once __DIR__ . '/../includes/header.php';
 
 <form action="transaksi-baru.php" method="POST" id="formTransaksiBaru">
     <input type="hidden" name="action" value="save_trx">
+
+    <?php if (!empty($trx_error)): ?>
+    <div style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; padding:12px 14px; border-radius:10px; font-size:12px; font-weight:700; margin-bottom:14px;">
+        <?= htmlspecialchars($trx_error) ?>
+    </div>
+    <?php endif; ?>
 
     <!-- Card 1: Data Pelanggan -->
     <div class="card">
