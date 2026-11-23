@@ -23,24 +23,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     } elseif ($pass !== $confirm) {
         $reg_error = 'Konfirmasi password tidak cocok. Silakan ulangi.';
     } else {
-        // Check if WhatsApp already registered
-        $is_already_registered = false;
-        foreach ($_SESSION['members'] as $m) {
-            if ($m['wa'] === $wa) {
-                $is_already_registered = true;
-                break;
-            }
-        }
+        // Daftar lewat backend: sekaligus set password untuk pelanggan lama
+        // yang sebelumnya didaftarkan kasir tanpa password.
+        $response = api_call('auth', 'register', 'POST', [], [
+            'nama_pelanggan' => $nama,
+            'no_hp' => $wa,
+            'password' => $pass,
+        ]);
 
-        if ($is_already_registered) {
-            $reg_error = 'Nomor WhatsApp ' . htmlspecialchars($wa) . ' sudah terdaftar. Silakan masuk menggunakan akun Anda di halaman login.';
+        if (!api_ok($response)) {
+            $reg_error = api_error_message($response);
         } else {
-            $saved = db_save_member($nama, $wa, $pass);
-            $new_id = $saved ? $saved['id'] : (count($_SESSION['members']) + 1);
-            $_SESSION['customer_id'] = $new_id;
-            $_SESSION['username'] = $nama;
+            $created = $response['data']['user'] ?? [];
+            $_SESSION['customer_id'] = (int) ($created['id'] ?? 0);
+            $_SESSION['user_id'] = $_SESSION['customer_id'];
+            $_SESSION['username'] = (string) ($created['nama'] ?? $nama);
             $_SESSION['role'] = 'pelanggan';
-            $_SESSION['csrf'] = bin2hex(random_bytes(32));
+            $_SESSION['csrf'] = (string) ($response['data']['csrf_token'] ?? bin2hex(random_bytes(32)));
             header('Location: index.php?toast=registered');
             exit;
         }

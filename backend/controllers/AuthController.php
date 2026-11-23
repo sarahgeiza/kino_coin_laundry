@@ -138,6 +138,13 @@ if ($module === 'auth') {
                 ['{' . implode(',', $phoneVariants) . '}']
             )
             : null;
+        // Pelanggan lama yang didaftarkan kasir tanpa password tidak bisa login.
+        if ($customer && empty($customer['password_hash'])) {
+            respond([
+                'error' => 'Akun ini belum punya password. Minta kasir mengatur password, atau daftar ulang di portal pelanggan dengan nama dan nomor WhatsApp yang sama.'
+            ], 403);
+        }
+
         if (
             $customer && !empty($customer['password_hash']) &&
             password_verify($password, (string) $customer['password_hash'])

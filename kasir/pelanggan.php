@@ -9,6 +9,7 @@ $member_error = '';
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $nama = trim($_POST['nama'] ?? '');
     $wa = trim($_POST['wa'] ?? '');
+    $password = (string) ($_POST['password'] ?? '');
     $is_member = isset($_POST['is_member']);
 
     if (empty($nama)) {
@@ -19,6 +20,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $member_error = 'Nomor WhatsApp hanya boleh berisi angka.';
     } elseif (strlen($wa) < 10 || strlen($wa) > 15) {
         $member_error = 'Nomor WhatsApp tidak valid (minimal 10 digit, maksimal 15 digit).';
+    } elseif (strlen($password) < 8) {
+        $member_error = 'Password pelanggan minimal 8 karakter.';
     } else {
         // Cek duplikasi nomor WhatsApp pelanggan
         $is_duplicate = false;
@@ -32,8 +35,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         if ($is_duplicate) {
             $member_error = 'Nomor WhatsApp ' . htmlspecialchars($wa) . ' sudah terdaftar atas nama pelanggan lain.';
         } else {
-            db_save_member($nama, $wa);
-            header('Location: pelanggan.php?toast=saved');
+            $saved = db_save_member($nama, $wa, $password);
+            if ($saved === null) {
+                $member_error = $GLOBALS['kino_last_db_error'] ?? 'Gagal menyimpan pelanggan ke database.';
+            } else {
+                header('Location: pelanggan.php?toast=saved');
+                exit;
+            }
             exit;
         }
     }
@@ -154,6 +162,11 @@ if (!empty($search)) {
                 <small id="memberWaWarning" role="alert" aria-live="polite" style="display:none; color:#dc2626; font-size:12px; margin-top:5px;">
                     Nomor WhatsApp hanya boleh berisi angka.
                 </small>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password Pelanggan *</label>
+                <input type="password" name="password" class="form-control" placeholder="Minimal 8 karakter" minlength="8" required>
+                <span style="font-size: 11px; color: var(--text-muted);">Dipakai pelanggan untuk login di Portal Pelanggan bersama nomor WhatsApp.</span>
             </div>
             <div class="form-group">
                 <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">

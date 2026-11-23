@@ -18,9 +18,15 @@ $trx_error = '';
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'quick_member') {
     $qm_nama = trim($_POST['quick_nama'] ?? '');
     $qm_wa = trim($_POST['quick_wa'] ?? '');
+    $qm_pass = (string) ($_POST['quick_password'] ?? '');
 
     if ($qm_nama === '' || !preg_match('/^[0-9]{10,15}$/', $qm_wa)) {
         header('Location: transaksi-baru.php?toast=member_invalid');
+        exit;
+    }
+
+    if (strlen($qm_pass) < 8) {
+        header('Location: transaksi-baru.php?toast=member_password');
         exit;
     }
 
@@ -35,7 +41,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') ==
         exit;
     }
 
-    $saved_member = db_save_member($qm_nama, $qm_wa);
+    $saved_member = db_save_member($qm_nama, $qm_wa, $qm_pass);
     if ($saved_member) {
         header('Location: transaksi-baru.php?scan_member=' . urlencode($saved_member['kode_kartu']) . '&toast=member_saved');
     } else {
@@ -408,6 +414,11 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="form-group">
                 <label class="form-label">Nomor WhatsApp *</label>
                 <input type="text" id="modalMemberWA" name="quick_wa" class="form-control" placeholder="Contoh: 08155556666" inputmode="numeric" pattern="[0-9]{10,15}" title="Nomor WhatsApp hanya boleh berisi angka (10-15 digit)" oninput="this.setCustomValidity(''); this.value = this.value.replace(/[^0-9]/g, '')" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password Pelanggan *</label>
+                <input type="password" name="quick_password" class="form-control" placeholder="Minimal 8 karakter" minlength="8" required>
+                <span style="font-size: 11px; color: var(--text-muted);">Dipakai pelanggan untuk login di Portal Pelanggan bersama nomor WhatsApp.</span>
             </div>
             <div class="form-group">
                 <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
