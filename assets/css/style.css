@@ -930,6 +930,21 @@ body {
         background: var(--primary-subtle);
         color: var(--primary);
     }
+    /* indikator aktif: batang vertikal di kiri item, bukan garis di atas */
+    .nav-tab::before {
+        top: 50%;
+        left: 0;
+        width: 3px !important;
+        height: 0;
+        transform: translateY(-50%);
+        border-radius: 0 3px 3px 0;
+        transition: height 0.2s ease !important;
+    }
+    .nav-tab.active::before {
+        width: 3px !important;
+        height: 20px;
+    }
+
     .nav-tab .tab-icon {
         width: 20px;
         display: flex;
