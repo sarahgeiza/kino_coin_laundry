@@ -1005,9 +1005,13 @@ body {
         color: var(--primary);
     }
 
-    /* form lebih sempit biar tidak melar */
-    .page-narrow .content-area > * {
+    /* form lebih sempit biar tidak melar (modal overlay jangan ikut dipersempit) */
+    .page-narrow .content-area > *:not(.sheet-overlay):not(.fab-btn) {
         max-width: 940px;
+    }
+    .content-area > .sheet-overlay {
+        max-width: none;
+        width: auto;
     }
 
     /* kontrol segmented jangan melar penuh */
