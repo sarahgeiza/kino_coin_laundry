@@ -931,7 +931,7 @@ body {
         color: var(--primary);
     }
     /* indikator aktif: batang vertikal di kiri item, bukan garis di atas */
-    .nav-tab::before {
+    .bottom-nav .nav-tab::before {
         top: 50%;
         left: 0;
         width: 3px !important;
@@ -940,9 +940,12 @@ body {
         border-radius: 0 3px 3px 0;
         transition: height 0.2s ease !important;
     }
-    .nav-tab.active::before {
+    .bottom-nav .nav-tab.active::before {
+        top: 50%;
+        left: 0;
         width: 3px !important;
         height: 20px;
+        transform: translateY(-50%);
     }
 
     .nav-tab .tab-icon {
