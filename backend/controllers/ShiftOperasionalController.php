@@ -104,7 +104,7 @@ if ($module === 'shift-operasional') {
              JOIN shift s USING (id_shift)
              WHERE j.id_kasir = ?
                AND j.tanggal = CURRENT_DATE
-               AND j.status = 'dijadwalkan'
+               AND j.status IN ('dijadwalkan', 'dimulai')
                AND ((s.jam_mulai < s.jam_selesai
                      AND CURRENT_TIME >= s.jam_mulai
                      AND CURRENT_TIME < s.jam_selesai)
@@ -127,6 +127,15 @@ if ($module === 'shift-operasional') {
                  FROM jadwal_shift
                  WHERE tanggal = CURRENT_DATE AND status <> 'dibatalkan'"
             )['total'] ?? 0);
+            $closedToday = one(
+                "SELECT 1 FROM jadwal_shift
+                 WHERE id_kasir = ? AND tanggal = CURRENT_DATE AND status = 'selesai'
+                 LIMIT 1",
+                [$kasirId]
+            );
+            if ($closedToday) {
+                respond(['error' => 'Shift kamu hari ini sudah ditutup. Presensi berikutnya menunggu jadwal baru dari pemilik.'], 409);
+            }
             if ($dayScheduleCount > 0) {
                 respond(['error' => 'Kamu tidak memiliki jadwal shift hari ini. Minta pemilik menjadwalkan kasir pengganti.'], 409);
             }
