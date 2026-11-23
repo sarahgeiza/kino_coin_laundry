@@ -57,7 +57,7 @@ $shift_time_label = $active_shift['jam_tampil'] ?? '14:00 — 20:00';
             <header class="header-staff">
                 <div class="header-top">
                     <div class="header-title-box">
-                        <h1>Selamat siang,<br><?= htmlspecialchars($user_name) ?></h1>
+                        <h1><?= salam_waktu() ?>,<br><?= htmlspecialchars($user_name) ?></h1>
                         <p>
                             <span class="badge badge-token" style="background: rgba(255,255,255,0.2); color: white; border: none;"><?= htmlspecialchars($shift_name_badge) ?></span>
                             <span>• <?= htmlspecialchars($shift_time_label) ?> • <?= date('d M Y') ?></span>
@@ -71,7 +71,7 @@ $shift_time_label = $active_shift['jam_tampil'] ?? '14:00 — 20:00';
             <header class="header-owner">
                 <div class="header-top">
                     <div class="header-title-box">
-                        <h1>Selamat malam, Pemilik</h1>
+                        <h1><?= salam_waktu() ?>, Pemilik</h1>
                         <p style="color: #94a3b8;">Dashboard Monitoring Bisnis</p>
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px;">
@@ -87,7 +87,7 @@ $shift_time_label = $active_shift['jam_tampil'] ?? '14:00 — 20:00';
             <header class="header-customer">
                 <div class="header-top">
                     <div class="header-title-box">
-                        <h1>Selamat datang,<br><?= htmlspecialchars($user_name) ?></h1>
+                        <h1><?= salam_waktu() ?>,<br><?= htmlspecialchars($user_name) ?></h1>
                         <p>
                             <span style="background: rgba(255,255,255,0.25); padding: 2px 8px; border-radius: 12px; font-weight: 700;">Kino Coin Laundry</span>
                             <span>• Buka 24 Jam</span>

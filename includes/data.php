@@ -6,6 +6,26 @@ if (ob_get_level() === 0) ob_start();
 // transaksi dini hari WIB bisa tercatat pada tanggal yang salah.
 date_default_timezone_set('Asia/Jakarta');
 
+/**
+ * Sapaan sesuai jam lokal (WIB), bukan teks statis.
+ */
+function salam_waktu(?int $timestamp = null): string
+{
+    $hour = (int) date('G', $timestamp ?? time());
+
+    if ($hour >= 4 && $hour < 11) {
+        return 'Selamat pagi';
+    }
+    if ($hour >= 11 && $hour < 15) {
+        return 'Selamat siang';
+    }
+    if ($hour >= 15 && $hour < 18) {
+        return 'Selamat sore';
+    }
+
+    return 'Selamat malam';
+}
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
