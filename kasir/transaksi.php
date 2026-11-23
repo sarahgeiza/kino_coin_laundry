@@ -84,7 +84,7 @@ if ($filter === 'Self Service') {
         <div class="sheet-header">
             <div>
                 <span style="font-size: 11px; font-weight: 800; color: var(--primary);" id="detailInvoiceId">INV-2026-001</span>
-                <h3 class="sheet-title" id="detailCustomerName">Budi Santoso</h3>
+                <h3 class="sheet-title" id="detailCustomerName">Pelanggan</h3>
             </div>
             <button type="button" class="sheet-close" onclick="closeModal('modalTrxDetail')">&times;</button>
         </div>

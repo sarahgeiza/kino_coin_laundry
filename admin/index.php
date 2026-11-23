@@ -5,21 +5,37 @@ $active_tab = 'home';
 
 require_once __DIR__ . '/../includes/header.php';
 
-// Hitung metrik omset & koin langsung dari transaksi riil database Supabase
+// Hitung metrik omset & koin HARI INI (bukan seluruh riwayat)
 $current_tx_list = $_SESSION['transactions'] ?? [];
-$db_omset = 0;
-$db_wash = 0;
-$db_dry = 0;
+$today = date('Y-m-d');
+$yesterday = date('Y-m-d', strtotime('-1 day'));
+
+$owner_omset = 0;
+$owner_wash = 0;
+$owner_dry = 0;
+$omset_kemarin = 0;
 
 foreach ($current_tx_list as $t) {
-    $db_omset += ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
-    $db_wash += ($t['koin_cuci'] ?? 0);
-    $db_dry += ($t['koin_kering'] ?? 0);
+    $tgl = (string) ($t['filter_date'] ?? '');
+    $nominal = (int) ($t['total_bayar'] ?? $t['total_biaya'] ?? 0);
+
+    if ($tgl === $today) {
+        $owner_omset += $nominal;
+        $owner_wash += (int) ($t['koin_cuci'] ?? 0);
+        $owner_dry += (int) ($t['koin_kering'] ?? 0);
+    } elseif ($tgl === $yesterday) {
+        $omset_kemarin += $nominal;
+    }
 }
 
-$owner_omset = $db_omset;
-$owner_wash = $db_wash;
-$owner_dry = $db_dry;
+if ($omset_kemarin > 0) {
+    $delta_persen = (int) round((($owner_omset - $omset_kemarin) / $omset_kemarin) * 100);
+    $delta_label = ($delta_persen >= 0 ? '↑ ' : '↓ ') . abs($delta_persen) . '% vs kemarin';
+    $delta_warna = $delta_persen >= 0 ? '#86efac' : '#fca5a5';
+} else {
+    $delta_label = 'Belum ada pembanding kemarin';
+    $delta_warna = 'rgba(255,255,255,0.75)';
+}
 ?>
 
 <!-- Section Monitoring Bisnis (Persis Figma P1) -->
@@ -32,7 +48,7 @@ $owner_dry = $db_dry;
         <div class="metric-box blue">
             <div class="label">Omset Hari Ini</div>
             <div class="value"><?= format_rupiah($owner_omset) ?></div>
-            <div class="sub" style="color: #86efac; font-weight: 700;">↑ 8% vs kemarin</div>
+            <div class="sub" style="color: <?= $delta_warna ?>; font-weight: 700;"><?= htmlspecialchars($delta_label) ?></div>
         </div>
         <div class="metric-box orange">
             <div class="label">Coin Cuci</div>

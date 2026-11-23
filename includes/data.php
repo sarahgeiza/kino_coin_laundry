@@ -272,6 +272,27 @@ function sync_live_database(): bool
                 $berat = (float) ($row['total_berat'] ?? 0);
                 $waktu = strtotime((string) $row['tanggal_transaksi']);
 
+                // Pisahkan koin cuci & kering dari komposisi layanan.
+                // Paket "Cuci Kering" memakai 1 koin cuci + 1 koin kering per putaran.
+                $totalKoin = (int) ($row['total_koin'] ?? 0);
+                $adaCuci = stripos($layananText, 'cuci') !== false;
+                $adaKering = stripos($layananText, 'kering') !== false;
+                $adaExtraDry = stripos($layananText, 'extra dry') !== false;
+
+                if ($adaCuci && $adaKering) {
+                    $koin_cuci = (int) ceil($totalKoin / 2);
+                    $koin_kering = $totalKoin - $koin_cuci;
+                } elseif ($adaCuci) {
+                    $koin_cuci = $totalKoin;
+                    $koin_kering = 0;
+                } elseif ($adaKering || $adaExtraDry) {
+                    $koin_cuci = 0;
+                    $koin_kering = $totalKoin;
+                } else {
+                    $koin_cuci = $totalKoin;
+                    $koin_kering = 0;
+                }
+
                 $txs[] = [
                     'id' => (string) ($row['no_invoice'] ?? ''),
                     'pelanggan' => (string) $row['nama_pelanggan'],
@@ -286,8 +307,8 @@ function sync_live_database(): bool
                     'qty_num' => 1,
                     'total_biaya' => (int) $row['total_bayar'],
                     'metode' => ucfirst((string) $row['jenis_pembayaran']),
-                    'koin_cuci' => (int) ($row['total_koin'] ?? 0),
-                    'koin_kering' => 0,
+                    'koin_cuci' => $koin_cuci,
+                    'koin_kering' => $koin_kering,
                     'total_bayar' => (int) $row['total_bayar'],
                     'status' => ucfirst((string) ($row['status_pembayaran'] ?: 'lunas')),
                     'kasir' => (string) $row['nama_kasir'],

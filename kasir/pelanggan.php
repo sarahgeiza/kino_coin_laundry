@@ -128,7 +128,7 @@ if (!empty($search)) {
 
         <div class="member-card-blue">
             <div class="store-name">KINO COIN LAUNDRY</div>
-            <div class="cust-name" id="cardMemberName">Budi Santoso</div>
+            <div class="cust-name" id="cardMemberName">Pelanggan</div>
             
             <div class="qr-box-white" id="modalMemberQrContainer" style="display:inline-flex; align-items:center; justify-content:center; min-width:130px; min-height:130px;"></div>
 
