@@ -12,10 +12,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
         $email = trim($_POST['email'] ?? '');
         $username = trim($_POST['username'] ?? '');
         $role = trim($_POST['role'] ?? 'Kasir');
-        $pass = trim($_POST['password'] ?? '123456');
+        $pass = (string) ($_POST['password'] ?? '');
 
         if (empty($nama) || empty($username)) {
             $user_error = 'Nama staf dan username wajib diisi.';
+        } elseif (strlen($pass) < 8) {
+            $user_error = 'Password minimal 8 karakter.';
         } else {
             // Cek apakah username sudah dipakai (hindari duplikat)
             $is_duplicate = false;
@@ -32,7 +34,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
                     'nama' => $nama,
                     'username' => $username,
                     'role' => strtolower($role) === 'pemilik' ? 'pemilik' : 'kasir',
-                    'password' => $pass ?: '123456',
+                    'password' => $pass,
                 ]);
 
                 if (!api_ok($resp)) {
@@ -64,7 +66,24 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
                 'role' => strtolower((string) ($target['role'] ?? 'kasir')) === 'pemilik' ? 'pemilik' : 'kasir',
             ]);
 
-            if (!api_ok($resp)) {
+            $new_pass = (string) ($_POST['password'] ?? '');
+            if (api_ok($resp) && $new_pass !== '') {
+                if (strlen($new_pass) < 8) {
+                    $user_error = 'Password minimal 8 karakter.';
+                } else {
+                    $passResp = api_call('pengguna', 'password', 'POST', [], [
+                        'id_pengguna' => $user_id,
+                        'password' => $new_pass,
+                    ]);
+                    if (!api_ok($passResp)) {
+                        $user_error = api_error_message($passResp);
+                    }
+                }
+            }
+
+            if ($user_error !== '') {
+                // biarkan jatuh ke render form dengan pesan error
+            } elseif (!api_ok($resp)) {
                 $user_error = api_error_message($resp);
             } else {
                 sync_live_database();
@@ -167,15 +186,20 @@ require_once __DIR__ . '/../includes/header.php';
             <input type="hidden" name="action" value="add_user">
             <div class="form-group">
                 <label class="form-label">Nama Lengkap *</label>
-                <input type="text" name="nama" class="form-control" placeholder="Contoh: Rian Pratama" required>
+                <input type="text" name="nama" class="form-control" placeholder="Contoh: Rian Pratama" value="<?= htmlspecialchars((($_POST['action'] ?? '') === 'add_user') ? (string) ($_POST['nama'] ?? '') : '') ?>" required>
             </div>
             <div class="form-group">
                 <label class="form-label">Username *</label>
-                <input type="text" name="username" class="form-control" placeholder="Contoh: rian" required>
+                <input type="text" name="username" class="form-control" placeholder="Contoh: rian" value="<?= htmlspecialchars(($_POST['action'] ?? '') === 'add_user' ? (string) ($_POST['username'] ?? '') : '') ?>" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password *</label>
+                <input type="password" name="password" class="form-control" placeholder="Minimal 8 karakter" minlength="8" required>
+                <span style="font-size: 11px; color: var(--text-muted);">Dipakai staf untuk login di portal Kasir / Pemilik.</span>
             </div>
             <div class="form-group">
                 <label class="form-label">Email</label>
-                <input type="email" name="email" class="form-control" placeholder="Contoh: rian@kino.com">
+                <input type="email" name="email" class="form-control" placeholder="Contoh: rian@kino.com" value="<?= htmlspecialchars(($_POST['action'] ?? '') === 'add_user' ? (string) ($_POST['email'] ?? '') : '') ?>">
             </div>
             <div class="form-group">
                 <label class="form-label">Role Akses *</label>
@@ -202,14 +226,19 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
         <form action="users.php" method="POST">
             <input type="hidden" name="action" value="edit_user">
-            <input type="hidden" id="editUserId" name="user_id" value="">
+            <input type="hidden" id="editUserId" name="user_id" value="<?= htmlspecialchars((($_POST['action'] ?? '') === 'edit_user') ? (string) ($_POST['user_id'] ?? '') : '') ?>">
             <div class="form-group">
                 <label class="form-label">Nama Lengkap</label>
-                <input type="text" id="editUserNama" name="nama" class="form-control" required>
+                <input type="text" id="editUserNama" name="nama" class="form-control" value="<?= htmlspecialchars((($_POST['action'] ?? '') === 'edit_user') ? (string) ($_POST['nama'] ?? '') : '') ?>" required>
             </div>
             <div class="form-group">
                 <label class="form-label">Email</label>
                 <input type="email" id="editUserEmail" name="email" class="form-control">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password Baru</label>
+                <input type="password" name="password" class="form-control" placeholder="Kosongkan jika tidak diubah" minlength="8">
+                <span style="font-size: 11px; color: var(--text-muted);">Isi hanya kalau ingin mengganti password staf ini.</span>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 14px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal('modalEditUser')">Batal</button>
@@ -227,5 +256,14 @@ function editUser(u) {
     openModal('modalEditUser');
 }
 </script>
+
+<?php if (!empty($user_error)): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var target = '<?= (($_POST['action'] ?? '') === 'edit_user') ? 'modalEditUser' : 'modalAddUser' ?>';
+    if (typeof openModal === 'function') { openModal(target); }
+});
+</script>
+<?php endif; ?>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
