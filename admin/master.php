@@ -25,7 +25,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
         $mulai = trim($_POST['mulai'] ?? '08:00');
         $selesai = trim($_POST['selesai'] ?? '14:00');
 
-        if ($nama !== '') {
+        $nama_bersih = preg_replace('/^Shift\s+/i', '', $nama);
+
+        // Tolak nama shift yang sudah ada supaya tidak muncul error constraint mentah
+        $nama_bentrok = null;
+        $normal_shift = static function ($v): string {
+            return strtolower(trim(preg_replace('/^shift\s+/i', '', trim((string) $v))));
+        };
+        foreach (($_SESSION['shifts'] ?? []) as $s) {
+            if ($normal_shift($s['nama'] ?? '') === $normal_shift($nama_bersih)) {
+                $nama_bentrok = (string) ($s['nama'] ?? $nama_bersih);
+                break;
+            }
+        }
+
+        if ($nama !== '' && $nama_bentrok !== null) {
+            $shift_error = 'Shift "' . $nama_bentrok . '" sudah ada. Pakai nama lain atau edit shift tersebut.';
+        } elseif ($nama !== '') {
             $response = api_call('shift', 'create', 'POST', [], [
                 'nama_shift' => preg_replace('/^Shift\s+/i', '', $nama),
                 'jam_mulai' => $mulai,

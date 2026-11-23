@@ -107,24 +107,8 @@ if ($module === 'jadwal-shift') {
             }
         }
 
-        // Cek konflik: apakah ada kasir yang sudah dijadwalkan di shift lain pada tanggal yang sama?
-        if (!empty($kasirIds)) {
-            $placeholders = implode(',', array_map('intval', $kasirIds));
-            $conflict = one(
-                "SELECT j.id_kasir, p.nama AS nama_kasir
-                 FROM jadwal_shift j
-                 JOIN pengguna p ON p.id_pengguna = j.id_kasir
-                 WHERE j.tanggal = ?
-                   AND j.id_shift <> ?
-                   AND j.id_kasir IN ($placeholders)
-                   AND j.status <> 'dibatalkan'
-                 LIMIT 1",
-                [$tanggal, $shiftId]
-            );
-            if ($conflict) {
-                respond(['error' => 'Kasir sudah dijadwalkan di shift lain pada tanggal ini'], 409);
-            }
-        }
+        // Satu kasir boleh mengambil lebih dari satu shift dalam sehari
+        // (mis. double shift). Unik dijaga per (kasir, shift, tanggal).
 
         $conn = getConnection();
         if (!pg_query($conn, 'BEGIN')) {
@@ -155,7 +139,7 @@ if ($module === 'jadwal-shift') {
                 execute_sql(
                     "INSERT INTO jadwal_shift (id_shift, id_kasir, tanggal, status, dibuat_oleh)
                      VALUES (?, ?, ?, 'dijadwalkan', ?)
-                     ON CONFLICT (id_kasir, tanggal)
+                     ON CONFLICT (id_kasir, id_shift, tanggal)
                      DO UPDATE SET id_shift = EXCLUDED.id_shift,
                                    status = 'dijadwalkan',
                                    dibuat_oleh = EXCLUDED.dibuat_oleh",
