@@ -156,16 +156,18 @@ $show_toast_logout = (isset($_GET['logout']) && $_GET['logout'] == '1');
             .lp-brand-mark {
                 width: 44px;
                 height: 44px;
-                border-radius: 14px;
-                background: #f59e0b;
-                padding: 6px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                overflow: hidden;
-                box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+                flex-shrink: 0;
             }
-            .lp-brand-mark img { width: 100%; height: 100%; object-fit: contain; display: block; }
+            .lp-brand-mark img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                display: block;
+                filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
+            }
             .lp-brand-name {
                 font-size: 16px;
                 font-weight: 800;
@@ -228,6 +230,14 @@ $show_toast_logout = (isset($_GET['logout']) && $_GET['logout'] == '1');
                 margin-bottom: 20px;
             }
             .lp-logo-lg img { width: 100%; height: 100%; object-fit: contain; display: block; }
+            .lp-logo-hero {
+                width: 190px;
+                max-width: 100%;
+                height: auto;
+                display: block;
+                margin-bottom: 18px;
+                filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.28));
+            }
             .lp-title {
                 font-size: clamp(36px, 3.4vw, 52px);
                 font-weight: 900;
@@ -477,9 +487,8 @@ $show_toast_logout = (isset($_GET['logout']) && $_GET['logout'] == '1');
             </div>
 
             <!-- Hero Brand -->
-            <div class="logo-box-lg" style="background:#f59e0b; padding:12px; overflow:hidden;">
-                <img src="assets/img/logo-kino-badge.png" alt="Kino Coin Laundry" style="width:100%; height:100%; object-fit:contain; display:block;">
-            </div>
+            <img src="assets/img/logo-kino-white.png" alt="Kino Coin Laundry"
+             style="width: 160px; max-width: 55%; height: auto; display: block; margin-bottom: 14px; filter: drop-shadow(0 8px 18px rgba(0,0,0,0.22));">
             <h1 style="font-size: 28px; font-weight: 900; line-height: 1.2; margin-bottom: 8px;">Kino Coin Laundry</h1>
             <p style="font-size: 14px; opacity: 0.9; line-height: 1.6; margin-bottom: 24px;">
                 Sistem manajemen operasional laundry modern berbasis koin. Kelola transaksi, pantau bisnis, dan cek riwayat cucian dalam satu aplikasi.
@@ -538,7 +547,7 @@ $show_toast_logout = (isset($_GET['logout']) && $_GET['logout'] == '1');
         <div class="lp-shell">
             <header class="lp-nav">
                 <a href="index.php" class="lp-brand">
-                    <span class="lp-brand-mark"><img src="assets/img/logo-kino-badge.png" alt="Kino Coin Laundry"></span>
+                    <span class="lp-brand-mark"><img src="assets/img/logo-kino-white.png" alt="Kino Coin Laundry"></span>
                     <span class="lp-brand-name">Kino Coin Laundry</span>
                 </a>
                 <nav class="lp-nav-actions">
@@ -550,9 +559,7 @@ $show_toast_logout = (isset($_GET['logout']) && $_GET['logout'] == '1');
 
             <main class="lp-hero">
                 <div>
-                    <div class="lp-logo-lg">
-                        <img src="assets/img/logo-kino-badge.png" alt="Kino Coin Laundry">
-                    </div>
+                    <img class="lp-logo-hero" src="assets/img/logo-kino-white.png" alt="Kino Coin Laundry">
                     <h1 class="lp-title">Kino Coin Laundry</h1>
                     <p class="lp-lead">
                         Sistem manajemen operasional laundry modern berbasis koin. Kelola transaksi, pantau bisnis, dan cek riwayat cucian dalam satu aplikasi.
