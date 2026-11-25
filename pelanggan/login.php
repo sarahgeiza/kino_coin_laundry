@@ -82,6 +82,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             padding: 28px 24px 34px 24px;
             background: #ffffff;
         }
+
+        /* Desktop: latar suasana laundry, khusus halaman login pelanggan */
+        @media (min-width: 768px) {
+            .login-page-wrapper {
+                padding: 48px 24px;
+                background:
+                    linear-gradient(180deg, rgba(4, 18, 24, 0.62) 0%, rgba(4, 18, 24, 0.38) 45%, rgba(4, 18, 24, 0.70) 100%),
+                    url('../assets/img/bg-login-pelanggan.jpg') center center / cover no-repeat;
+                background-attachment: fixed;
+            }
+            .login-card-box {
+                box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+            }
+        }
     </style>
 </head>
 <body>
