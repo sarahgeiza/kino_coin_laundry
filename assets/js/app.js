@@ -789,26 +789,25 @@ async function applyScannedCode() {
 // 8. REAL DATA CSV EXPORTER (Audit Feature for Owner Laporan & Presensi)
 // ==========================================================================
 function downloadCSV(filename, rows) {
-    const processRow = function (row) {
-        let finalVal = '';
-        for (let j = 0; j < row.length; j++) {
-            let innerValue = (row[j] === null || row[j] === undefined) ? '' : row[j].toString();
-            if (row[j] instanceof Date) {
-                innerValue = row[j].toLocaleString();
-            }
-            let result = innerValue.replace(/"/g, '""');
-            if (result.search(/("|,|\n)/g) >= 0)
-                result = '"' + result + '"';
-            if (j > 0)
-                finalVal += ',';
-            finalVal += result;
+    // Excel locale Indonesia memakai titik koma sebagai pemisah kolom.
+    // BOM UTF-8 ditambahkan supaya karakter non-ASCII tidak rusak.
+    const DELIMITER = ';';
+
+    const escapeCell = function (value) {
+        let text = (value === null || value === undefined) ? '' : String(value);
+        if (value instanceof Date) {
+            text = value.toLocaleString('id-ID');
         }
-        return finalVal + '\r\n';
+        if (/[";\r\n]/.test(text)) {
+            text = '"' + text.replace(/"/g, '""') + '"';
+        }
+        return text;
     };
 
-    let csvFile = '';
+    let csvFile = '\uFEFF';
     for (let i = 0; i < rows.length; i++) {
-        csvFile += processRow(rows[i]);
+        const row = rows[i] || [];
+        csvFile += row.map(escapeCell).join(DELIMITER) + '\r\n';
     }
 
     const blob = new Blob([csvFile], { type: 'text/csv;charset=utf-8;' });
@@ -821,7 +820,7 @@ function downloadCSV(filename, rows) {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        showToast('File ' + filename + ' berhasil diunduh', 'success');
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     }
 }
 
@@ -865,15 +864,27 @@ function exportLaporanTransactionsCSV() {
 
 
 function exportPresensiCSV() {
-    const logs = window.__MOCK_PRESENSI || [];
+    const logs = window.__MOCK_PRESENSI || window.__LIVE_PRESENSI || [];
+
+    if (!logs.length) {
+        showToast('Belum ada log presensi untuk diekspor', 'error', 3500);
+        return;
+    }
+
     const rows = [
         ['ID Presensi', 'Nama Kasir', 'Shift', 'Tanggal', 'Jam Masuk', 'Jam Keluar', 'Status']
     ];
     logs.forEach(l => {
         rows.push([
-            l.id, l.kasir, l.shift, l.tanggal, l.jam_masuk, l.jam_keluar || '-', l.status
+            l.id ?? '',
+            l.kasir ?? '',
+            l.shift ?? '',
+            l.tanggal ?? '',
+            l.jam_masuk ?? '',
+            l.jam_keluar || '-',
+            l.status ?? ''
         ]);
     });
     downloadCSV('Presensi_Kasir_Kino_' + new Date().toISOString().slice(0,10) + '.csv', rows);
-    showToast('Log presensi berhasil diexport ke CSV', 'success');
+    showToast('Log presensi berhasil diexport ke CSV (' + logs.length + ' baris)', 'success');
 }
