@@ -165,8 +165,47 @@ if ($module === 'shift-operasional') {
         );
 
         if ($active) {
+            // Shift lama yang sudah lewat jauh (mis. lupa ditutup) ditutup otomatis
+            // supaya kasir bisa membuka shift baru, tanpa memutus layanan yang masih jalan.
+            $stale = one(
+                "SELECT so.id_shift_operasional,
+                        (CURRENT_TIMESTAMP > (so.mulai_pada::date + s.jam_selesai
+                            + CASE WHEN s.jam_selesai <= s.jam_mulai THEN INTERVAL '1 day' ELSE INTERVAL '0 day' END
+                            + INTERVAL '2 hours')) AS basi
+                 FROM shift_operasional so JOIN shift s USING (id_shift)
+                 WHERE so.id_kasir = ? AND so.status = 'aktif'
+                 LIMIT 1",
+                [$kasirId]
+            );
+
+            if ($stale && ($stale['basi'] ?? 'f') === 't') {
+                execute_sql(
+                    "UPDATE shift_operasional
+                     SET status = 'ditutup', ditutup_pada = CURRENT_TIMESTAMP,
+                         total_fisik = COALESCE(total_fisik, 0), selisih = 0,
+                         catatan = COALESCE(catatan, 'Auto-tutup: shift lama tidak ditutup')
+                     WHERE id_shift_operasional = ?",
+                    [(int) $stale['id_shift_operasional']]
+                );
+            } else {
+                respond([
+                    'error' => 'Kamu masih memiliki shift aktif. Tutup shift sebelumnya terlebih dahulu.'
+                ], 409);
+            }
+        }
+
+        // Satu shift hanya boleh dibuka sekali per hari, walau jadwal tidak tercatat.
+        $sudahDitutup = one(
+            "SELECT 1 FROM shift_operasional
+             WHERE id_kasir = ? AND id_shift = ?
+               AND mulai_pada::date = CURRENT_DATE
+               AND status = 'ditutup'
+             LIMIT 1",
+            [$kasirId, $shiftId]
+        );
+        if ($sudahDitutup) {
             respond([
-                'error' => 'Kamu masih memiliki shift aktif. Tutup shift sebelumnya terlebih dahulu.'
+                'error' => 'Shift ini sudah kamu tutup hari ini. Presensi berikutnya menunggu jadwal baru dari pemilik.'
             ], 409);
         }
 
@@ -216,7 +255,7 @@ if ($module === 'shift-operasional') {
         try {
             // Ambil shift aktif dan kunci barisnya
             $active = one(
-                "SELECT so.id_shift_operasional, so.id_jadwal,
+                "SELECT so.id_shift_operasional, so.id_jadwal, so.id_shift,
                         CASE WHEN CURRENT_TIMESTAMP < (
                             so.mulai_pada::date + s.jam_selesai
                             + CASE WHEN s.jam_selesai <= s.jam_mulai THEN INTERVAL '1 day' ELSE INTERVAL '0 day' END
@@ -287,6 +326,14 @@ if ($module === 'shift-operasional') {
                 execute_sql(
                     "UPDATE jadwal_shift SET status = 'selesai' WHERE id_jadwal = ?",
                     [(int)$active['id_jadwal']]
+                );
+            } else {
+                // Shift dibuka lewat jalur fallback (tanpa jadwal): tetap tutup jadwal hari ini
+                execute_sql(
+                    "UPDATE jadwal_shift SET status = 'selesai'
+                     WHERE id_kasir = ? AND id_shift = ?
+                       AND tanggal = CURRENT_DATE AND status <> 'dibatalkan'",
+                    [$kasirId, (int) $active['id_shift']]
                 );
             }
 

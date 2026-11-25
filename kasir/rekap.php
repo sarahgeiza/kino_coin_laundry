@@ -9,7 +9,8 @@ $current_kasir = $_SESSION['username'] ?? '';
 $active_shift_row = db_active_shift($current_kasir);
 if ($active_shift_row === null) {
     $_SESSION['kasir_checked_in'] = false;
-    header('Location: index.php?toast=need_checkin');
+    $alasan = db_kasir_closed_today($current_kasir) ? 'shift_closed' : 'need_checkin';
+    header('Location: index.php?toast=' . $alasan);
     exit;
 }
 

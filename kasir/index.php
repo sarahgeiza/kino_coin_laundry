@@ -37,8 +37,19 @@ require_once __DIR__ . '/../includes/header.php';
 
 // Check if check-in needed (Modal M1) - sumber kebenaran: shift_operasional di Supabase
 $active_shift_row = db_active_shift($current_kasir_name);
-$need_checkin = ($active_shift_row === null);
+$shift_closed_today = ($active_shift_row === null) && db_kasir_closed_today($current_kasir_name);
+$need_checkin = ($active_shift_row === null && !$shift_closed_today);
 $_SESSION['kasir_checked_in'] = !$need_checkin;
+
+// Peringatan kalau shift masih terbuka tapi sudah lewat jam selesai
+$shift_overtime = false;
+if ($active_shift_row !== null && !empty($active_shift_row['jam_selesai'])) {
+    $batas = strtotime(date('Y-m-d', strtotime($active_shift_row['mulai_pada'])) . ' ' . substr($active_shift_row['jam_selesai'], 0, 5));
+    if ($batas !== false && $batas <= strtotime($active_shift_row['mulai_pada'])) {
+        $batas += 86400;
+    }
+    $shift_overtime = $batas !== false && time() > $batas;
+}
 
 // Hitung metrik shift kasir langsung dari transaksi riil database Supabase
 $current_tx_list = $_SESSION['transactions'] ?? [];
@@ -66,6 +77,20 @@ $disp_dry_val = format_rupiah($total_live_dry * 10000);
     <?= htmlspecialchars($_SESSION['checkin_error']) ?>
 </div>
 <?php unset($_SESSION['checkin_error']); endif; ?>
+
+<?php if ($shift_closed_today): ?>
+<div style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; padding:14px; border-radius:12px; font-size:12.5px; line-height:1.6; margin-bottom:14px;">
+    <strong style="display:block; margin-bottom:3px;">Shift hari ini sudah selesai</strong>
+    Presensi berikutnya menunggu jadwal baru dari pemilik. Hubungi pemilik kalau masih ada pekerjaan yang belum tercatat.
+</div>
+<?php endif; ?>
+
+<?php if ($shift_overtime): ?>
+<div style="background:#fff7ed; border:1px solid #fdba74; color:#9a3412; padding:14px; border-radius:12px; font-size:12.5px; line-height:1.6; margin-bottom:14px;">
+    <strong style="display:block; margin-bottom:3px;">Shift sudah lewat jam selesai (<?= htmlspecialchars(substr((string) $active_shift_row['jam_selesai'], 0, 5)) ?> WIB)</strong>
+    Transaksi masih bisa disimpan. Setelah selesai melayani, tutup shift di menu Rekap.
+</div>
+<?php endif; ?>
 
 <!-- Tombol Aksi Cepat (Persis Figma K1) -->
 <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 10px; margin-bottom: 16px;">

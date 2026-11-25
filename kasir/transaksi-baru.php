@@ -6,7 +6,8 @@ check_auth_guard('kasir');
 // Sumber kebenaran: ada/tidaknya baris shift_operasional berstatus 'aktif' di Supabase.
 if (db_active_shift($_SESSION['username'] ?? '') === null) {
     $_SESSION['kasir_checked_in'] = false;
-    header('Location: index.php?toast=need_checkin');
+    $alasan = db_kasir_closed_today($_SESSION['username'] ?? '') ? 'shift_closed' : 'need_checkin';
+    header('Location: index.php?toast=' . $alasan);
     exit;
 }
 

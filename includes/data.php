@@ -495,10 +495,15 @@ function db_active_shift(string $kasir_name = ''): ?array
         if ($batas !== false && $batas <= $mulaiTs) {
             $batas += 86400;
         }
-        if ($batas !== false && time() > $batas + 600) {
+        // Shift yang masih berjalan di hari yang sama TIDAK ditutup paksa:
+        // kasir mungkin masih melayani pelanggan melewati jam selesai.
+        $mulaiTanggal = date('Y-m-d', $mulaiTs);
+        $lewatHari = $mulaiTanggal < date('Y-m-d');
+
+        if ($batas !== false && $lewatHari && time() > $batas + 7200) {
             api_call('shift-operasional', 'close', 'POST', [], [
                 'total_fisik' => 0,
-                'catatan' => 'Auto-tutup: shift tidak ditutup sampai jam selesai',
+                'catatan' => 'Auto-tutup: shift hari sebelumnya tidak ditutup',
             ]);
 
             return null;
@@ -518,6 +523,24 @@ function db_active_shift(string $kasir_name = ''): ?array
         'total_qris' => (int) ($row['total_qris'] ?? 0),
         'total_berat' => (float) ($row['total_berat'] ?? 0),
     ];
+}
+
+/**
+ * Apakah kasir ini sudah menyelesaikan shiftnya hari ini?
+ * Dipakai untuk membedakan "belum presensi" vs "shift sudah ditutup".
+ */
+function db_kasir_closed_today(string $kasir_name): bool
+{
+    foreach (db_shift_roster_cache()['rows'] as $row) {
+        $nama = trim((string) ($row['nama_kasir'] ?? ''));
+        $status = strtolower((string) ($row['status'] ?? ''));
+
+        if ($nama !== '' && strcasecmp($nama, trim($kasir_name)) === 0 && $status === 'selesai') {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function db_start_shift(string $kasir_name, int $shift_id = 2): bool
