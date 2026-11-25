@@ -744,8 +744,9 @@ function get_active_kasir_shift(string $kasir_name): array
 
     $now = date('H:i');
 
-    // Shift ditentukan murni oleh jam berjalan; roster hanya menentukan
-    // siapa yang boleh presensi pada shift tersebut.
+    // Shift ditentukan oleh jam berjalan. Kalau master punya beberapa shift
+    // yang tumpang tindih, utamakan shift tempat kasir ini dijadwalkan.
+    $cocok = [];
     foreach ($all_shifts as $s) {
         $start = (string) ($s['mulai'] ?? '');
         $end = (string) ($s['selesai'] ?? '');
@@ -758,8 +759,23 @@ function get_active_kasir_shift(string $kasir_name): array
             : ($now >= $start || $now < $end);
 
         if ($isActive) {
-            return $s;
+            $cocok[] = $s;
         }
+    }
+
+    if (count($cocok) > 1) {
+        foreach ($cocok as $s) {
+            $roster = db_shift_roster((int) ($s['id'] ?? 0)) ?? [];
+            foreach ($roster as $nama) {
+                if ($nama !== '' && (stripos($nama, $kasir_name) !== false || stripos($kasir_name, $nama) !== false)) {
+                    return $s;
+                }
+            }
+        }
+    }
+
+    if ($cocok !== []) {
+        return $cocok[0];
     }
 
     // Tidak ada jendela yang cocok (mis. jam shift tidak lengkap): pakai shift pertama.
