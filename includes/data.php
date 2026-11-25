@@ -104,6 +104,12 @@ function sync_live_database(): bool
         $isKasir = strtolower((string) ($_SESSION['role'] ?? '')) === 'kasir';
         $isCustomer = !empty($_SESSION['customer_id']);
 
+        // Tutup shift yang tertinggal dari hari sebelumnya supaya tidak "Berjalan" selamanya.
+        if (($isOwner || $isKasir) && empty($GLOBALS['kino_sweep_done'])) {
+            $GLOBALS['kino_sweep_done'] = true;
+            api_call('shift-operasional', 'sweep', 'POST', [], []);
+        }
+
         // 1. Katalog layanan
         $serviceRows = api_collect_all('layanan', 'list');
         if ($serviceRows !== []) {

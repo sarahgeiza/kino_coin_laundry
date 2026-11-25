@@ -24,7 +24,8 @@ if ($module === 'shift-operasional') {
         respond(['data' => $logs]);
     }
 
-    if ($role !== 'kasir') {
+    // Sweep housekeeping boleh dijalankan pemilik maupun kasir
+    if ($role !== 'kasir' && !($role === 'pemilik' && $action === 'sweep')) {
         respond(['error' => 'Akses operasional kasir hanya untuk kasir'], 403);
     }
 
@@ -85,6 +86,50 @@ if ($module === 'shift-operasional') {
     // ==========================================
     // MEMBUKA SHIFT
     // ==========================================
+    // ==========================================
+    // AUTO-TUTUP SHIFT HARI SEBELUMNYA (housekeeping)
+    // ==========================================
+    if ($action === 'sweep') {
+        method('POST');
+        csrf();
+        actor();
+
+        $stale = rows(
+            "SELECT so.id_shift_operasional, so.id_jadwal, so.id_kasir, so.id_shift,
+                    so.mulai_pada::date::text AS tanggal_shift
+             FROM shift_operasional so
+             JOIN shift s USING (id_shift)
+             WHERE so.status = 'aktif'
+               AND so.mulai_pada::date < CURRENT_DATE
+               AND CURRENT_TIMESTAMP > (so.mulai_pada::date + s.jam_selesai
+                    + CASE WHEN s.jam_selesai <= s.jam_mulai THEN INTERVAL '1 day' ELSE INTERVAL '0 day' END
+                    + INTERVAL '2 hours')"
+        );
+
+        foreach ($stale as $row) {
+            execute_sql(
+                "UPDATE shift_operasional
+                 SET status = 'ditutup', ditutup_pada = CURRENT_TIMESTAMP,
+                     total_fisik = COALESCE(total_fisik, 0), selisih = 0,
+                     catatan = COALESCE(catatan, 'Auto-tutup: shift hari sebelumnya tidak ditutup')
+                 WHERE id_shift_operasional = ? AND status = 'aktif'",
+                [(int) $row['id_shift_operasional']]
+            );
+
+            if (!empty($row['id_jadwal'])) {
+                execute_sql("UPDATE jadwal_shift SET status = 'selesai' WHERE id_jadwal = ?", [(int) $row['id_jadwal']]);
+            } else {
+                execute_sql(
+                    "UPDATE jadwal_shift SET status = 'selesai'
+                     WHERE id_kasir = ? AND id_shift = ? AND tanggal = ? AND status <> 'dibatalkan'",
+                    [(int) $row['id_kasir'], (int) $row['id_shift'], (string) $row['tanggal_shift']]
+                );
+            }
+        }
+
+        respond(['message' => 'Sweep selesai', 'closed' => count($stale)]);
+    }
+
     if ($action === 'open') {
         method('POST');
         csrf();
